@@ -1,0 +1,11 @@
+node_modules/
+.env
+*.db
+*.db-journal
+server/data/local-sqlite-dev.db
+server/data/backups/
+.DS_Store
+Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

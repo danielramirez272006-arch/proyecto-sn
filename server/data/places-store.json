@@ -1,0 +1,56 @@
+[
+  {
+    "id": "plc_feria_1",
+    "name": "Feria del Agricultor y Artesanos de Ciudad Colón",
+    "category": "feria",
+    "lat": 9.915234,
+    "lng": -84.241512,
+    "address": "Costado Norte del Parque Central de Mora",
+    "district": "Colón",
+    "canton": "Mora",
+    "phone": "+506 2249-1122",
+    "price_level": "$",
+    "verified_by_admin": true,
+    "attributes_metadata": {
+      "pet_friendly": { "verified": true, "source": "admin_audit", "verified_at": "2026-11-10T12:00:00Z" },
+      "ley_7600_ramp": { "verified": true, "source": "municipalidad_mora", "verified_at": "2026-11-01T08:00:00Z" },
+      "sinpe_movil": { "verified": true, "source": "cooperativa_feria", "verified_at": "2026-11-12T00:00:00Z" }
+    }
+  },
+  {
+    "id": "plc_cafe_1",
+    "name": "Café Montaña Verde Specialty",
+    "category": "cafe",
+    "lat": 9.91689,
+    "lng": -84.2431,
+    "address": "150m Oeste del Mercado Municipal",
+    "district": "Colón",
+    "canton": "Mora",
+    "phone": "+506 2249-8899",
+    "price_level": "$$",
+    "verified_by_admin": true,
+    "attributes_metadata": {
+      "v60_chemex": { "verified": true, "source": "barista_staff", "verified_at": "2026-11-11T14:30:00Z" },
+      "pet_friendly": { "verified": true, "source": "admin_audit", "verified_at": "2026-11-05T10:00:00Z" },
+      "quiet_wifi": { "verified": true, "source": "client_reviews", "verified_at": "2026-11-08T16:00:00Z" }
+    }
+  },
+  {
+    "id": "plc_cafe_2",
+    "name": "Café Aromas del Valle",
+    "category": "cafe",
+    "lat": 9.9135,
+    "lng": -84.2389,
+    "address": "Entrada a Brasil de Mora",
+    "district": "Brasil",
+    "canton": "Mora",
+    "phone": "+506 2249-3344",
+    "price_level": "$$",
+    "verified_by_admin": true,
+    "attributes_metadata": {
+      "terrace_shade": { "verified": true, "source": "admin_audit", "verified_at": "2026-11-09T11:00:00Z" },
+      "sinpe_movil": { "verified": true, "source": "admin_audit", "verified_at": "2026-11-09T11:00:00Z" },
+      "parking_free": { "verified": true, "source": "admin_audit", "verified_at": "2026-11-09T11:00:00Z" }
+    }
+  }
+]

@@ -1,0 +1,11 @@
+[
+  {
+    "id": "pln_demo_1",
+    "code": "PLAN-CR-772",
+    "title": "Sábado de Feria Orgánica y Café de Especialidad",
+    "status": "active",
+    "revision": 1,
+    "budget_crc": 12000,
+    "selected_option_id": "opt_demo_1"
+  }
+]

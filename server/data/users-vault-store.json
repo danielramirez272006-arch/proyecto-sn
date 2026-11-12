@@ -1,0 +1,14 @@
+[
+  {
+    "id": "usr_organizer_1",
+    "name": "Valeria Solís",
+    "email": "valeria@ejemplo.cr",
+    "role": "organizer"
+  },
+  {
+    "id": "usr_admin_1",
+    "name": "Admin Sistema SN",
+    "email": "admin@ejemplo.cr",
+    "role": "admin"
+  }
+]

@@ -1,0 +1,5 @@
+{
+  "toxic_plants": ["Lirio", "Dieffenbachia", "Hortensia", "Adelfa"],
+  "common_toxins": ["Chocolate", "Uvas", "Xilitol", "Cebolla"],
+  "recope_fuel_emergency_rates": { "super": 715, "regular": 685, "diesel": 595 }
+}

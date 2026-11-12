@@ -1,14 +1,28 @@
-const geminiClient = require('../../shared/config/gemini-config');
+const deepSeekClient = require('../../shared/config/deepseek-config');
 const placesRepository = require('../places/places-repository');
 
 class ConciergeService {
   async processVoiceIntent(transcriptText = '') {
-    const aiResult = await geminiClient.generateIntentOrDraft({
-      prompt: `Analiza este comando de voz de un usuario en Costa Rica: "${transcriptText}".
-Determina la intención ('SEARCH_FOOD', 'FIND_VET', 'CREATE_PLAN', 'EXPLORE_MAP'), filtros sugeridos, categoría, ruta destino, texto corto para sintetizar por voz y presupuesto estimado en Colones (CRC).`
+    const aiResult = await deepSeekClient.generateIntentOrDraft({
+      systemInstruction: `Eres el Asistente Copiloto de Sinergia Urbana Costa Rica, potenciado por DeepSeek.
+Analiza comandos de voz o texto en lenguaje coloquial tico (ej. "vamos por un yodito", "feria", "veterinaria de guardia", "comida rica", "presupuesto").
+Devuelve exclusivamente un JSON con los campos:
+- provider: "DeepSeek"
+- intent: 'SEARCH_FOOD' | 'FIND_VET' | 'CREATE_PLAN' | 'EXPLORE_MAP'
+- category: string
+- suggested_filters: objeto con flags booleanos (pet_friendly, ley_7600, emergency_24h, specialty_coffee, etc.)
+- target_route: string (ej. '/food-radar', '/vet-hub', '/group-match', '/live-map')
+- clarifying_question: string breve en español amigable
+- estimated_budget_crc: número entero en colones costarricenses (CRC)
+- voice_response_text: síntesis concisa de máximo 2 oraciones para TTS`,
+      prompt: `Transcripción de voz: "${transcriptText}"`
     });
 
     return aiResult;
+  }
+
+  getAiStatus() {
+    return deepSeekClient.getMetrics();
   }
 
   async generatePlanDraft({ promptText, budgetCrc = 12000, attendeesCount = 2, preferences = [] }) {
@@ -17,6 +31,7 @@ Determina la intención ('SEARCH_FOOD', 'FIND_VET', 'CREATE_PLAN', 'EXPLORE_MAP'
     const selected = places.slice(0, 2);
 
     const draft = {
+      provider: 'DeepSeek',
       draft_id: `drf_${Date.now()}`,
       suggested_title: `Salida de ${attendeesCount} personas: Café y Sabores Locales`,
       estimated_budget_crc: budgetCrc,
@@ -42,4 +57,3 @@ Determina la intención ('SEARCH_FOOD', 'FIND_VET', 'CREATE_PLAN', 'EXPLORE_MAP'
 }
 
 module.exports = new ConciergeService();
-

@@ -1,3 +1,4 @@
+const scheduler = require('./scheduler');
 const affectedPlansJob = require('./plan-operations-agent/affected-plans-job');
 const proposeAlternative = require('./plan-operations-agent/propose-alternative');
 const osmScannerJob = require('./cartographer-agent/osm-scanner-job');
@@ -23,6 +24,12 @@ class AutonomousAgentsOrchestrator {
     if (this.isInitialized) return;
     this.isInitialized = true;
     console.log('[Agents Orchestrator] 4 Agentes Autónomos inicializados (Cartographer, Weather Editor, Consensus Moderator, Maintenance).');
+    scheduler.start();
+  }
+
+  stop() {
+    scheduler.stop();
+    this.isInitialized = false;
   }
 
   async runDailyMaintenance() {
@@ -35,6 +42,7 @@ class AutonomousAgentsOrchestrator {
 
 module.exports = {
   orchestrator: new AutonomousAgentsOrchestrator(),
+  scheduler,
   affectedPlansJob,
   proposeAlternative,
   osmScannerJob,
@@ -51,4 +59,3 @@ module.exports = {
   hypeScoreCalculator,
   autoBackupJson,
 };
-

@@ -1,7 +1,8 @@
 const adminService = require('./admin-service');
 const placesRepository = require('../places/places-repository');
 const notificationService = require('../notifications/notification-service');
-const geminiClient = require('../../shared/config/gemini-config');
+const deepSeekClient = require('../../shared/config/deepseek-config');
+const { scheduler } = require('../../autonomous-agents');
 const { success, created, notFound, badRequest } = require('../../shared/utils/http-response');
 
 class AdminController {
@@ -88,14 +89,26 @@ class AdminController {
 
   async getCopilotTelemetry(req, res) {
     return success(res, {
-      gemini_quota: geminiClient.getMetrics(),
-      autonomous_agents: {
-        cartographer: 'idle_ready',
-        weather_editor: 'active_monitoring',
-        consensus_moderator: 'active_consensus',
-        maintenance_agent: 'scheduled_daily',
-      }
+      ai_metrics: deepSeekClient.getMetrics(),
+      agent_scheduler: scheduler.getStatus(),
     });
+  }
+
+  async getAgentsStatus(req, res) {
+    return success(res, scheduler.getStatus());
+  }
+
+  async runAgentJob(req, res, next) {
+    try {
+      const { jobName } = req.params;
+      const result = await scheduler.runJob(jobName);
+      return success(res, result);
+    } catch (err) {
+      if (err.message.includes('Tarea de agente no encontrada')) {
+        return notFound(res, err.message);
+      }
+      next(err);
+    }
   }
 
   async getAuditLogs(req, res, next) {
@@ -109,4 +122,3 @@ class AdminController {
 }
 
 module.exports = new AdminController();
-

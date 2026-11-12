@@ -35,6 +35,7 @@ async function bootstrap() {
     const shutdown = () => {
       console.log('[Server] Deteniendo servicios y workers...');
       emailWorker.stop();
+      orchestrator.stop();
       server.close(() => {
         console.log('[Server] Servidor HTTP cerrado correctamente.');
         process.exit(0);

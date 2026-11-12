@@ -32,6 +32,27 @@ class AuthController {
     }
   }
 
+  async getMe(req, res, next) {
+    try {
+      const authHeader = req.headers.authorization;
+      const guestToken = req.headers['x-guest-token'];
+      const info = await authService.getMe(authHeader, guestToken);
+      return success(res, info);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async createGuestSession(req, res, next) {
+    try {
+      const { alias } = req.body || {};
+      const session = await authService.createGuestSession(alias);
+      return created(res, session);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async webauthnVerify(req, res) {
     return success(res, {
       verified: true,
@@ -50,4 +71,3 @@ class AuthController {
 }
 
 module.exports = new AuthController();
-

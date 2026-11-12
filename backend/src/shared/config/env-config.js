@@ -19,8 +19,14 @@ const env = {
       : (process.env.DB_NAME || 'sn_db'),
     connectionLimit: parseInt(process.env.DB_POOL_LIMIT || '10', 10),
   },
+  deepseek: {
+    apiKey: process.env.DEEPSEEK_API_KEY || '',
+    baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
+    model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+    temperature: parseFloat(process.env.DEEPSEEK_TEMPERATURE || '0.2'),
+  },
   gemini: {
-    apiKey: process.env.GEMINI_API_KEY || '',
+    apiKey: process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY || '',
     freeTierDailyQuota: parseInt(process.env.GEMINI_DAILY_QUOTA || '1500', 10),
   },
   webhook: {

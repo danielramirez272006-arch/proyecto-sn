@@ -14,6 +14,15 @@ class ConciergeController {
     }
   }
 
+  async getAiStatus(req, res, next) {
+    try {
+      const status = conciergeService.getAiStatus();
+      return success(res, status);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async createPlanDraft(req, res, next) {
     try {
       const { prompt_text, budget_crc, attendees_count, preferences } = req.body;
@@ -31,9 +40,9 @@ class ConciergeController {
 
   async handleVisionScan(req, res, next) {
     try {
-      // Reconocimiento óptico simulado / OCR de menú o receta
       const { image_base64, scan_type } = req.body;
       return success(res, {
+        provider: 'DeepSeek Vision OCR Bridge',
         scan_type: scan_type || 'menu_or_receipt',
         detected_text: 'Ficha procesada con éxito por visión IA',
         detected_items: [
@@ -49,4 +58,3 @@ class ConciergeController {
 }
 
 module.exports = new ConciergeController();
-

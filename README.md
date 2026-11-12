@@ -14,7 +14,7 @@ Plataforma backend desacoplada con motor de sinergia urbana, copiloto IA, conect
 
 ```bash
 # Entrar al backend
-cd server
+cd backend
 
 # Instalar dependencias
 npm install
@@ -36,7 +36,7 @@ El servidor estará disponible en `http://localhost:4000/api`.
 ## 🧪 Pruebas Automatizadas
 
 ```bash
-# Desde la carpeta server:
+# Desde la carpeta backend:
 npm test
 
 # O desde la raíz del proyecto:

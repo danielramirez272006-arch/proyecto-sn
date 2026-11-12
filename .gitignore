@@ -2,6 +2,8 @@ node_modules/
 .env
 *.db
 *.db-journal
+backend/data/local-sqlite-dev.db
+backend/data/backups/
 server/data/local-sqlite-dev.db
 server/data/backups/
 .DS_Store

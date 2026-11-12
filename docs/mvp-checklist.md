@@ -8,7 +8,7 @@ Esta guía permite al equipo frontend y evaluadores reproducir y validar el 100%
 
 ```bash
 # 1. Posicionarse en el backend
-cd server
+cd backend
 
 # 2. Instalar dependencias
 npm install

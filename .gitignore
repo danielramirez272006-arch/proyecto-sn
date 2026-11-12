@@ -1,5 +1,7 @@
 node_modules/
 .env
+backend/.env
+*.env
 *.db
 *.db-journal
 backend/data/local-sqlite-dev.db

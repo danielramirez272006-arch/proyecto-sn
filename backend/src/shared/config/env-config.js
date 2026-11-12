@@ -1,4 +1,7 @@
+const path = require('node:path');
 require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') });
 
 const env = {
   port: parseInt(process.env.PORT || '4000', 10),

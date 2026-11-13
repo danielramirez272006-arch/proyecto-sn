@@ -85,7 +85,7 @@ class GroupPlanRepository {
 
   async createPlan({ title, organizerId, budgetCrc = 0, options = [] }) {
     const planId = `pln_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const code = `PLAN-CR-${Math.floor(100 + Math.random() * 900)}`;
+    const code = `PLAN-CR-${Math.floor(100 + Math.random() * 900)}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
 
     return await transaction(async (tx) => {
       await tx.execute(

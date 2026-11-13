@@ -399,5 +399,27 @@ test('Suite Módulo «Videos para cuidar a tu mascota» y «Pregúntale al video
     const resPublicAfterRetire = await executeMockRequest(app, 'GET', `/api/pet-videos/${video1Id}`);
     assert.equal(resPublicAfterRetire.status, 404);
   });
+
+  await suite.test('15. Buscador inteligente de videos con Gemini (Cliente): selección del video más indicado y alertas médicas', async () => {
+    // 15.1 Búsqueda normal con síntomas de emergencia (debe activar alerta médica y devolver video)
+    const resEmergency = await executeMockRequest(app, 'POST', '/api/pet-videos/smart-search', {
+      body: { text: 'Mi perro comió chocolate y está temblando', species: 'perros' }
+    });
+
+    assert.equal(resEmergency.status, 200);
+    assert.equal(resEmergency.body.ok, true);
+    assert.equal(resEmergency.body.data.is_medical_emergency, true);
+    assert.ok(resEmergency.body.data.emergency_alert);
+    assert.equal(resEmergency.body.data.emergency_alert.active, true);
+    assert.ok(resEmergency.body.data.emergency_alert.directory_link.includes('/vet-hub'));
+    assert.ok(resEmergency.body.data.best_match);
+    assert.ok(resEmergency.body.data.best_match.why_recommended);
+
+    // 15.2 Búsqueda vía GET /api/pet-videos/search
+    const resGetSearch = await executeMockRequest(app, 'GET', '/api/pet-videos/search?q=primeros+auxilios+gato');
+    assert.equal(resGetSearch.status, 200);
+    assert.equal(resGetSearch.body.ok, true);
+    assert.ok(resGetSearch.body.data.best_match);
+  });
 });
 

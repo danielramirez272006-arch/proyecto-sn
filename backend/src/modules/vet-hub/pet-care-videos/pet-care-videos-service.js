@@ -4,6 +4,7 @@ const { parseYouTubeIdOrUrl } = require('./youtube-parser');
 const youtubeApiClient = require('../../../shared/clients/youtube-api-client');
 const geminiVideoClient = require('../../../shared/clients/gemini-video-client');
 const questionMatcher = require('./question-matcher');
+const petVideoSmartSearch = require('./pet-video-smart-search');
 
 class PetCareVideosService {
   /**
@@ -512,6 +513,13 @@ class PetCareVideosService {
        ORDER BY r.created_at DESC LIMIT 50`
     );
     return rows || [];
+  }
+
+  /**
+   * Buscador inteligente de videos para el cliente con IA Gemini
+   */
+  async smartSearch({ text, species = null, limit = 5, allowYouTubeFallback = true } = {}) {
+    return await petVideoSmartSearch.smartSearch({ text, species, limit, allowYouTubeFallback });
   }
 }
 

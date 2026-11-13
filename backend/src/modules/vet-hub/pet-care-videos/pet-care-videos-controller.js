@@ -197,6 +197,33 @@ class PetCareVideosController {
   }
 
   /**
+   * GET o POST /api/pet-videos/search (o /smart-search)
+   * Buscador inteligente de videos para el cliente con IA Gemini
+   */
+  async smartSearch(req, res, next) {
+    try {
+      const text = req.body?.text || req.body?.query || req.body?.q || req.query?.q || req.query?.query || req.query?.text;
+      if (!text || typeof text !== 'string' || text.trim().length === 0) {
+        return badRequest(res, 'Debe proporcionar un texto de búsqueda o necesidad para buscar con Gemini.');
+      }
+      const species = req.body?.species || req.query?.species || null;
+      const limit = req.body?.limit ? parseInt(req.body.limit, 10) : (req.query?.limit ? parseInt(req.query.limit, 10) : 5);
+      const allowYouTubeFallback = req.body?.allow_youtube !== undefined ? Boolean(req.body.allow_youtube) : true;
+
+      const result = await petCareVideosService.smartSearch({
+        text,
+        species,
+        limit,
+        allowYouTubeFallback
+      });
+
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * POST /api/pet-videos/:id/report-broken (Público: Reportar enlace roto)
    */
   async reportBrokenLink(req, res, next) {

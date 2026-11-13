@@ -36,8 +36,12 @@ const env = {
     temperature: parseFloat(process.env.DEEPSEEK_TEMPERATURE || '0.2'),
   },
   gemini: {
-    apiKey: process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY || '',
+    apiKey: process.env.GEMINI_API_KEY || process.env.DEEPSEEK_API_KEY || '',
+    model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
     freeTierDailyQuota: parseInt(process.env.GEMINI_DAILY_QUOTA || '1500', 10),
+  },
+  youtube: {
+    apiKey: process.env.YOUTUBE_API_KEY || '',
   },
   webhook: {
     url: process.env.WEBHOOK_URL || '',

@@ -266,6 +266,64 @@ ALTER TABLE app_private.merchant_webhook_deliveries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_private.qr_redemptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_private.user_mobility_logs ENABLE ROW LEVEL SECURITY;
 
+-- ============================================================================
+-- 9. Módulo «Videos para cuidar a tu mascota» y «Pregúntale al video»
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS app_private.pet_videos (
+    id VARCHAR(64) PRIMARY KEY,
+    youtube_id VARCHAR(32) NOT NULL UNIQUE,
+    youtube_url TEXT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    channel_title VARCHAR(255) NULL,
+    duration_seconds INTEGER NOT NULL DEFAULT 0,
+    thumbnail_url TEXT NULL,
+    species VARCHAR(64) NOT NULL DEFAULT 'general',
+    topic VARCHAR(64) NOT NULL DEFAULT 'cuidado_general',
+    summary TEXT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'draft',
+    approved_by VARCHAR(64) NULL,
+    approved_at TIMESTAMP WITH TIME ZONE NULL,
+    created_by VARCHAR(64) NULL,
+    analysis_raw_json TEXT NULL,
+    broken_reports_count INTEGER DEFAULT 0,
+    last_broken_report_at TIMESTAMP WITH TIME ZONE NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.pet_video_fragments (
+    id VARCHAR(64) PRIMARY KEY,
+    video_id VARCHAR(64) NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    start_seconds INTEGER NOT NULL,
+    end_seconds INTEGER NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'approved',
+    order_index INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (video_id) REFERENCES app_private.pet_videos(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS app_private.pet_video_broken_reports (
+    id VARCHAR(64) PRIMARY KEY,
+    video_id VARCHAR(64) NOT NULL,
+    reported_by VARCHAR(64) NULL,
+    reason TEXT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (video_id) REFERENCES app_private.pet_videos(id) ON DELETE CASCADE
+);
+
+ALTER TABLE app_private.pet_videos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.pet_video_fragments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.pet_video_broken_reports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Permitir lectura publica de videos aprobados" ON app_private.pet_videos
+    FOR SELECT TO public USING (status = 'approved');
+
+CREATE POLICY "Permitir lectura publica de fragmentos aprobados" ON app_private.pet_video_fragments
+    FOR SELECT TO public USING (status = 'approved');
+
 -- Conceder uso del esquema a los roles de Supabase
 GRANT USAGE ON SCHEMA app_private TO postgres, service_role, authenticated, anon;
 

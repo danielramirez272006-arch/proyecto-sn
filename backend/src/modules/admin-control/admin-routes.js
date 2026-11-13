@@ -29,6 +29,9 @@ router.post('/notifications/:id/retry', (req, res, next) => adminController.retr
 router.get('/agents/status', (req, res) => adminController.getAgentsStatus(req, res));
 router.post('/agents/:jobName/run', (req, res, next) => adminController.runAgentJob(req, res, next));
 
+// Catálogo «Videos para cuidar a tu mascota»
+router.use('/pet-videos', require('../vet-hub').petCareVideosAdminRoutes);
+
 // Telemetría del copiloto IA y auditoría
 router.get('/telemetry', (req, res) => adminController.getCopilotTelemetry(req, res));
 router.get('/audit-logs', (req, res, next) => adminController.getAuditLogs(req, res, next));

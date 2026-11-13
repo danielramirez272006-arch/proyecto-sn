@@ -1,4 +1,5 @@
 node_modules/
+frontend/dist/
 # Demo frontend local para pruebas (no subir a git)
 demo-frontend/
 demo/

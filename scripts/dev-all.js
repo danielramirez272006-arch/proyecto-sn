@@ -3,13 +3,12 @@ const path = require('node:path');
 
 const rootDir = path.resolve(__dirname, '..');
 const isWin = process.platform === 'win32';
-const npmCmd = isWin ? 'npm.cmd' : 'npm';
 
-function launch(name, cwd, args) {
-  const child = spawn(npmCmd, args, {
+function launch(name, cwd, command) {
+  const child = spawn(command, {
     cwd,
     stdio: 'inherit',
-    shell: isWin
+    shell: true
   });
 
   child.on('exit', (code) => {
@@ -22,8 +21,8 @@ function launch(name, cwd, args) {
 }
 
 console.log('[Workspace] Iniciando Backend (puerto 4000) y Frontend (puerto 5173)...');
-const backend = launch('backend', path.join(rootDir, 'backend'), ['run', 'dev']);
-const frontend = launch('frontend', path.join(rootDir, 'frontend'), ['run', 'dev']);
+const backend = launch('backend', path.join(rootDir, 'backend'), 'npm run dev');
+const frontend = launch('frontend', path.join(rootDir, 'frontend'), 'npm run dev');
 
 function shutdown() {
   backend.kill('SIGINT');

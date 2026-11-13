@@ -3,8 +3,8 @@ const env = require('./env-config');
 
 class SupabaseSafeClient {
   constructor() {
-    this.url = env.supabase?.url || process.env.SUPABASE_URL || '';
-    this.anonKey = env.supabase?.anonKey || process.env.SUPABASE_ANON_KEY || '';
+    this.url = env.supabase?.url || process.env.SUPABASE_URL || 'https://hnnnreowlbtqqjhpmdvd.supabase.co';
+    this.anonKey = env.supabase?.anonKey || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || '';
     this.serviceRoleKey = env.supabase?.serviceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
     this.client = null;

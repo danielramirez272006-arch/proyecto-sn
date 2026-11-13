@@ -28,7 +28,11 @@ async function initDatabase() {
               ssl: { rejectUnauthorized: false }
             };
         const pool = new Pool(poolConfig);
+        pool.on('connect', (client) => {
+          client.query('SET search_path TO app_private, public').catch(() => {});
+        });
         const testConn = await pool.connect();
+        await testConn.query('SET search_path TO app_private, public').catch(() => {});
         testConn.release();
 
         dbClient = pool;
@@ -130,6 +134,7 @@ async function transaction(fn) {
 
   if (dialect === 'postgres') {
     const connection = await client.connect();
+    await connection.query('SET search_path TO app_private, public').catch(() => {});
     await connection.query('BEGIN');
     try {
       const runner = {
@@ -239,6 +244,7 @@ async function runMigrations() {
     }
 
     if (dialect === 'postgres') {
+      await client.query('CREATE SCHEMA IF NOT EXISTS app_private; SET search_path TO app_private, public;').catch(() => {});
       sql = sql.replace(/TINYINT\(1\)/gi, 'BOOLEAN');
       sql = sql.replace(/CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP/gi, 'CURRENT_TIMESTAMP');
       const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
@@ -267,6 +273,7 @@ async function runSeeds() {
     let sql = fs.readFileSync(fullPath, 'utf8');
 
     if (dialect === 'postgres') {
+      await client.query('SET search_path TO app_private, public;').catch(() => {});
       const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
       for (const stmt of statements) {
         await client.query(stmt);

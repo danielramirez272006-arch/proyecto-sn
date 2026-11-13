@@ -93,25 +93,40 @@ class SupabaseSafeClient {
       };
     }
 
-    const client = this.getAdminClient();
-    const { data, error } = await client.storage
-      .from(bucket)
-      .upload(filePath, fileBuffer, {
-        contentType,
-        upsert: true
-      });
+    try {
+      const client = this.getAdminClient();
+      const { data, error } = await client.storage
+        .from(bucket)
+        .upload(filePath, fileBuffer, {
+          contentType,
+          upsert: true
+        });
 
-    if (error) {
-      throw new Error(`Error subiendo a Supabase Storage: ${error.message}`);
+      if (error) {
+        return {
+          uploaded: false,
+          fallback: true,
+          url: `/local-storage/${bucket}/${filePath}`,
+          warning: error.message
+        };
+      }
+
+      const { data: urlData } = client.storage.from(bucket).getPublicUrl(filePath);
+
+      return {
+        uploaded: true,
+        path: data.path,
+        url: urlData.publicUrl,
+        publicUrl: urlData.publicUrl
+      };
+    } catch (err) {
+      return {
+        uploaded: false,
+        fallback: true,
+        url: `/local-storage/${bucket}/${filePath}`,
+        warning: `Red/Supabase no disponible: ${err.message}`
+      };
     }
-
-    const { data: urlData } = client.storage.from(bucket).getPublicUrl(filePath);
-
-    return {
-      uploaded: true,
-      path: data.path,
-      publicUrl: urlData.publicUrl
-    };
   }
 
   getStoragePublicUrl(bucket, filePath) {

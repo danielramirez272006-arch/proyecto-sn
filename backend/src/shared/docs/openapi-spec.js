@@ -2,8 +2,8 @@ module.exports = {
   openapi: "3.0.3",
   info: {
     title: "Sinergia Urbana Costa Rica - Backend Enterprise API",
-    version: "1.7.0",
-    description: "API REST Enterprise, Copiloto DeepSeek V3/R1 AI, Transacciones ACID, BCCR, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, Auditoría Inmutable y Métricas Prometheus para Costa Rica.",
+    version: "1.8.0",
+    description: "API REST Enterprise, Copiloto DeepSeek V3/R1 AI, Gemini Video Analysis, Videos de Cuidado de Mascotas, Transacciones ACID, BCCR, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, Auditoría Inmutable y Métricas Prometheus para Costa Rica.",
     contact: {
       name: "Sinergia Urbana Core Engineering Team",
       url: "https://github.com/danielramirez272006-arch/proyecto-sn"
@@ -36,7 +36,8 @@ module.exports = {
     { name: "Verificación Tributaria", description: "Consulta pública ante el Ministerio de Hacienda para cédulas físicas y jurídicas" },
     { name: "Calendario y Feriados CR", description: "Feriados patrios oficiales y suspensión de restricción vehicular en San José" },
     { name: "Optimización de Rutas", description: "Heurística de viaje óptimo para paradas múltiples de grupos" },
-    { name: "Pagos SINPE Móvil", description: "Comandos nativos para los 7 principales bancos de Costa Rica y códigos QR" }
+    { name: "Pagos SINPE Móvil", description: "Comandos nativos para los 7 principales bancos de Costa Rica y códigos QR" },
+    { name: "Videos de Cuidado Animal", description: "Catálogo verificado de videos educativos de YouTube, análisis con Gemini y función «Pregúntale al video»" }
   ],
   paths: {
     "/metrics": {
@@ -615,6 +616,107 @@ module.exports = {
         summary: "Registrar endpoint de webhook para un comercio aliado",
         responses: {
           "201": { description: "Suscripción creada con clave secreta compartida para verificación HMAC" }
+        }
+      }
+    },
+    "/pet-videos": {
+      get: {
+        tags: ["Videos de Cuidado Animal"],
+        summary: "Listar catálogo de videos educativos aprobados con filtros por especie y tema",
+        parameters: [
+          { name: "species", in: "query", schema: { type: "string" }, description: "perro, gato, ave, conejo" },
+          { name: "topic", in: "query", schema: { type: "string" }, description: "alimentacion, higiene, adiestramiento, primeros_auxilios" },
+          { name: "search", in: "query", schema: { type: "string" } }
+        ],
+        responses: {
+          "200": { description: "Lista de videos verificados con conteo de fragmentos" }
+        }
+      }
+    },
+    "/pet-videos/{id}": {
+      get: {
+        tags: ["Videos de Cuidado Animal"],
+        summary: "Obtener detalle de un video aprobado y sus fragmentos verificados",
+        responses: {
+          "200": { description: "Ficha del video con fragmentos estructurados" },
+          "404": { description: "Video no encontrado o no aprobado" }
+        }
+      }
+    },
+    "/pet-videos/{id}/questions": {
+      post: {
+        tags: ["Videos de Cuidado Animal"],
+        summary: "Función «Pregúntale al video»: responde preguntas saltando al segundo exacto (startSeconds) o busca en otros videos",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["question"],
+                properties: {
+                  question: { type: "string", example: "¿Cada cuánto tiempo debo bañar a mi perro?" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Respuesta con startSeconds, match_source y advertencia clínica si aplica" }
+        }
+      }
+    },
+    "/pet-videos/{id}/report-broken": {
+      post: {
+        tags: ["Videos de Cuidado Animal"],
+        summary: "Reportar enlace roto o video no disponible en YouTube",
+        responses: {
+          "200": { description: "Reporte registrado" }
+        }
+      }
+    },
+    "/admin/pet-videos/search-youtube": {
+      get: {
+        tags: ["Videos de Cuidado Animal"],
+        summary: "Buscar videos públicos en YouTube Data API v3 (Solo Admin)",
+        responses: {
+          "200": { description: "Lista de resultados de YouTube" }
+        }
+      }
+    },
+    "/admin/pet-videos/register": {
+      post: {
+        tags: ["Videos de Cuidado Animal"],
+        summary: "Registrar video pegando su URL de YouTube con deduplicación canónica (Solo Admin)",
+        responses: {
+          "201": { description: "Video registrado como borrador" }
+        }
+      }
+    },
+    "/admin/pet-videos/{id}/analyze": {
+      post: {
+        tags: ["Videos de Cuidado Animal"],
+        summary: "Analizar video con Gemini multimodal y extraer fragmentos estructurados (Solo Admin)",
+        responses: {
+          "200": { description: "Resultado del análisis con especie, tema, resumen y fragmentos" }
+        }
+      }
+    },
+    "/admin/pet-videos/{id}/approve": {
+      post: {
+        tags: ["Videos de Cuidado Animal"],
+        summary: "Aprobar ficha para publicación en el catálogo (Solo Admin)",
+        responses: {
+          "200": { description: "Ficha aprobada con registro de quién y cuándo" }
+        }
+      }
+    },
+    "/admin/pet-videos/{id}/retire": {
+      post: {
+        tags: ["Videos de Cuidado Animal"],
+        summary: "Retirar video del catálogo público (Solo Admin)",
+        responses: {
+          "200": { description: "Video archivado" }
         }
       }
     }

@@ -1,6 +1,6 @@
 # Contrato de API y Especificación OpenAPI — Sistema de Sinergia Urbana
 
-**Versión:** 1.7.0 (Enterprise Supabase, BCCR Live, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
+**Versión:** 1.8.0 (Enterprise Supabase, Videos de Cuidado Animal, Pregúntale al Video con Gemini, BCCR Live, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
 **Entorno Base:** `http://localhost:4000/api`  
 **Swagger UI Interactivo:** `http://localhost:4000/api/docs`  
 **OpenAPI Spec JSON:** `http://localhost:4000/api/docs/openapi.json`  
@@ -192,3 +192,17 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente c
 
 ### 3.23 Tarjetas de Metadatos Sociales Open Graph
 - **`GET /api/social/share-card/:type/:id`**: Generación de metadatos `og:` y `twitter:` dinámicos para compartir en WhatsApp, Facebook y Twitter.
+
+### 3.24 Videos de Cuidado Animal y «Pregúntale al Video» (YouTube + Gemini Multimodal)
+- **`GET /api/pet-videos`**: Catálogo público de videos aprobados con filtros por `species`, `topic` y búsqueda textual `search` con paginación (`page`, `limit`). (Alias: `GET /api/vet/videos`).
+- **`GET /api/pet-videos/:id`**: Ficha completa del video con sus fragmentos aprobados verificados. Los borradores retornan `404 Not Found`.
+- **`POST /api/pet-videos/:id/questions`**: «Pregúntale al video». Busca primero en fragmentos del video actual; si no hay respuesta adecuada, busca en otros videos aprobados del catálogo. Si detecta síntomas clínicos o emergencias, devuelve advertencia médica veterinaria y enlaces a SOS 24h y directorio veterinario.
+- **`POST /api/pet-videos/:id/report-broken`**: Reporte público de enlaces caídos o videos no disponibles para revisión de administradores.
+- **`GET /api/admin/pet-videos/search-youtube`**: Búsqueda admin en YouTube Data API v3 con fallback simulado cuando no hay API key o se agota la cuota.
+- **`POST /api/admin/pet-videos/register`**: Registro de video mediante URL HTTPS de YouTube. Conversión automática a ID canónico de 11 caracteres y deduplicación.
+- **`POST /api/admin/pet-videos/:id/analyze`**: Análisis estructurado con Gemini (especie, tema, resumen y hasta 3 fragmentos con marcas de tiempo `start_seconds` y `end_seconds`). Si ya fue analizado previamente, reutiliza el resultado para no gastar cuota de IA.
+- **`PUT /api/admin/pet-videos/:id`**: Edición y corrección de admin sobre título, especie, tema, resumen y fragmentos antes de aprobar.
+- **`POST /api/admin/pet-videos/:id/approve`**: Aprobación formal de ficha (`status: 'approved'`), guardando `approved_by` y `approved_at`.
+- **`POST /api/admin/pet-videos/:id/retire`**: Retiro de video del catálogo público (`status: 'retired'`), con motivo opcional.
+- **`GET /api/admin/pet-videos`**: Listado administrativo con soporte de filtro por estado (`draft`, `approved`, `retired`).
+- **`GET /api/admin/pet-videos/broken-reports`**: Listado de reportes de enlaces rotos recibidos.

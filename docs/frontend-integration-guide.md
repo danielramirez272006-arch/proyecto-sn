@@ -638,6 +638,125 @@ console.log(share.html_meta_tags); // <meta property="og:title" ... />
 
 ---
 
+### 6.23. Módulo «Videos para Cuidar a tu Mascota» y «Pregúntale al Video» (`/api/pet-videos`)
+
+Este módulo permite a los usuarios consultar videos educativos de YouTube validados por veterinarios y administradores, con fragmentos interactivos y preguntas contextuales resueltas con marcas de tiempo para saltar directo al punto exacto del reproductor.
+
+#### 6.23.1. Listar Videos Aprobados (Catálogo Público)
+```javascript
+// Filtros disponibles: species (perros, gatos, aves, etc.), topic (higiene, alimentacion, primeros_auxilios, etc.), search
+const response = await api.get('/pet-videos?species=perros&topic=higiene&page=1&limit=10');
+console.log(response.data); // Array de videos aprobados con sus fragmentos verificados
+console.log(response.meta.total); // Total de videos disponibles
+```
+
+#### 6.23.2. Ficha de Video y Fragmentos
+```javascript
+const { data: video } = await api.get(`/pet-videos/${videoId}`);
+console.log(video.youtube_id); // ID canónico para incrustar iframe (ej: https://www.youtube.com/embed/...)
+console.log(video.fragments);  // Lista de hasta 3 fragmentos con start_seconds y end_seconds
+```
+
+#### 6.23.3. «Pregúntale al Video» (Búsqueda Contextual en Fragmentos)
+La consulta pública **no** invoca modelos generativos en vivo ni consume cuotas; consulta la base de fragmentos verificados por administradores.
+```javascript
+const res = await api.post(`/pet-videos/${videoId}/questions`, {
+  question: '¿A qué temperatura debe estar el agua para bañarlo?'
+});
+
+// Estructura de res.data:
+// {
+//   found: true,
+//   match_source: 'current_video', // o 'other_video' si se halló en otro video aprobado
+//   matched_video: { id, title, channel_title, youtube_id },
+//   fragment: {
+//     question: '¿A qué temperatura debe estar el agua para el baño?',
+//     answer: 'Usa agua tibia entre 36 y 37 °C para evitar choques térmicos.',
+//     start_seconds: 15,
+//     end_seconds: 40
+//   },
+//   start_seconds: 15,
+//   video_deep_link: 'https://www.youtube.com/watch?v=MOCK_VET_001&t=15s',
+//   clinical_alert: null
+// }
+
+// Salto en el reproductor de YouTube (ej. con YouTube Iframe API):
+if (res.data.found && res.data.start_seconds !== null) {
+  player.seekTo(res.data.start_seconds, true);
+}
+
+// Detección de Síntomas o Emergencia Veterinaria:
+// Si la pregunta involucra vómito, diarrea con sangre, envenenamiento o convulsiones,
+// res.data.clinical_alert incluirá advertencia y accesos directos al directorio veterinario:
+if (res.data.clinical_alert) {
+  console.warn(res.data.clinical_alert.warning);
+  // Redirigir a directorio: res.data.clinical_alert.directory_url (/api/places?category=veterinaria)
+  // o emergencia SOS: res.data.clinical_alert.emergency_sos_url (/api/vet/sos-24h)
+}
+
+// Si no hay fragmento coincidente:
+if (!res.data.found) {
+  // res.data.message === "Todavía no tenemos un fragmento que responda esa pregunta."
+}
+```
+
+#### 6.23.4. Reportar Enlace Roto
+```javascript
+await api.post(`/pet-videos/${videoId}/report-broken`, {
+  reason: 'El video ya no está disponible en YouTube o es privado.'
+});
+```
+
+#### 6.23.5. Flujo de Administración (`/api/admin/pet-videos`)
+*Requiere cabecera de autenticación de admin (`x-admin-role: superadmin` o JWT válido).*
+```javascript
+// 1. Buscar en YouTube Data API (con soporte de mock automático si no hay API key)
+const search = await api.get('/admin/pet-videos/search-youtube?q=cuidado dental en perros');
+
+// 2. Registrar video pegando URL HTTPS de YouTube (convierte a ID canónico de 11 caracteres)
+const reg = await api.post('/admin/pet-videos/register', {
+  youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  species: 'perros',
+  topic: 'higiene'
+}); // Retorna ficha en estado 'draft'
+
+// 3. Analizar video con Gemini Multimodal (extrae especie, tema, resumen y hasta 3 fragmentos)
+// Reutiliza análisis previos si ya fue analizado para ahorrar cuota
+const analysis = await api.post(`/admin/pet-videos/${reg.data.id}/analyze`);
+
+// 4. Corregir y ajustar fragmentos o tiempos antes de aprobar
+await api.put(`/admin/pet-videos/${reg.data.id}`, {
+  title: 'Título corregido por veterinario',
+  fragments: [
+    { question: '¿Cómo cepillar?', answer: 'Usar pasta canina...', start_seconds: 10, end_seconds: 45 }
+  ]
+});
+
+// 5. Aprobar video para el catálogo público
+await api.post(`/admin/pet-videos/${reg.data.id}/approve`);
+
+// 6. Retirar video si se vuelve obsoleto
+await api.post(`/admin/pet-videos/${reg.data.id}/retire`, {
+  reason: 'Contenido desactualizado'
+});
+```
+
+#### 6.23.6. Estado de Pruebas y Verificación
+- **Pruebas Automatizadas Pasadas (14/14 específicas, 82/82 globales)**:
+  - Validación estricta HTTPS y rechazo de enlaces que no sean de YouTube (`http://`, Vimeo, dominios externos).
+  - Deduplicación por ID canónico de 11 caracteres.
+  - Validación de marcas de tiempo contra la duración real del video.
+  - Ocultamiento de borradores en catálogo público (retornan 404).
+  - Búsqueda en video actual y fallback en otros videos aprobados.
+  - Mensaje estándar ante preguntas sin fragmento compatible.
+  - Retiro de catálogo y reporte de enlaces rotos.
+  - Detección de síntomas clínicos con advertencia veterinaria y enlaces a SOS.
+- **Pendiente para Entorno con APIs Reales**:
+  - Configurar `YOUTUBE_API_KEY` en `backend/.env` para búsquedas en vivo contra la cuota oficial de YouTube Data API v3 (el sistema conmuta transparentemente a catálogo simulado si falta la clave o se agota la cuota).
+  - Configurar `GEMINI_API_KEY` para procesamiento multimodal directo de videos de YouTube (el sistema cuenta con analizador heurístico de respaldo para desarrollo local).
+
+---
+
 ## 7. Manejo de Errores y Códigos de Estado
 
 | Código | Significado | Qué debe hacer el Frontend |

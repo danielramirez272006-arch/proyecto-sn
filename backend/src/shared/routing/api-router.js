@@ -755,6 +755,8 @@ router.use('/a11y', require('../../modules/accessibility').a11yRoutes);
 router.use('/weather', require('../../modules/weather-activities').weatherRoutes);
 router.use('/food', require('../../modules/food-radar').foodRoutes);
 router.use('/vet', require('../../modules/vet-hub').vetRoutes);
+router.use('/vet/videos', require('../../modules/vet-hub').petCareVideosRoutes);
+router.use('/pet-videos', require('../../modules/vet-hub').petCareVideosRoutes);
 router.use('/businesses', require('../../modules/businesses').businessesRoutes);
 router.use('/live', require('../../modules/live-map-waze').liveMapRoutes);
 router.use('/rescue', require('../../modules/urban-rescue').rescueRoutes);

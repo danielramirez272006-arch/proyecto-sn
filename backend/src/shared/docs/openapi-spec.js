@@ -1,11 +1,11 @@
 module.exports = {
   openapi: "3.0.3",
   info: {
-    title: "Sinergia Urbana Costa Rica - Backend API",
-    version: "1.0.0",
-    description: "API REST, Copiloto DeepSeek AI y Conectores Abiertos para coordinación social, rescate urbano y comercio local en Costa Rica.",
+    title: "Sinergia Urbana Costa Rica - Backend Enterprise API",
+    version: "1.2.0",
+    description: "API REST Enterprise, Copiloto DeepSeek V3/R1 AI, Transacciones ACID, Auditoría Inmutable y Métricas Prometheus para Costa Rica.",
     contact: {
-      name: "Sinergia Urbana Dev Team",
+      name: "Sinergia Urbana Core Engineering Team",
       url: "https://github.com/danielramirez272006-arch/proyecto-sn"
     }
   },
@@ -16,59 +16,126 @@ module.exports = {
     }
   ],
   tags: [
-    { name: "Salud y Diagnóstico", description: "Verificación de latencia, memoria y disponibilidad" },
-    { name: "Catálogo y Lugares", description: "Lugares, ferias del agricultor y cafeterías de especialidad" },
-    { name: "Planes Grupales (Social Dining)", description: "Coordinación, votación y confirmación de planes" },
-    { name: "Eventos Pop-Up", description: "Gestión y alerta de eventos en vivo" },
-    { name: "DeepSeek AI Copiloto", description: "Clasificación de intenciones por voz y borrador de salidas" },
-    { name: "Agentes Autónomos", description: "Control y monitoreo de tareas en background" },
-    { name: "Rescate Urbano", description: "Mascotas perdidas, auxilio vial y emergencias" },
-    { name: "Administración", description: "Operaciones reservadas para administradores y moderadores" }
+    { name: "Salud, Métricas y Diagnóstico", description: "Métricas Prometheus, telemetría y verificación de latencia" },
+    { name: "Autenticación y Sesiones", description: "PBKDF2 Hashing, JWT, rotación de Refresh Tokens y sesiones de invitado" },
+    { name: "Catálogo y Lugares", description: "Búsqueda radial GPS, paginación avanzada y comercios verificados" },
+    { name: "Planes Grupales (Social Dining)", description: "Coordinación transaccional, votación idempotente y confirmación inmutable" },
+    { name: "DeepSeek AI Copiloto", description: "Chat multi-turn, razonador R1 e itinerarios multi-día" },
+    { name: "Agentes Autónomos", description: "Scheduler y monitoreo de tareas periódicas en background" },
+    { name: "Rescate Urbano", description: "Alertas ciudadanas SOS en tiempo real y auxilio vial" },
+    { name: "Auditoría y Administración", description: "Pista inmutable de auditoría y operaciones de control" }
   ],
   paths: {
-    "/health": {
+    "/metrics": {
       get: {
-        tags: ["Salud y Diagnóstico"],
-        summary: "Chequeo básico de salud del backend",
+        tags: ["Salud, Métricas y Diagnóstico"],
+        summary: "Métricas en formato estándar Prometheus (OpenMetrics)",
         responses: {
           "200": {
-            description: "Servidor operativo",
-            content: { "application/json": {} }
+            description: "Texto plano con métricas de CPU, memoria, requests HTTP y DeepSeek AI",
+            content: { "text/plain": {} }
           }
+        }
+      }
+    },
+    "/health": {
+      get: {
+        tags: ["Salud, Métricas y Diagnóstico"],
+        summary: "Chequeo básico de salud del backend",
+        responses: {
+          "200": { description: "Servidor operativo con DeepSeek AI activo" }
         }
       }
     },
     "/health/db": {
       get: {
-        tags: ["Salud y Diagnóstico"],
+        tags: ["Salud, Métricas y Diagnóstico"],
         summary: "Chequeo de conectividad a la base de datos (MySQL / SQLite)",
         responses: {
-          "200": { description: "Base de datos conectada y operativa" }
+          "200": { description: "Base de datos relacional conectada y operativa" }
         }
       }
     },
     "/health/system": {
       get: {
-        tags: ["Salud y Diagnóstico"],
-        summary: "Telemetría completa de memoria, DeepSeek AI y agentes",
+        tags: ["Salud, Métricas y Diagnóstico"],
+        summary: "Telemetría completa de memoria RAM, base de datos, DeepSeek y scheduler",
         responses: {
           "200": { description: "Métricas del sistema" }
+        }
+      }
+    },
+    "/auth/login": {
+      post: {
+        tags: ["Autenticación y Sesiones"],
+        summary: "Inicio de sesión seguro con verificación PBKDF2 y emisión de Access + Refresh Tokens",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email", "password"],
+                properties: {
+                  email: { type: "string", format: "email", example: "organizer@ejemplo.cr" },
+                  password: { type: "string", example: "password123" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Sesión iniciada con token JWT y refresh_token" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      post: {
+        tags: ["Autenticación y Sesiones"],
+        summary: "Rotación segura de Refresh Token y renovación de Access Token",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["refresh_token"],
+                properties: {
+                  refresh_token: { type: "string" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Nuevos tokens emitidos y anterior revocado" }
+        }
+      }
+    },
+    "/auth/logout": {
+      post: {
+        tags: ["Autenticación y Sesiones"],
+        summary: "Cierre de sesión y revocación del Refresh Token",
+        responses: {
+          "200": { description: "Sesión revocada exitosamente" }
         }
       }
     },
     "/places": {
       get: {
         tags: ["Catálogo y Lugares"],
-        summary: "Listar lugares del catálogo urbano",
+        summary: "Listar lugares con paginación avanzada y búsqueda radial GPS",
         parameters: [
-          { name: "category", in: "query", schema: { type: "string" }, description: "Filtrar por categoría (cafe, feria, vet, etc.)" },
-          { name: "verified_only", in: "query", schema: { type: "boolean" }, description: "Solo lugares verificados oficialmente" },
-          { name: "search", in: "query", schema: { type: "string" }, description: "Búsqueda por texto" },
-          { name: "limit", in: "query", schema: { type: "integer", default: 50 } },
-          { name: "offset", in: "query", schema: { type: "integer", default: 0 } }
+          { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+          { name: "limit", in: "query", schema: { type: "integer", default: 20 } },
+          { name: "lat", in: "query", schema: { type: "number" }, description: "Latitud GPS de origen" },
+          { name: "lng", in: "query", schema: { type: "number" }, description: "Longitud GPS de origen" },
+          { name: "radius_km", in: "query", schema: { type: "number" }, description: "Radio de búsqueda en km" },
+          { name: "sort_by", in: "query", schema: { type: "string", default: "name" } },
+          { name: "sort_order", in: "query", schema: { type: "string", enum: ["ASC", "DESC"], default: "ASC" } }
         ],
         responses: {
-          "200": { description: "Lista de lugares coincidentes" }
+          "200": { description: "Lista paginada con metadatos y cálculo de distancia en km" }
         }
       }
     },
@@ -218,6 +285,54 @@ module.exports = {
         }
       }
     },
+    "/concierge/chat": {
+      post: {
+        tags: ["DeepSeek AI Copiloto"],
+        summary: "Conversación contextual multi-turn persistente con DeepSeek AI",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["message"],
+                properties: {
+                  session_id: { type: "string", example: "user_session_42" },
+                  message: { type: "string", example: "¿Qué cafeterías con método V60 me recomiendas en San José?" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Respuesta del copiloto con sugerencias y contexto" }
+        }
+      }
+    },
+    "/concierge/multi-day-itinerary": {
+      post: {
+        tags: ["DeepSeek AI Copiloto"],
+        summary: "Generador de itinerarios de múltiples días con presupuesto en colones y paradas",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  days: { type: "integer", default: 2 },
+                  zone: { type: "string", default: "Gran Área Metropolitana" },
+                  budget_crc: { type: "integer", default: 35000 }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Itinerario detallado día por día con tips de movilidad" }
+        }
+      }
+    },
     "/admin/agents/status": {
       get: {
         tags: ["Agentes Autónomos"],
@@ -236,6 +351,15 @@ module.exports = {
         ],
         responses: {
           "200": { description: "Tarea ejecutada correctamente" }
+        }
+      }
+    },
+    "/audit/history": {
+      get: {
+        tags: ["Auditoría y Administración"],
+        summary: "Consultar la pista de auditoría inmutable de eventos del sistema (Admin)",
+        responses: {
+          "200": { description: "Historial de mutaciones, IPs y usuarios" }
         }
       }
     }

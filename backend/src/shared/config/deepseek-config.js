@@ -1,13 +1,16 @@
 const env = require('./env-config');
+const metricsCollector = require('../telemetry/metrics-collector');
 
 class DeepSeekSafeClient {
   constructor() {
     this.apiKey = env.deepseek?.apiKey || process.env.DEEPSEEK_API_KEY || '';
     this.baseUrl = env.deepseek?.baseUrl || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
     this.model = env.deepseek?.model || process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+    this.reasonerModel = 'deepseek-reasoner';
     this.temperature = env.deepseek?.temperature ?? 0.2;
     this.requestCountToday = 0;
     this.providerName = 'DeepSeek';
+    this.chatSessions = new Map(); // session_id -> messages array
   }
 
   isConfigured() {
@@ -16,11 +19,13 @@ class DeepSeekSafeClient {
 
   async generateJson({ prompt, systemInstruction, model = null, temperature = null }) {
     if (!this.isConfigured()) {
+      metricsCollector.recordDeepSeekCall(true);
       return this.fallbackHeuristic(prompt);
     }
 
     try {
       this.requestCountToday++;
+      metricsCollector.recordDeepSeekCall(false);
       const endpoint = `${this.baseUrl.replace(/\/+$/, '')}/chat/completions`;
       
       const messages = [];
@@ -62,8 +67,117 @@ class DeepSeekSafeClient {
       return JSON.parse(content);
     } catch (err) {
       console.warn(`[DeepSeek Client] Fallo en la llamada a DeepSeek (${err.message}). Activando motor heurístico local de respaldo.`);
+      metricsCollector.recordDeepSeekCall(true);
       return this.fallbackHeuristic(prompt);
     }
+  }
+
+  async generateChat({ sessionId = 'default', message, systemInstruction = null, model = null }) {
+    let history = this.chatSessions.get(sessionId);
+    if (!history) {
+      history = [];
+      this.chatSessions.set(sessionId, history);
+    }
+
+    if (history.length > 20) {
+      history.splice(0, history.length - 20); // Mantener últimas 20 interacciones
+    }
+
+    history.push({ role: 'user', content: message });
+
+    if (!this.isConfigured()) {
+      metricsCollector.recordDeepSeekCall(true);
+      const reply = this.fallbackChatResponse(message, history);
+      history.push({ role: 'assistant', content: reply.response });
+      return {
+        session_id: sessionId,
+        model: model || this.model,
+        provider: 'DeepSeek (Resilient Local Mode)',
+        response: reply.response,
+        suggested_actions: reply.suggested_actions,
+        history_length: history.length
+      };
+    }
+
+    try {
+      this.requestCountToday++;
+      metricsCollector.recordDeepSeekCall(false);
+      const endpoint = `${this.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+
+      const messages = [];
+      messages.push({
+        role: 'system',
+        content: systemInstruction || 'Eres el copiloto conversacional experto de Sinergia Urbana Costa Rica, potenciado por DeepSeek. Conoces los cantones, cultura tica, opciones de café de especialidad, ferias del agricultor, Ley 7600, SINPE Móvil y transporte público.'
+      });
+      messages.push(...history);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          model: model || this.model,
+          messages,
+          temperature: 0.3
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`DeepSeek Chat error (${response.status})`);
+      }
+
+      const data = await response.json();
+      const assistantMessage = data?.choices?.[0]?.message?.content || 'No se obtuvo respuesta.';
+      const reasoning = data?.choices?.[0]?.message?.reasoning_content || null;
+
+      history.push({ role: 'assistant', content: assistantMessage });
+
+      return {
+        session_id: sessionId,
+        model: model || this.model,
+        provider: 'DeepSeek Cloud',
+        response: assistantMessage,
+        reasoning_content: reasoning,
+        history_length: history.length
+      };
+    } catch (err) {
+      metricsCollector.recordDeepSeekCall(true);
+      const fallback = this.fallbackChatResponse(message, history);
+      history.push({ role: 'assistant', content: fallback.response });
+      return {
+        session_id: sessionId,
+        model: model || this.model,
+        provider: 'DeepSeek (Resilient Local Mode)',
+        response: fallback.response,
+        suggested_actions: fallback.suggested_actions,
+        history_length: history.length
+      };
+    }
+  }
+
+  fallbackChatResponse(prompt = '', history = []) {
+    const text = String(prompt).toLowerCase();
+
+    if (text.includes('hola') || text.includes('buenas') || text.includes('saludos')) {
+      return {
+        response: '¡Pura vida! Soy tu copiloto urbano de Costa Rica potenciado por DeepSeek. ¿Qué plan o salida te gustaría coordinar hoy? Puedo ayudarte a buscar cafeterías con terraza, ferias del agricultor o calcular la división de cuenta con SINPE Móvil.',
+        suggested_actions: ['Buscar café de especialidad', 'Crear plan para el fin de semana', 'Consultar ferias activas']
+      };
+    }
+
+    if (text.includes('itinerario') || text.includes('ruta') || text.includes('días')) {
+      return {
+        response: 'Te preparé una propuesta de itinerario cultural y gastronómico para el Valle Central: Día 1 con desayuno en feria del agricultor y tarde de café; Día 2 con recorrido histórico y mirador al atardecer.',
+        suggested_actions: ['Ajustar presupuesto', 'Ver paradas en el mapa', 'Compartir con amigos']
+      };
+    }
+
+    return {
+      response: `Entendido. Tomando en cuenta tu solicitud ("${prompt}"), te sugiero revisar las paradas y comercios verificados con rampa Ley 7600 y pago vía SINPE Móvil en nuestro mapa en vivo.`,
+      suggested_actions: ['Abrir mapa en vivo', 'Ver locales cercanos']
+    };
   }
 
   async generateIntentOrDraft(params) {
@@ -128,9 +242,11 @@ class DeepSeekSafeClient {
     return {
       provider: this.providerName,
       activeModel: this.model,
+      reasonerModel: this.reasonerModel,
       baseUrl: this.baseUrl,
       isKeyConfigured: this.isConfigured(),
-      requestsExecuted: this.requestCountToday
+      requestsExecuted: this.requestCountToday,
+      activeChatSessions: this.chatSessions.size
     };
   }
 }

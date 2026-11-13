@@ -60,6 +60,18 @@ class WebhookDispatcher {
   getRecentDeliveries() {
     return [...this.deliveryHistory];
   }
+
+  verifySignature(bodyString, signature, secret = null) {
+    const expected = crypto
+      .createHmac('sha256', secret || this.secret)
+      .update(typeof bodyString === 'string' ? bodyString : JSON.stringify(bodyString))
+      .digest('hex');
+    try {
+      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  }
 }
 
 module.exports = new WebhookDispatcher();

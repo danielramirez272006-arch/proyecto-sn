@@ -92,11 +92,22 @@ Ejecutar desde el directorio raíz o `backend/`:
 ```bash
 npm run test:backend
 ```
-Resultado: **26/26 pruebas superadas** con cobertura de:
-- Migraciones y seeds iniciales.
-- Creación, votación idempotente y confirmación inmutable de planes grupales.
-- Concurrencia optimista (409 Conflict).
-- Conexión y métricas de DeepSeek AI.
-- Orquestador de agentes autónomos y ejecución manual de tareas.
-- Endpoints de auxilio y rescate ciudadano S.O.S.
-- Documentación OpenAPI 3.0 en vivo.
+Resultado: **37/37 pruebas superadas (100% pass)** distribuidas en 3 suites:
+1. **Suite Enterprise (10 tests)**:
+   - Inyección y propagación de `x-request-id` para trazabilidad distribuida.
+   - Métricas Prometheus en `/api/metrics` (CPU, memoria RSS/heap, requests y DeepSeek).
+   - Transacciones ACID y Rollback garantizado ante errores.
+   - Seguridad criptográfica con Hashing PBKDF2 (100.000 iteraciones y sal aleatoria).
+   - Rotación y revocación de Refresh Tokens en `/api/auth/refresh`.
+   - Conversaciones contextuales multi-turn persistentes con DeepSeek AI (`/api/concierge/chat`).
+   - Generación de itinerarios multi-día con presupuesto en colones (`/api/concierge/multi-day-itinerary`).
+   - Catálogo con paginación avanzada y búsqueda radial GPS (fórmula Haversine).
+   - Verificación de integridad con firmas criptográficas HMAC-SHA256 en webhooks.
+   - Pista inmutable de auditoría en `/api/audit/history`.
+2. **Suite de Flujo Completo Sinergia Urbana (8 tests)**:
+   - Migraciones relacionales y carga de seeds.
+   - Votación idempotente, confirmación inmutable y control optimista de concurrencia (409 Conflict).
+   - Detección de afectación y generación de alternativas IA.
+   - Operación offline / sin red a costo $0.
+3. **Suite de Endpoints HTTP y Contrato de API (19 tests)**:
+   - Cobertura de endpoints REST, copiloto, finanzas grupales, auxilio ciudadano SOS y administración.

@@ -46,3 +46,4 @@ function validateBody(rules = {}) {
 module.exports = {
   validateBody
 };
+

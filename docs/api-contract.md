@@ -1,10 +1,12 @@
 # Contrato de API y Especificación OpenAPI — Sistema de Sinergia Urbana
 
-**Versión:** 1.0.0 (MVP)  
+**Versión:** 1.2.0 (Enterprise MVP)  
 **Entorno Base:** `http://localhost:4000/api`  
 **Swagger UI Interactivo:** `http://localhost:4000/api/docs`  
 **OpenAPI Spec JSON:** `http://localhost:4000/api/docs/openapi.json`  
-**Motor de IA Principal:** DeepSeek AI (`deepseek-chat` / `deepseek-reasoner` con fallback heurístico resiliente $0)  
+**Métricas Prometheus:** `http://localhost:4000/api/metrics`  
+**Motor de IA Principal:** DeepSeek AI (`deepseek-chat` V3 / `deepseek-reasoner` R1 con fallback heurístico resiliente $0)  
+**Trazabilidad Distribuida:** Cabecera `x-request-id` (UUIDv4) inyectada en todas las peticiones y respuestas  
 **Zona Horaria Oficial:** `America/Costa_Rica` (Almacenamiento interno en UTC ISO-8601)  
 **Moneda Principal:** Colones Costarricenses (`CRC`), con soporte de conversión oficial BCCR/Hacienda a Dólares (`USD`).  
 
@@ -12,7 +14,7 @@
 
 ## 1. Convenciones y Formato Estandarizado de Respuesta
 
-Todas las respuestas del backend siguen estrictamente la estructura envolvente:
+Todas las respuestas del backend siguen estrictamente la estructura envolvente con identificador único de trazabilidad:
 
 ### Respuesta Exitosa (`ok: true`)
 ```json
@@ -20,7 +22,8 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente:
   "ok": true,
   "data": { ... },
   "meta": {
-    "timestamp": "2026-11-12T15:30:00.000Z",
+    "timestamp": "2026-11-13T14:30:00.000Z",
+    "request_id": "req_1773489200000_3a8f1b",
     "total": 3
   },
   "error": null
@@ -33,7 +36,8 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente:
   "ok": false,
   "data": null,
   "meta": {
-    "timestamp": "2026-11-12T15:30:00.000Z"
+    "timestamp": "2026-11-13T14:30:00.000Z",
+    "request_id": "req_1773489200000_3a8f1b"
   },
   "error": {
     "code": "STALE_REVISION_CONFLICT",
@@ -45,93 +49,65 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente:
 
 ---
 
-## 2. Matriz de Roles y Autenticación
+## 2. Matriz de Roles, Permisos y Autenticación
 
-| Rol | Método de Identificación | Permisos |
+| Rol | Método de Identificación | Permisos Granulares |
 |---|---|---|
-| **Visitante** | Sin credenciales | Consulta pública de lugares, eventos, clima y vista del plan por código. |
-| **Invitado** | Cabecera `x-guest-token: gst_tok_...` | Votar opciones (`can`, `prefer`, `cannot`), reconfirmar asistencia sin cuenta. |
-| **Organizador** | Bearer JWT / Sesión de usuario | Crear plan, invocar DeepSeek AI para alternativas, confirmar opción definitiva, editar paradas manualmente, aceptar/rechazar propuestas. |
-| **Comercio** | Bearer JWT (`role: merchant`) | Proponer correcciones de local (`POST /api/businesses/place-corrections`) con evidencia. |
-| **Admin** | Bearer JWT (`role: admin`) | CRUD de catálogo, candado `verified_by_admin`, reprogramar/cancelar eventos, aprobar correcciones, auditar scheduler y telemetría de agentes. |
+| **Visitante** | Sin credenciales | `plans:view`, `places:view`, `events:view` |
+| **Invitado** | Cabecera `x-guest-token: gst_tok_...` | `plans:vote` (sin cuenta requerida) |
+| **Organizador** | Bearer JWT / Sesión de usuario | `plans:create`, `plans:vote`, `plans:confirm`, `plans:edit` |
+| **Comercio** | Bearer JWT (`role: merchant`) | `businesses:claim`, `businesses:corrections` |
+| **Admin** | Bearer JWT (`role: admin`) | Todos los permisos: `admin:agents`, `admin:telemetry`, `events:cancel`, `places:verify`, `audit:read` |
 
 ---
 
-## 3. Endpoints Principales [MVP]
+## 3. Endpoints Principales
 
-### 3.1 Documentación y Diagnóstico
-- **`GET /api/docs`**
-  - Interfaz web interactiva Swagger UI servida directamente por Express para probar todos los endpoints desde el navegador.
-- **`GET /api/docs/openapi.json`**
-  - Especificación formal OpenAPI 3.0.3 en formato JSON para importar en Postman o clientes HTTP.
-- **`GET /api/health`**
-  - Chequeo general del servidor HTTP y tiempo activo.
-- **`GET /api/health/db`**
-  - Chequeo de disponibilidad de la base de datos (MySQL 8 / SQLite integrado).
-- **`GET /api/health/system`**
-  - Telemetría completa: memoria Node.js (RSS, Heap), estado de DeepSeek AI y estado del orquestador de agentes.
+### 3.1 Observabilidad, Diagnóstico y Documentación
+- **`GET /api/docs`**: Interfaz web interactiva Swagger UI.
+- **`GET /api/docs/openapi.json`**: Especificación OpenAPI 3.0.3 en formato JSON.
+- **`GET /api/metrics`**: Métricas de rendimiento en formato estándar Prometheus (OpenMetrics).
+- **`GET /api/health`**: Estado del servidor y modelo DeepSeek activo.
+- **`GET /api/health/db`**: Estado de conexión a la base de datos relacional.
+- **`GET /api/health/system`**: Telemetría completa (memoria RSS/Heap, CPU, estado de la base y tareas de agentes).
 
-### 3.2 Autenticación y Sesiones
-- **`POST /api/auth/login`**: Iniciar sesión con email y contraseña (retorna Bearer JWT).
-- **`POST /api/auth/register`**: Registro de usuarios con contraseña hasheada.
-- **`GET /api/auth/me`**: Identifica al usuario actual o sesión de invitado activa.
-- **`POST /api/auth/guest-session`**: Genera token de invitado criptográfico para votación sin registro.
+### 3.2 Autenticación, Hashing PBKDF2 y Sesiones
+- **`POST /api/auth/login`**: Login con verificación PBKDF2 (100.000 iteraciones). Retorna Access Token + Refresh Token.
+- **`POST /api/auth/register`**: Registro de usuarios con contraseña hasheada y sal criptográfica.
+- **`POST /api/auth/refresh`**: Rotación segura de Refresh Token y renovación de Access Token.
+- **`POST /api/auth/logout`**: Cierre de sesión y revocación del Refresh Token.
+- **`GET /api/auth/me`**: Identificación del usuario o invitado activo.
+- **`POST /api/auth/guest-session`**: Generación de token criptográfico temporal para votación sin registro.
 
-### 3.3 Catálogo de Lugares y Eventos
+### 3.3 Catálogo de Lugares y Eventos (Paginación + GPS)
 - **`GET /api/places`**
-  - **Query Params:** `category` (`cafe`, `feria`, `veterinaria`), `verified_only` (`true`/`false`), `search`, `limit`, `offset`.
-  - Devuelve locales con su candado `verified_by_admin` y metadatos de verificación por atributo (`pet_friendly`, `ley_7600_ramp`, `sinpe_movil`).
-- **`GET /api/events`**
-  - **Query Params:** `status` (`published`, `rescheduled`, `cancelled`), `category`, `fromDate`.
-- **`GET /api/events/:id`**
+  - **Query Params:** `category`, `verified_only`, `search`, `page`, `limit`, `lat`, `lng`, `radius_km`, `sort_by`, `sort_order`.
+  - Soporta cálculo de distancia radial (Haversine) y metadatos de paginación (`total_pages`, `has_next_page`).
+- **`GET /api/events`**: Consulta de eventos con filtros de fecha y categoría.
+- **`GET /api/events/:id`**: Detalle de evento programado.
 
-### 3.4 Planes Grupales (`social-dining`)
-- **`POST /api/social/plans`**
-  - Crea un nuevo plan con código único compartible (ej. `PLAN-CR-772`).
-  - **Body:** `{ title, budget_crc, options: [ { title, stops: [ { place_id, event_id, start_time, end_time } ] } ] }`
-- **`GET /api/social/plans/:code`**
-  - Obtiene el plan completo con opciones, paradas, conteo de votos agregados y propuesta activa si existe.
-- **`POST /api/social/plans/:code/guests`**
-  - Onboarding de invitado. Devuelve `guest_token`.
-- **`PUT /api/social/plans/:code/votes/:optionId`**
-  - Emite o actualiza voto (`vote_type`: `can`, `prefer`, `cannot`). Es idempotente y no duplica votos.
-- **`POST /api/social/plans/:code/confirm`**
-  - Confirmación del organizador (`selected_option_id`). Genera snapshot inmutable de paradas e incrementa la revisión.
-- **`PUT /api/social/plans/:code`**
-  - Edición manual por parte del organizador (`title`, `budget_crc`, `selected_option_id`).
-- **`POST /api/social/plans/:code/proposals/:id/decision`**
-  - Acepta o rechaza propuesta alternativa generada por IA. Si `expected_revision` no coincide con la actual, devuelve `409 Conflict`.
-- **`GET /api/social/plans/:code/stream`**
-  - Conexión Server-Sent Events (SSE) para actualizaciones en vivo (votos, confirmación, propuestas).
+### 3.4 Planes Grupales (`social-dining`) con Transacciones ACID
+- **`POST /api/social/plans`**: Creación atómica de plan, opciones y paradas con rollback automático ante fallos.
+- **`GET /api/social/plans/:code`**: Detalle completo con opciones, paradas, votos y propuesta activa.
+- **`PUT /api/social/plans/:code/votes/:optionId`**: Votación idempotente (`can`, `prefer`, `cannot`).
+- **`POST /api/social/plans/:code/confirm`**: Confirmación del organizador con snapshot inmutable de paradas.
+- **`POST /api/social/plans/:code/proposals/:id/decision`**: Decisión sobre propuesta IA con control de concurrencia optimista (409 Conflict).
+- **`GET /api/social/plans/:code/stream`**: Canal Server-Sent Events (SSE) para actualizaciones en vivo.
 
-### 3.5 Herramientas de Mesa y Finanzas
-- **`POST /api/social/midpoint`**
-  - Triangula el punto medio justo de múltiples coordenadas geográficas.
-- **`POST /api/social/split-bill`**
-  - Divide cuenta considerando 13% IVA y 10% servicio oficial de Costa Rica con escudo anti-doble propina.
-- **`POST /api/social/sinpe-sms`**
-  - Genera comandos y enlaces nativos SMS para SINPE Móvil (BAC, BNCR, BCR).
+### 3.5 Copiloto DeepSeek AI (V3 / R1)
+- **`GET /api/concierge/status`**: Estado, modelo activo y métricas del motor DeepSeek.
+- **`POST /api/concierge/voice-intent`**: Clasificación de intenciones por voz/texto en lenguaje coloquial tico.
+- **`POST /api/concierge/chat`**: Conversación multi-turn con memoria de sesión (`session_id`).
+- **`POST /api/concierge/multi-day-itinerary`**: Generador de itinerarios de 1 a 3 días con desglose de presupuesto en CRC.
+- **`POST /api/concierge/deep-reason`**: Razonamiento analítico con DeepSeek R1 para problemas complejos de optimización de rutas y restricciones.
 
-### 3.6 Copiloto DeepSeek AI y Voz
-- **`GET /api/concierge/status`**
-  - Métricas de DeepSeek AI: modelo activo (`deepseek-chat`), API Key configurada y peticiones del día.
-- **`POST /api/concierge/voice-intent`**
-  - Recibe audio transcripto o texto coloquial tico y devuelve intención estructurada, filtros y presupuesto estimado en CRC con DeepSeek.
-- **`POST /api/concierge/plan-drafts`**
-  - Genera un borrador editable de salida con paradas y presupuesto desglosado.
+### 3.6 Rescate Urbano y Auxilio Ciudadano (S.O.S.)
+- **`GET /api/rescue/roadside`**: Red de auxilio vial y grúas 24/7 en Costa Rica.
+- **`GET /api/rescue/survival-stops`**: Paradas con baños Ley 7600 y cajeros SINPE.
+- **`GET /api/rescue/sos`**: Feed de alertas comunitarias abiertas.
+- **`POST /api/rescue/sos`**: Crear nueva alerta ciudadana con difusión inmediata por SSE.
 
-### 3.7 Rescate Urbano y Auxilio Ciudadano (S.O.S.)
-- **`GET /api/rescue/roadside`**: Auxilio vial 24/7 y grúas de cobertura en Costa Rica.
-- **`GET /api/rescue/survival-stops`**: Paradas con baños adaptados Ley 7600 y cajeros SINPE.
-- **`GET /api/rescue/ev-chargers`**: Electrolineras CNFL / ICE activas.
-- **`GET /api/rescue/sos`**: Feed de alertas ciudadanas abiertas (mascotas extraviadas, percances viales).
-- **`POST /api/rescue/sos`**: Publicar nueva alerta comunitaria con difusión inmediata vía SSE.
-
-### 3.8 Administración y Orquestador de Agentes
-- **`GET /api/admin/agents/status`**: Estado y tiempos de ejecución de las 7 tareas periódicas en background.
-- **`POST /api/admin/agents/:jobName/run`**: Forzar ejecución inmediata de una tarea de agente.
-- **`PATCH /api/admin/events/:id`**: Publica, reprograma o cancela eventos (dispara detección de planes afectados).
-- **`POST /api/admin/places`**, **`PUT /api/admin/places/:id`**, **`PUT /api/admin/places/:id/lock`**
-- **`GET /api/admin/duplicates`**, **`POST /api/admin/merge-duplicates`**
-- **`GET /api/admin/corrections`**, **`POST /api/admin/corrections/:id/decision`**
-- **`GET /api/admin/notifications`**, **`POST /api/admin/notifications/:id/retry`**
+### 3.7 Administración y Auditoría
+- **`GET /api/audit/history`**: Pista inmutable de auditoría (quién, qué IP, qué cambió, timestamp).
+- **`GET /api/admin/agents/status`**: Estado del orquestador y tareas en background.
+- **`POST /api/admin/agents/:jobName/run`**: Ejecución manual forzada de agentes autónomos.

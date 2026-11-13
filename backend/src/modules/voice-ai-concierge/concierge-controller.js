@@ -14,6 +14,52 @@ class ConciergeController {
     }
   }
 
+  async handleChat(req, res, next) {
+    try {
+      const { session_id, message } = req.body;
+      if (!message) return badRequest(res, 'El mensaje para el copiloto es obligatorio');
+
+      const result = await conciergeService.chat({
+        sessionId: session_id || 'default_user',
+        message
+      });
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async handleMultiDayItinerary(req, res, next) {
+    try {
+      const { days, zone, budget_crc, preferences } = req.body || {};
+      const itinerary = await conciergeService.generateMultiDayItinerary({
+        days: days ? parseInt(days, 10) : 2,
+        zone: zone || 'Gran Área Metropolitana',
+        budgetCrc: budget_crc ? parseInt(budget_crc, 10) : 35000,
+        preferences
+      });
+      return success(res, itinerary);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async handleDeepReason(req, res, next) {
+    try {
+      const { objective, context_description, constraints } = req.body || {};
+      if (!objective) return badRequest(res, 'El campo objective es requerido');
+
+      const result = await conciergeService.deepReason({
+        objective,
+        contextDescription: context_description || '',
+        constraints: constraints || []
+      });
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getAiStatus(req, res, next) {
     try {
       const status = conciergeService.getAiStatus();

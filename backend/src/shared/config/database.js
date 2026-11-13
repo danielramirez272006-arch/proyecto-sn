@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const env = require('./env-config');
+const metricsCollector = require('../telemetry/metrics-collector');
 
 let dbClient = null;
 let activeDialect = 'sqlite';
@@ -64,19 +65,25 @@ async function initDatabase() {
 
 async function query(sql, rawParams = []) {
   const params = rawParams.map(p => p === undefined ? null : p);
-  const { client, dialect } = await initDatabase();
+  try {
+    const { client, dialect } = await initDatabase();
+    metricsCollector.recordDbQuery(true);
 
-  if (dialect === 'mysql') {
-    const [rows] = await client.execute(sql, params);
-    return rows;
-  }
+    if (dialect === 'mysql') {
+      const [rows] = await client.execute(sql, params);
+      return rows;
+    }
 
-  const stmt = client.prepare(sql);
-  const trimmed = sql.trim().toUpperCase();
-  if (trimmed.startsWith('SELECT') || trimmed.startsWith('PRAGMA')) {
-    return stmt.all(...params);
-  } else {
-    return stmt.run(...params);
+    const stmt = client.prepare(sql);
+    const trimmed = sql.trim().toUpperCase();
+    if (trimmed.startsWith('SELECT') || trimmed.startsWith('PRAGMA')) {
+      return stmt.all(...params);
+    } else {
+      return stmt.run(...params);
+    }
+  } catch (err) {
+    metricsCollector.recordDbQuery(false);
+    throw err;
   }
 }
 
@@ -208,6 +215,7 @@ module.exports = {
   query,
   execute,
   transaction,
+  withTransaction: transaction,
   checkHealth,
   runMigrations,
   runSeeds,

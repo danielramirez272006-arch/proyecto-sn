@@ -4,9 +4,12 @@ const router = express.Router();
 const { checkHealth, query } = require('../config/database');
 const { success } = require('../utils/http-response');
 const deepSeekClient = require('../config/deepseek-config');
+const metricsCollector = require('../telemetry/metrics-collector');
 const { scheduler } = require('../../autonomous-agents');
 const { openApiSpec, renderSwaggerUiHtml } = require('../docs/swagger-ui-handler');
 const placesRepository = require('../../modules/places/places-repository');
+const auditService = require('../audit/audit-service');
+const { requireAdmin } = require('../middlewares/auth-role-guard');
 
 // 1. Documentación Interactiva OpenAPI / Swagger UI
 router.get('/docs/openapi.json', (req, res) => {
@@ -19,7 +22,13 @@ router.get('/docs', (req, res) => {
   return res.send(renderSwaggerUiHtml('/api/docs/openapi.json'));
 });
 
-// 2. Chequeo de Salud del Backend
+// 2. Métricas Estándar Prometheus
+router.get('/metrics', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+  return res.send(metricsCollector.toPrometheusFormat());
+});
+
+// 3. Chequeo de Salud del Backend
 router.get('/health', (req, res) => {
   return success(res, {
     status: 'healthy',
@@ -49,6 +58,7 @@ router.get('/health/system', async (req, res, next) => {
     const dbHealth = await checkHealth();
     const aiStatus = deepSeekClient.getMetrics();
     const agentsStatus = scheduler.getStatus();
+    const metricsSummary = metricsCollector.getMetricsSummary();
 
     return success(res, {
       system: {
@@ -64,17 +74,35 @@ router.get('/health/system', async (req, res, next) => {
       },
       database: dbHealth,
       ai_copilot: aiStatus,
-      autonomous_agents: agentsStatus
+      autonomous_agents: agentsStatus,
+      http_telemetry: metricsSummary.http
     });
   } catch (err) {
     next(err);
   }
 });
 
-// 3. Catálogo Compartido de Lugares
+// 4. Catálogo Compartido de Lugares (con Paginación Avanzada y Filtro Radial GPS)
 router.get('/places', async (req, res, next) => {
   try {
-    const { category, verified_only, search, limit, offset } = req.query;
+    const { category, verified_only, search, page, limit, offset, lat, lng, radius_km, sort_by, sort_order } = req.query;
+
+    if (page || lat || radius_km || sort_by) {
+      const paginatedResult = await placesRepository.findPaginated({
+        category,
+        verifiedOnly: verified_only === 'true',
+        search,
+        lat: lat ? parseFloat(lat) : undefined,
+        lng: lng ? parseFloat(lng) : undefined,
+        radiusKm: radius_km ? parseFloat(radius_km) : undefined,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 20,
+        sortBy: sort_by || 'name',
+        sortOrder: sort_order || 'ASC'
+      });
+      return success(res, paginatedResult.items, paginatedResult.pagination);
+    }
+
     const places = await placesRepository.findAll({
       category,
       verifiedOnly: verified_only === 'true',
@@ -88,7 +116,24 @@ router.get('/places', async (req, res, next) => {
   }
 });
 
-// 4. Montaje de Módulos de Dominio
+// 5. Pista de Auditoría Enterprise (Admin)
+router.get('/audit/history', requireAdmin, async (req, res, next) => {
+  try {
+    const { resource, resource_id, user_id, limit, offset } = req.query;
+    const history = await auditService.getHistory({
+      resource,
+      resourceId: resource_id,
+      userId: user_id,
+      limit: limit ? parseInt(limit, 10) : 50,
+      offset: offset ? parseInt(offset, 10) : 0
+    });
+    return success(res, history, { total: history.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 6. Montaje de Módulos de Dominio
 router.use('/auth', require('../../modules/auth').authRoutes);
 router.use('/events', require('../../modules/events').eventsRoutes);
 router.use('/social', require('../../modules/social-dining').socialRoutes);

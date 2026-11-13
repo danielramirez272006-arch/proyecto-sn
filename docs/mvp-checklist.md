@@ -30,9 +30,11 @@ El servidor quedará escuchando en `http://localhost:4000`.
 
 ## 2. Recorrido de Prueba Paso a Paso (Flujo Crítico)
 
-### Paso 1: Verificación de Salud, Base de Datos y DeepSeek AI
+### Paso 1: Verificación de Salud, Supabase, Base de Datos y DeepSeek AI
 - Ejecutar: `GET http://localhost:4000/api/health`
   - Respuesta esperada: `{ ok: true, data: { status: "healthy", ai_copilot: "DeepSeek AI Active" } }`
+- Ejecutar: `GET http://localhost:4000/api/health/supabase`
+  - Respuesta esperada: `{ ok: true, data: { configured: true, status: "connected", provider: "Supabase Cloud" } }`
 - Ejecutar: `GET http://localhost:4000/api/health/db`
   - Respuesta esperada: `{ ok: true, data: { ok: true, status: "connected" } }`
 - Ejecutar: `GET http://localhost:4000/api/concierge/status`

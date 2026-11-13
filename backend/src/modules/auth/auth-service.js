@@ -34,8 +34,24 @@ class AuthService {
     return simpleHash === storedHash;
   }
 
+  async _saveRefreshToken(userId, refreshToken) {
+    const tokenId = `rt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+
+    try {
+      await execute(`
+        INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
+        VALUES (?, ?, ?, ?, FALSE, CURRENT_TIMESTAMP)
+      `, [tokenId, userId, tokenHash, expiresAt]);
+    } catch (dbErr) {
+      // Ignorar si la tabla aún se está migrando
+    }
+  }
+
   async login(email, password, req = null) {
-    const rows = await query('SELECT * FROM users WHERE email = ?', [email]);
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const rows = await query('SELECT * FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
     if (!rows || rows.length === 0) {
       throw new Error('INVALID_CREDENTIALS');
     }
@@ -55,19 +71,7 @@ class AuthService {
     const token = generateToken(tokenPayload, '2h');
     const refreshToken = generateRefreshToken(tokenPayload, '30d');
 
-    // Registrar token de refresco en la base de datos
-    const tokenId = `rt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
-
-    try {
-      await execute(`
-        INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
-        VALUES (?, ?, ?, ?, FALSE, CURRENT_TIMESTAMP)
-      `, [tokenId, user.id, tokenHash, expiresAt]);
-    } catch (dbErr) {
-      // Ignorar si la tabla aún se está migrando
-    }
+    await this._saveRefreshToken(user.id, refreshToken);
 
     await auditService.record({
       userId: user.id,
@@ -92,7 +96,11 @@ class AuthService {
   }
 
   async register({ name, email, password, role = 'client' }, req = null) {
-    const existing = await query('SELECT id FROM users WHERE email = ?', [email]);
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const cleanName = String(name || '').trim();
+    const safeRole = role === 'business_owner' ? 'business_owner' : 'client';
+
+    const existing = await query('SELECT id FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
     if (existing && existing.length > 0) {
       throw new Error('EMAIL_ALREADY_REGISTERED');
     }
@@ -103,19 +111,21 @@ class AuthService {
     await execute(
       `INSERT INTO users (id, name, email, password_hash, role)
        VALUES (?, ?, ?, ?, ?)`,
-      [id, name, email, pbkdf2Hash, role]
+      [id, cleanName, normalizedEmail, pbkdf2Hash, safeRole]
     );
 
-    const tokenPayload = { id, email, role, name };
+    const tokenPayload = { id, email: normalizedEmail, role: safeRole, name: cleanName };
     const token = generateToken(tokenPayload, '2h');
     const refreshToken = generateRefreshToken(tokenPayload, '30d');
+
+    await this._saveRefreshToken(id, refreshToken);
 
     await auditService.record({
       userId: id,
       action: 'USER_REGISTERED',
       resource: 'users',
       resourceId: id,
-      details: { name, email, role },
+      details: { name: cleanName, email: normalizedEmail, role: safeRole },
       req
     });
 
@@ -123,7 +133,7 @@ class AuthService {
       token,
       refresh_token: refreshToken,
       expires_in: 7200,
-      user: { id, name, email, role }
+      user: { id, name: cleanName, email: normalizedEmail, role: safeRole }
     };
   }
 
@@ -138,10 +148,12 @@ class AuthService {
     }
 
     const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    const rows = await query('SELECT * FROM refresh_tokens WHERE token_hash = ? AND revoked = FALSE', [tokenHash]);
+    const rows = await query('SELECT * FROM refresh_tokens WHERE token_hash = ?', [tokenHash]);
 
-    // Rotación de token: revocar token anterior si existe en BD
     if (rows && rows.length > 0) {
+      if (rows[0].revoked) {
+        throw new Error('INVALID_REFRESH_TOKEN');
+      }
       await execute('UPDATE refresh_tokens SET revoked = TRUE WHERE id = ?', [rows[0].id]);
     }
 
@@ -155,16 +167,7 @@ class AuthService {
     const newAccessToken = generateToken(tokenPayload, '2h');
     const newRefreshToken = generateRefreshToken(tokenPayload, '30d');
 
-    const newTokenId = `rt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-    const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
-
-    try {
-      await execute(`
-        INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
-        VALUES (?, ?, ?, ?, FALSE, CURRENT_TIMESTAMP)
-      `, [newTokenId, decoded.id, newTokenHash, expiresAt]);
-    } catch (e) {}
+    await this._saveRefreshToken(decoded.id, newRefreshToken);
 
     await auditService.record({
       userId: decoded.id,
@@ -220,7 +223,7 @@ class AuthService {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const rawToken = authHeader.replace(/^Bearer\s+/, '');
       const decoded = verifyToken(rawToken);
-      if (decoded) {
+      if (decoded && !decoded.is_refresh) {
         return {
           authenticated: true,
           type: 'registered_user',

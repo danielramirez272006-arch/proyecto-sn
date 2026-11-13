@@ -1,11 +1,14 @@
 const authService = require('./auth-service');
 const { success, created, unauthorized, badRequest, conflict } = require('../../shared/utils/http-response');
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 class AuthController {
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
       if (!email || !password) return badRequest(res, 'email y password son requeridos');
+      if (!EMAIL_REGEX.test(String(email).trim())) return badRequest(res, 'El formato del correo electrónico no es válido');
 
       const result = await authService.login(email, password, req);
       return success(res, result);
@@ -19,10 +22,12 @@ class AuthController {
 
   async register(req, res, next) {
     try {
-      const { name, email, password, role } = req.body;
+      const { name, email, password } = req.body;
       if (!name || !email || !password) return badRequest(res, 'name, email y password son requeridos');
+      if (!EMAIL_REGEX.test(String(email).trim())) return badRequest(res, 'El formato del correo electrónico no es válido');
+      if (String(password).length < 6) return badRequest(res, 'La contraseña debe tener al menos 6 caracteres');
 
-      const result = await authService.register({ name, email, password, role }, req);
+      const result = await authService.register({ name, email, password, role: 'client' }, req);
       return created(res, result);
     } catch (err) {
       if (err.message === 'EMAIL_ALREADY_REGISTERED') {
@@ -59,7 +64,7 @@ class AuthController {
 
   async getMe(req, res, next) {
     try {
-      const authHeader = req.headers.authorization;
+      const authHeader = req.headers.authorization || req.headers.Authorization;
       const guestToken = req.headers['x-guest-token'];
       const info = await authService.getMe(authHeader, guestToken);
       return success(res, info);

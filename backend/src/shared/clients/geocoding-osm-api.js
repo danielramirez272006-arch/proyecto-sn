@@ -15,6 +15,10 @@ class GeocodingOsmApiClient {
       source: 'offline_fallback'
     };
 
+    if (env.isTest) {
+      return fallback;
+    }
+
     const url = `${env.integrations.nominatimUrl}/reverse?lat=${lat}&lon=${lng}&format=json`;
 
     try {
@@ -35,6 +39,10 @@ class GeocodingOsmApiClient {
         type: 'approximate'
       }
     ];
+
+    if (env.isTest) {
+      return fallback;
+    }
 
     const url = `${env.integrations.nominatimUrl}/search?q=${encodeURIComponent(query + ', Costa Rica')}&format=json&limit=5`;
 

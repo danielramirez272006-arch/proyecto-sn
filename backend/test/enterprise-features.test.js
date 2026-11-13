@@ -943,4 +943,80 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.ok(cardRes.body.data.open_graph['og:image']);
     assert.ok(cardRes.body.data.html_meta_tags.includes('<meta property="og:title"'));
   });
+
+  await suite.test('41. Flujo completo de Registro, Login, /me, Logout y revocación de Refresh Token (/api/auth/*)', async () => {
+    // 1. Validación de contraseña corta y email inválido
+    const badPwd = await executeMockRequest('POST', '/api/auth/register', {
+      body: { name: 'Ana', email: 'ana@gotox.cr', password: '123' }
+    });
+    assert.equal(badPwd.status, 400);
+
+    const badEmail = await executeMockRequest('POST', '/api/auth/register', {
+      body: { name: 'Ana', email: 'correo-invalido', password: 'Password123!' }
+    });
+    assert.equal(badEmail.status, 400);
+
+    // 2. Registro exitoso (ignora role='admin' y asigna 'client')
+    const regRes = await executeMockRequest('POST', '/api/auth/register', {
+      body: { name: 'Ana Test', email: 'Ana.Test@GoToX.cr', password: 'Password123!', role: 'admin' }
+    });
+    assert.equal(regRes.status, 201);
+    assert.equal(regRes.body.data.user.role, 'client');
+    assert.equal(regRes.body.data.user.email, 'ana.test@gotox.cr');
+    assert.ok(regRes.body.data.token);
+    assert.ok(regRes.body.data.refresh_token);
+
+    // 3. Correo duplicado devuelve 409 Conflict
+    const dupRes = await executeMockRequest('POST', '/api/auth/register', {
+      body: { name: 'Ana 2', email: 'ana.test@gotox.cr', password: 'Password123!' }
+    });
+    assert.equal(dupRes.status, 409);
+
+    // 4. Login con mayúsculas/minúsculas normalizadas y /api/auth/me
+    const loginRes = await executeMockRequest('POST', '/api/auth/login', {
+      body: { email: 'ANA.TEST@gotox.cr', password: 'Password123!' }
+    });
+    assert.equal(loginRes.status, 200);
+    assert.ok(loginRes.body.data.token);
+
+    const meRes = await executeMockRequest('GET', '/api/auth/me', {
+      headers: { Authorization: `Bearer ${loginRes.body.data.token}` }
+    });
+    assert.equal(meRes.status, 200);
+    assert.equal(meRes.body.data.authenticated, true);
+    assert.equal(meRes.body.data.user.email, 'ana.test@gotox.cr');
+
+    // 5. Logout revoca el refresh_token y rechaza reutilización
+    const logoutRes = await executeMockRequest('POST', '/api/auth/logout', {
+      body: { refresh_token: loginRes.body.data.refresh_token }
+    });
+    assert.equal(logoutRes.status, 200);
+
+    const reusedRefresh = await executeMockRequest('POST', '/api/auth/refresh', {
+      body: { refresh_token: loginRes.body.data.refresh_token }
+    });
+    assert.equal(reusedRefresh.status, 401);
+  });
+
+  await suite.test('42. Escena de Mapa 2D/3D y detalle de restaurantes (/api/live/scene y /api/live/places/:id)', async () => {
+    const scene3d = await executeMockRequest('GET', '/api/live/scene?mode=3d');
+    assert.equal(scene3d.status, 200);
+    assert.equal(scene3d.body.data.mode, '3d');
+    assert.equal(scene3d.body.data.camera.pitch, 55);
+    assert.equal(scene3d.body.data.layers.markers_2d.type, 'FeatureCollection');
+    assert.equal(scene3d.body.data.layers.buildings_3d.type, 'FeatureCollection');
+    assert.ok(scene3d.body.data.places.length > 0);
+    assert.ok(scene3d.body.data.places[0].style_3d.height_m > 0);
+    assert.ok(scene3d.body.data.places[0].navigation_links);
+
+    const scene2d = await executeMockRequest('GET', '/api/live/scene?mode=2d');
+    assert.equal(scene2d.status, 200);
+    assert.equal(scene2d.body.data.mode, '2d');
+    assert.equal(scene2d.body.data.camera.pitch, 0);
+
+    const firstId = scene3d.body.data.places[0].id;
+    const detailRes = await executeMockRequest('GET', `/api/live/places/${firstId}`);
+    assert.equal(detailRes.status, 200);
+    assert.equal(detailRes.body.data.id, firstId);
+  });
 });

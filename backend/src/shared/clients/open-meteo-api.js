@@ -31,6 +31,10 @@ class OpenMeteoApiClient {
       source: 'offline_heuristic_fallback'
     };
 
+    if (env.isTest) {
+      return fallback;
+    }
+
     const url = `${env.integrations.openMeteoUrl}/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,precipitation,rain,wind_speed_10m,uv_index,soil_moisture_0_to_1cm&hourly=temperature_2m,precipitation_probability,uv_index&timezone=America%2FCosta_Rica`;
 
     try {

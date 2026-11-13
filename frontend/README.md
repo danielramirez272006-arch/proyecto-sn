@@ -74,3 +74,4 @@ const reply = await api.post('/concierge/chat', {
 
 Para una referencia completa de todos los endpoints, modelos de datos, manejo de errores y sockets de tiempo real, consulta la:
 👉 **[Guía de Integración para el Frontend (docs/frontend-integration-guide.md)](../docs/frontend-integration-guide.md)**.
+

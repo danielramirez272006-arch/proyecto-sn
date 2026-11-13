@@ -223,4 +223,129 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     const uploadRes = await supabaseClient.uploadStorageFile('receipts', 'test.jpg', Buffer.from('fake-image'));
     assert.ok(uploadRes.url);
   });
+
+  await suite.test('12. Endpoint de Carga a Storage con Validación y Fallback (/api/storage/upload)', async () => {
+    // 1. Estado de Storage
+    const statusRes = await executeMockRequest('GET', '/api/storage/status');
+    assert.equal(statusRes.status, 200);
+    assert.equal(statusRes.body.ok, true);
+    assert.ok(statusRes.body.data.allowed_buckets.includes('receipts'));
+
+    // 2. Subida de archivo válida (comprobante SINPE base64)
+    const base64Data = Buffer.from('comprobante-sinpe-costa-rica-2026').toString('base64');
+    const uploadRes = await executeMockRequest('POST', '/api/storage/upload', {
+      body: {
+        bucket: 'receipts',
+        file_name: 'sinpe_comprobante_506.png',
+        content_base64: base64Data,
+        content_type: 'image/png'
+      }
+    });
+    assert.equal(uploadRes.status, 201);
+    assert.equal(uploadRes.body.ok, true);
+    assert.ok(uploadRes.body.data.url);
+    assert.equal(uploadRes.body.data.bucket, 'receipts');
+
+    // 3. Rechazo de tipo MIME inválido
+    const invalidMimeRes = await executeMockRequest('POST', '/api/storage/upload', {
+      body: {
+        bucket: 'receipts',
+        file_name: 'malware.exe',
+        content_base64: base64Data,
+        content_type: 'application/x-msdownload'
+      }
+    });
+    assert.equal(invalidMimeRes.status, 400);
+    assert.equal(invalidMimeRes.body.error.code, 'UNSUPPORTED_MEDIA_TYPE');
+  });
+
+  await suite.test('13. Receptor de Webhooks de Supabase y Retransmisión SSE (/api/webhooks/supabase)', async () => {
+    const webhookPayload = {
+      type: 'UPDATE',
+      table: 'events',
+      schema: 'app_private',
+      record: {
+        id: 'evt_feria_sabado_1',
+        title: 'Feria de Mora',
+        status: 'published'
+      }
+    };
+
+    const res = await executeMockRequest('POST', '/api/webhooks/supabase', {
+      body: webhookPayload
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.data.received, true);
+    assert.equal(res.body.data.table, 'events');
+  });
+
+  await suite.test('14. Servicio de Caché LRU con TTL y Métricas de Acierto (/api/cache/stats)', async () => {
+    const { ttlCache } = require('../src/shared/cache/ttl-cache-service');
+    ttlCache.clear();
+
+    // Guardar y recuperar
+    ttlCache.set('test_recope_diesel', { price: 650 }, 5000);
+    assert.equal(ttlCache.has('test_recope_diesel'), true);
+
+    const val = ttlCache.get('test_recope_diesel');
+    assert.equal(val.price, 650);
+
+    // Método .wrap()
+    let fetchCount = 0;
+    const asyncFetcher = async () => {
+      fetchCount++;
+      return { usd_crc: 520 };
+    };
+
+    const r1 = await ttlCache.wrap('tipo_cambio_bccr', 5000, asyncFetcher);
+    const r2 = await ttlCache.wrap('tipo_cambio_bccr', 5000, asyncFetcher);
+
+    assert.equal(r1.usd_crc, 520);
+    assert.equal(r2.usd_crc, 520);
+    assert.equal(fetchCount, 1); // Solo se invocó una vez debido a la caché
+
+    // Endpoint /api/cache/stats
+    const statsRes = await executeMockRequest('GET', '/api/cache/stats');
+    assert.equal(statsRes.status, 200);
+    assert.ok(statsRes.body.data.hits >= 2);
+    assert.ok(statsRes.body.data.hit_ratio > 0);
+  });
+
+  await suite.test('15. Rate Limiting Avanzado con Cabeceras de Control', async () => {
+    const rateLimiter = require('../src/shared/middlewares/rate-limiter');
+    const limiter = rateLimiter.registry.createLimiter({
+      name: 'test-limiter',
+      maxRequests: 2,
+      windowMs: 5000,
+      skipInTest: false
+    });
+
+    let blocked = false;
+    let statusCode = 200;
+    const headers = {};
+
+    const req = { headers: {}, socket: { remoteAddress: '10.0.0.1' } };
+    const res = {
+      setHeader(k, v) { headers[k] = v; },
+      status(code) { statusCode = code; return this; },
+      json(payload) { blocked = true; return payload; }
+    };
+    const next = () => {};
+
+    // Req 1 (OK)
+    limiter(req, res, next);
+    assert.equal(headers['X-RateLimit-Remaining'], 1);
+
+    // Req 2 (OK)
+    limiter(req, res, next);
+    assert.equal(headers['X-RateLimit-Remaining'], 0);
+
+    // Req 3 (Excedido -> 429)
+    limiter(req, res, next);
+    assert.equal(statusCode, 429);
+    assert.equal(blocked, true);
+    assert.ok(headers['Retry-After']);
+  });
 });

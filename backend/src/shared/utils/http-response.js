@@ -54,6 +54,34 @@ function conflict(res, message = 'Conflicto de concurrencia o estado', details =
   return failure(res, message, 'CONFLICT', details, 409);
 }
 
+function formatSuccess(data = null, message = null, meta = {}) {
+  return {
+    ok: true,
+    data,
+    meta: {
+      timestamp: new Date().toISOString(),
+      ...(message ? { message } : {}),
+      ...meta,
+    },
+    error: null,
+  };
+}
+
+function formatError(code = 'INTERNAL_ERROR', message = 'Error interno', details = null) {
+  return {
+    ok: false,
+    data: null,
+    meta: {
+      timestamp: new Date().toISOString(),
+    },
+    error: {
+      code,
+      message,
+      details,
+    },
+  };
+}
+
 module.exports = {
   success,
   created,
@@ -63,5 +91,7 @@ module.exports = {
   forbidden,
   notFound,
   conflict,
+  formatSuccess,
+  formatError,
 };
 

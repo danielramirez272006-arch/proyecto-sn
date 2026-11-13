@@ -56,6 +56,15 @@ module.exports = {
         }
       }
     },
+    "/health/supabase": {
+      get: {
+        tags: ["Salud, Métricas y Diagnóstico"],
+        summary: "Chequeo de conexión y autenticación con Supabase Cloud (Auth & Storage)",
+        responses: {
+          "200": { description: "Estado y proveedor de Supabase" }
+        }
+      }
+    },
     "/health/system": {
       get: {
         tags: ["Salud, Métricas y Diagnóstico"],
@@ -360,6 +369,61 @@ module.exports = {
         summary: "Consultar la pista de auditoría inmutable de eventos del sistema (Admin)",
         responses: {
           "200": { description: "Historial de mutaciones, IPs y usuarios" }
+        }
+      }
+    },
+    "/storage/upload": {
+      post: {
+        tags: ["Almacenamiento y Archivos"],
+        summary: "Subir archivo a Supabase Storage con fallback local",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["file_name", "content_base64"],
+                properties: {
+                  bucket: { type: "string", default: "receipts" },
+                  file_name: { type: "string", example: "comprobante_sinpe.jpg" },
+                  content_base64: { type: "string" },
+                  content_type: { type: "string", default: "image/jpeg" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "201": { description: "Archivo subido exitosamente con URL pública" },
+          "400": { description: "Parámetros o tipo MIME inválido" },
+          "413": { description: "Archivo excede el límite de 5MB" }
+        }
+      }
+    },
+    "/storage/status": {
+      get: {
+        tags: ["Almacenamiento y Archivos"],
+        summary: "Estado del proveedor de almacenamiento y límites",
+        responses: {
+          "200": { description: "Proveedor activo y buckets permitidos" }
+        }
+      }
+    },
+    "/webhooks/supabase": {
+      post: {
+        tags: ["Webhooks y Sincronización"],
+        summary: "Receptor de eventos de base de datos de Supabase",
+        responses: {
+          "200": { description: "Webhook procesado y retransmitido a SSE" }
+        }
+      }
+    },
+    "/cache/stats": {
+      get: {
+        tags: ["Salud, Métricas y Diagnóstico"],
+        summary: "Estadísticas de aciertos y memoria de la caché TTL",
+        responses: {
+          "200": { description: "Hits, misses y ratio de acierto de caché" }
         }
       }
     }

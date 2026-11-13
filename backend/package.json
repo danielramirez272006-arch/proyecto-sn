@@ -8,6 +8,9 @@
     "dev": "node --watch src/server.js",
     "migrate": "node src/shared/config/migrate-cli.js up",
     "seed": "node src/shared/config/migrate-cli.js seed",
+    "db:supabase:check": "node src/shared/config/supabase-cli.js check",
+    "db:supabase:migrate": "node src/shared/config/supabase-cli.js migrate",
+    "db:supabase:seed": "node src/shared/config/supabase-cli.js seed",
     "test": "node --test test/**/*.test.js"
   },
   "keywords": [

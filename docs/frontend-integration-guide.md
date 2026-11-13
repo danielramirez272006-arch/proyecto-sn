@@ -359,3 +359,4 @@ Para comprobar que todo está listo antes de programar componentes en el fronten
    }
    ```
 3. Abre `http://localhost:4000/api/places` y confirma que recibes los 3 lugares de Costa Rica cargados desde Supabase PostgreSQL.
+

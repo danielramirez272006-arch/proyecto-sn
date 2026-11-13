@@ -142,7 +142,14 @@ router.get('/audit/history', requireAdmin, async (req, res, next) => {
   }
 });
 
-// 6. Montaje de Módulos de Dominio
+// 6. Montaje de Módulos de Dominio y Servicios Enterprise
+router.use('/storage', require('../../modules/storage').storageRoutes);
+router.post('/webhooks/supabase', (req, res) => require('../webhooks/supabase-webhook-handler').handleWebhook(req, res));
+router.get('/cache/stats', (req, res) => {
+  const { ttlCache } = require('../cache/ttl-cache-service');
+  return success(res, ttlCache.getStats());
+});
+
 router.use('/auth', require('../../modules/auth').authRoutes);
 router.use('/events', require('../../modules/events').eventsRoutes);
 router.use('/social', require('../../modules/social-dining').socialRoutes);

@@ -12,6 +12,15 @@ class ApiClient {
   constructor() {
     this.token = typeof localStorage !== 'undefined' ? localStorage.getItem('sn_auth_token') : null;
     this.guestToken = typeof localStorage !== 'undefined' ? localStorage.getItem('sn_guest_token') : null;
+    this.language = typeof localStorage !== 'undefined' ? localStorage.getItem('sn_language') || 'es' : 'es';
+  }
+
+  setLanguage(lang) {
+    this.language = lang;
+    if (typeof localStorage !== 'undefined') {
+      if (lang) localStorage.setItem('sn_language', lang);
+      else localStorage.removeItem('sn_language');
+    }
   }
 
   setToken(token) {
@@ -43,6 +52,10 @@ class ApiClient {
 
     if (this.guestToken) {
       defaultHeaders['x-guest-token'] = this.guestToken;
+    }
+
+    if (this.language) {
+      defaultHeaders['x-language'] = this.language;
     }
 
     const config = {

@@ -143,6 +143,7 @@ router.get('/audit/history', requireAdmin, async (req, res, next) => {
 });
 
 // 6. Montaje de Módulos de Dominio y Servicios Enterprise
+router.use('/i18n', require('../i18n/i18n-routes'));
 router.use('/storage', require('../../modules/storage').storageRoutes);
 router.post('/webhooks/supabase', (req, res) => require('../webhooks/supabase-webhook-handler').handleWebhook(req, res));
 router.get('/cache/stats', (req, res) => {

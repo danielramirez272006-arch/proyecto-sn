@@ -5,12 +5,16 @@ const apiRouter = require('./shared/routing/api-router');
 const rateLimiter = require('./shared/middlewares/rate-limiter');
 const securityHeaders = require('./shared/middlewares/security-headers');
 const requestTracer = require('./shared/middlewares/request-tracer');
+const { i18nMiddleware } = require('./shared/i18n/i18n-config');
 const errorHandler = require('./shared/middlewares/error-handler');
 
 const app = express();
 
 // 0. Observabilidad y Trazabilidad de Peticiones (x-request-id)
 app.use(requestTracer);
+
+// 0.1 Internacionalización (i18n) con soporte para 10 idiomas
+app.use(i18nMiddleware);
 
 // 1. Encabezados de seguridad HTTP (CSP, X-Content-Type-Options, FrameGuard)
 app.use(securityHeaders);
@@ -20,7 +24,7 @@ app.use(cors({
   origin: env.isProd ? env.frontendUrl : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-guest-token', 'x-request-id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-guest-token', 'x-request-id', 'x-language', 'accept-language', 'X-RateLimit-Limit', 'X-RateLimit-Remaining']
 }));
 
 // 3. Parsers de cuerpo con límite de tamaño

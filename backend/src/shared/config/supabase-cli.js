@@ -100,3 +100,4 @@ if (require.main === module) {
 }
 
 module.exports = { migrate, seed, check };
+

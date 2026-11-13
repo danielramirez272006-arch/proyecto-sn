@@ -6,3 +6,4 @@ router.post('/upload', (req, res) => storageController.uploadFile(req, res));
 router.get('/status', (req, res) => storageController.getStorageStatus(req, res));
 
 module.exports = router;
+

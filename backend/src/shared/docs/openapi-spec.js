@@ -23,7 +23,8 @@ module.exports = {
     { name: "DeepSeek AI Copiloto", description: "Chat multi-turn, razonador R1 e itinerarios multi-día" },
     { name: "Agentes Autónomos", description: "Scheduler y monitoreo de tareas periódicas en background" },
     { name: "Rescate Urbano", description: "Alertas ciudadanas SOS en tiempo real y auxilio vial" },
-    { name: "Auditoría y Administración", description: "Pista inmutable de auditoría y operaciones de control" }
+    { name: "Auditoría y Administración", description: "Pista inmutable de auditoría y operaciones de control" },
+    { name: "Internacionalización (i18n)", description: "Soporte multilingüe para 10 idiomas, diccionarios y traducción automática" }
   ],
   paths: {
     "/metrics": {
@@ -424,6 +425,60 @@ module.exports = {
         summary: "Estadísticas de aciertos y memoria de la caché TTL",
         responses: {
           "200": { description: "Hits, misses y ratio de acierto de caché" }
+        }
+      }
+    },
+    "/i18n/languages": {
+      get: {
+        tags: ["Internacionalización (i18n)"],
+        summary: "Obtener la lista de los 10 idiomas oficiales soportados con metadatos y banderas",
+        responses: {
+          "200": { description: "Lista de idiomas disponibles y el idioma detectado para el cliente" }
+        }
+      }
+    },
+    "/i18n/translations/{lang}": {
+      get: {
+        tags: ["Internacionalización (i18n)"],
+        summary: "Descargar el diccionario completo de traducciones para un idioma específico",
+        parameters: [
+          { name: "lang", in: "path", required: true, schema: { type: "string" }, example: "en" }
+        ],
+        responses: {
+          "200": { description: "Diccionario JSON con todas las cadenas traducidas" }
+        }
+      }
+    },
+    "/i18n/detect": {
+      get: {
+        tags: ["Internacionalización (i18n)"],
+        summary: "Detectar el idioma preferido del cliente según sus cabeceras Accept-Language",
+        responses: {
+          "200": { description: "Código de idioma detectado" }
+        }
+      }
+    },
+    "/i18n/translate": {
+      post: {
+        tags: ["Internacionalización (i18n)"],
+        summary: "Traducir una clave a un idioma destino",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["key"],
+                properties: {
+                  key: { type: "string", example: "concierge.greeting" },
+                  target_lang: { type: "string", example: "fr" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Texto traducido" }
         }
       }
     }

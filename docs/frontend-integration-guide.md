@@ -328,6 +328,43 @@ const smsData = await api.post('/social/sinpe-sms', {
 
 ---
 
+### 5.5 Soporte Multilingüe e Internacionalización (10 Idiomas Oficiales)
+
+El backend incorpora un motor nativo de i18n con soporte para **10 idiomas**:
+- `es`: Español (Costa Rica - Predeterminado) 🇨🇷
+- `en`: English 🇺🇸
+- `fr`: Français 🇫🇷
+- `de`: Deutsch 🇩🇪
+- `pt`: Português 🇧🇷
+- `it`: Italiano 🇮🇹
+- `zh`: 中文 (Chino Mandarín) 🇨🇳
+- `ja`: 日本語 (Japonés) 🇯🇵
+- `ko`: 한국어 (Coreano) 🇰🇷
+- `ru`: Русский (Ruso) 🇷🇺
+
+#### Obtener Lista de Idiomas y Banderas:
+```javascript
+// GET /api/i18n/languages
+const langs = await api.get('/i18n/languages');
+console.log(langs.languages); // Array con códigos, nombres nativos y banderas
+```
+
+#### Descargar Diccionario Completo de Traducciones:
+Permite alimentar librerías como `i18next` o el estado de React con cero duplicación:
+```javascript
+// GET /api/i18n/translations/:lang
+const { dictionary } = await api.get('/i18n/translations/fr');
+console.log(dictionary.system.healthy); // "Système sain et opérationnel"
+console.log(dictionary.concierge.greeting); // Saludo en francés para turistas
+```
+
+#### Cambiar el Idioma Activo en el Cliente:
+```javascript
+api.setLanguage('ja'); // Ahora todas las peticiones viajarán con la cabecera x-language: ja
+```
+
+---
+
 ## 6. Manejo de Errores y Códigos de Estado
 
 | Código | Significado | Qué debe hacer el Frontend |

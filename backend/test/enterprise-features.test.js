@@ -348,4 +348,82 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(blocked, true);
     assert.ok(headers['Retry-After']);
   });
+
+  await suite.test('16. Catálogo de 10 Idiomas Oficiales Soportados (/api/i18n/languages)', async () => {
+    const res = await executeMockRequest('GET', '/api/i18n/languages');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(res.body.data.total >= 10);
+    assert.equal(res.body.data.default_language, 'es');
+
+    const codes = res.body.data.languages.map(l => l.code);
+    assert.ok(codes.includes('es'));
+    assert.ok(codes.includes('en'));
+    assert.ok(codes.includes('fr'));
+    assert.ok(codes.includes('de'));
+    assert.ok(codes.includes('pt'));
+    assert.ok(codes.includes('it'));
+    assert.ok(codes.includes('zh'));
+    assert.ok(codes.includes('ja'));
+    assert.ok(codes.includes('ko'));
+    assert.ok(codes.includes('ru'));
+  });
+
+  await suite.test('17. Descarga de Diccionario Completo por Idioma (/api/i18n/translations/:lang)', async () => {
+    // 1. Probar Francés
+    const resFr = await executeMockRequest('GET', '/api/i18n/translations/fr');
+    assert.equal(resFr.status, 200);
+    assert.equal(resFr.body.data.language, 'fr');
+    assert.ok(resFr.body.data.dictionary.system.healthy.includes('opérationnel'));
+
+    // 2. Probar Japonés
+    const resJa = await executeMockRequest('GET', '/api/i18n/translations/ja');
+    assert.equal(resJa.status, 200);
+    assert.equal(resJa.body.data.language, 'ja');
+    assert.ok(resJa.body.data.dictionary.concierge.greeting.includes('DeepSeek AI'));
+
+    // 3. Probar Alemán
+    const resDe = await executeMockRequest('GET', '/api/i18n/translations/de');
+    assert.equal(resDe.status, 200);
+    assert.equal(resDe.body.data.language, 'de');
+    assert.ok(resDe.body.data.dictionary.system.healthy.includes('betriebsbereit'));
+
+    // 4. Rechazo de idioma no soportado
+    const resInvalid = await executeMockRequest('GET', '/api/i18n/translations/klingon');
+    assert.equal(resInvalid.status, 400);
+  });
+
+  await suite.test('18. Detección Automática de Idioma por Headers y Query Param (/api/i18n/detect)', async () => {
+    // 1. Detección por Accept-Language: fr-FR
+    const resHeader = await executeMockRequest('GET', '/api/i18n/detect', {
+      headers: { 'accept-language': 'fr-FR,fr;q=0.9,en;q=0.8' }
+    });
+    assert.equal(resHeader.status, 200);
+    assert.equal(resHeader.body.data.detected_locale, 'fr');
+
+    // 2. Detección por Query Param ?lang=ja
+    const resQuery = await executeMockRequest('GET', '/api/i18n/detect?lang=ja');
+    assert.equal(resQuery.status, 200);
+    assert.equal(resQuery.body.data.detected_locale, 'ja');
+
+    // 3. Fallback a Español si idioma no soportado
+    const resFallback = await executeMockRequest('GET', '/api/i18n/detect', {
+      headers: { 'accept-language': 'xx-YY' }
+    });
+    assert.equal(resFallback.status, 200);
+    assert.equal(resFallback.body.data.detected_locale, 'es');
+  });
+
+  await suite.test('19. Traducción Dinámica de Claves (/api/i18n/translate)', async () => {
+    const res = await executeMockRequest('POST', '/api/i18n/translate', {
+      body: {
+        key: 'concierge.greeting',
+        target_lang: 'en'
+      }
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(res.body.data.translated.includes('urban AI copilot'));
+  });
 });

@@ -74,3 +74,4 @@ class SupabaseWebhookHandler {
 }
 
 module.exports = new SupabaseWebhookHandler();
+

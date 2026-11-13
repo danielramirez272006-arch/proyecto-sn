@@ -13,7 +13,35 @@ async function initDatabase() {
   if (initializationPromise) return initializationPromise;
 
   initializationPromise = (async () => {
-    if (env.db.dialect === 'mysql') {
+    // 1. Probar Supabase / PostgreSQL si está configurado
+    if ((env.db.dialect === 'postgres' || env.db.dialect === 'supabase' || env.db.supabaseDbUrl) && env.nodeEnv !== 'test') {
+      try {
+        const { Pool } = require('pg');
+        const poolConfig = env.db.supabaseDbUrl 
+          ? { connectionString: env.db.supabaseDbUrl, ssl: { rejectUnauthorized: false } }
+          : {
+              host: env.db.host,
+              port: env.db.port || 5432,
+              user: env.db.user,
+              password: env.db.password,
+              database: env.db.database,
+              ssl: { rejectUnauthorized: false }
+            };
+        const pool = new Pool(poolConfig);
+        const testConn = await pool.connect();
+        testConn.release();
+
+        dbClient = pool;
+        activeDialect = 'postgres';
+        console.log('[DB] Conectado exitosamente a Supabase PostgreSQL');
+        return { client: dbClient, dialect: activeDialect };
+      } catch (err) {
+        console.warn(`[DB] Supabase PostgreSQL no disponible (${err.message}). Evaluando MySQL o SQLite de respaldo.`);
+      }
+    }
+
+    // 2. Probar MySQL si fue configurado
+    if (env.db.dialect === 'mysql' && env.nodeEnv !== 'test') {
       try {
         const mysql = require('mysql2/promise');
         const pool = mysql.createPool({
@@ -27,7 +55,6 @@ async function initDatabase() {
           connectTimeout: 2000,
         });
 
-        // Probar conexión real a MySQL
         const connection = await pool.getConnection();
         connection.release();
 
@@ -40,7 +67,7 @@ async function initDatabase() {
       }
     }
 
-    // Inicializar SQLite integrado (Node v24 DatabaseSync)
+    // 3. Fallback inteligente a SQLite integrado (Node v24 DatabaseSync)
     const { DatabaseSync } = require('node:sqlite');
     const dbFile = env.nodeEnv === 'test'
       ? ':memory:'
@@ -69,6 +96,13 @@ async function query(sql, rawParams = []) {
     const { client, dialect } = await initDatabase();
     metricsCollector.recordDbQuery(true);
 
+    if (dialect === 'postgres') {
+      let paramIdx = 1;
+      const pgSql = sql.replace(/\?/g, () => `$${paramIdx++}`);
+      const res = await client.query(pgSql, params);
+      return res.rows;
+    }
+
     if (dialect === 'mysql') {
       const [rows] = await client.execute(sql, params);
       return rows;
@@ -93,6 +127,37 @@ async function execute(sql, params = []) {
 
 async function transaction(fn) {
   const { client, dialect } = await initDatabase();
+
+  if (dialect === 'postgres') {
+    const connection = await client.connect();
+    await connection.query('BEGIN');
+    try {
+      const runner = {
+        query: async (sql, rawParams = []) => {
+          const params = rawParams.map(p => p === undefined ? null : p);
+          let paramIdx = 1;
+          const pgSql = sql.replace(/\?/g, () => `$${paramIdx++}`);
+          const res = await connection.query(pgSql, params);
+          return res.rows;
+        },
+        execute: async (sql, rawParams = []) => {
+          const params = rawParams.map(p => p === undefined ? null : p);
+          let paramIdx = 1;
+          const pgSql = sql.replace(/\?/g, () => `$${paramIdx++}`);
+          const res = await connection.query(pgSql, params);
+          return res.rows;
+        }
+      };
+      const result = await fn(runner);
+      await connection.query('COMMIT');
+      return result;
+    } catch (err) {
+      await connection.query('ROLLBACK');
+      throw err;
+    } finally {
+      connection.release();
+    }
+  }
 
   if (dialect === 'mysql') {
     const connection = await client.getConnection();
@@ -173,7 +238,14 @@ async function runMigrations() {
       sql = sql.replace(/DECIMAL\(\d+,\s*\d+\)/gi, 'NUMERIC');
     }
 
-    if (dialect === 'mysql') {
+    if (dialect === 'postgres') {
+      sql = sql.replace(/TINYINT\(1\)/gi, 'BOOLEAN');
+      sql = sql.replace(/CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP/gi, 'CURRENT_TIMESTAMP');
+      const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
+      for (const stmt of statements) {
+        await client.query(stmt);
+      }
+    } else if (dialect === 'mysql') {
       const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
       for (const stmt of statements) {
         await client.query(stmt);
@@ -194,7 +266,12 @@ async function runSeeds() {
     const fullPath = path.join(seedsDir, file);
     let sql = fs.readFileSync(fullPath, 'utf8');
 
-    if (dialect === 'mysql') {
+    if (dialect === 'postgres') {
+      const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
+      for (const stmt of statements) {
+        await client.query(stmt);
+      }
+    } else if (dialect === 'mysql') {
       sql = sql.replace(/ON CONFLICT \(id\) DO NOTHING/gi, 'ON DUPLICATE KEY UPDATE id=id');
       sql = sql.replace(/ON CONFLICT \(plan_id, guest_id, option_id\) DO UPDATE SET vote_type = EXCLUDED\.vote_type, updated_at = CURRENT_TIMESTAMP/gi, 
         'ON DUPLICATE KEY UPDATE vote_type = VALUES(vote_type), updated_at = CURRENT_TIMESTAMP');

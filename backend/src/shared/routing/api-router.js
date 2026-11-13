@@ -4,6 +4,7 @@ const router = express.Router();
 const { checkHealth, query } = require('../config/database');
 const { success } = require('../utils/http-response');
 const deepSeekClient = require('../config/deepseek-config');
+const supabaseClient = require('../config/supabase-config');
 const metricsCollector = require('../telemetry/metrics-collector');
 const { scheduler } = require('../../autonomous-agents');
 const { openApiSpec, renderSwaggerUiHtml } = require('../docs/swagger-ui-handler');
@@ -51,11 +52,18 @@ router.get('/health/db', async (req, res, next) => {
   }
 });
 
+// Chequeo de conexión y estado de Supabase Cloud
+router.get('/health/supabase', async (req, res) => {
+  const status = await supabaseClient.checkHealth();
+  return success(res, status);
+});
+
 // Chequeo de telemetría completa del sistema
 router.get('/health/system', async (req, res, next) => {
   try {
     const mem = process.memoryUsage();
     const dbHealth = await checkHealth();
+    const supabaseHealth = await supabaseClient.checkHealth();
     const aiStatus = deepSeekClient.getMetrics();
     const agentsStatus = scheduler.getStatus();
     const metricsSummary = metricsCollector.getMetricsSummary();
@@ -73,6 +81,7 @@ router.get('/health/system', async (req, res, next) => {
         }
       },
       database: dbHealth,
+      supabase: supabaseHealth,
       ai_copilot: aiStatus,
       autonomous_agents: agentsStatus,
       http_telemetry: metricsSummary.http

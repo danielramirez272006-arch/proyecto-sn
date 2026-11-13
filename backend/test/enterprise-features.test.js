@@ -210,4 +210,17 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.ok(Array.isArray(res.body.data));
     assert.ok(res.body.data.length >= 1);
   });
+
+  await suite.test('11. Integración Supabase: Endpoint de salud y cliente resiliente (/api/health/supabase)', async () => {
+    const res = await executeMockRequest('GET', '/api/health/supabase');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(res.body.data.provider.includes('Supabase'));
+    assert.equal(typeof res.body.data.configured, 'boolean');
+
+    // Test de fallback seguro de almacenamiento cuando no hay credenciales activas
+    const supabaseClient = require('../src/shared/config/supabase-config');
+    const uploadRes = await supabaseClient.uploadStorageFile('receipts', 'test.jpg', Buffer.from('fake-image'));
+    assert.ok(uploadRes.url);
+  });
 });

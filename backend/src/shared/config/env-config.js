@@ -21,6 +21,13 @@ const env = {
       ? (process.env.DB_NAME_TEST || ':memory:') 
       : (process.env.DB_NAME || 'sn_db'),
     connectionLimit: parseInt(process.env.DB_POOL_LIMIT || '10', 10),
+    supabaseDbUrl: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || '',
+  },
+  supabase: {
+    url: process.env.SUPABASE_URL || '',
+    anonKey: process.env.SUPABASE_ANON_KEY || '',
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    dbUrl: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || '',
   },
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY || '',

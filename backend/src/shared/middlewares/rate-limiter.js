@@ -17,9 +17,18 @@ class RateLimiterRegistry {
         return next();
       }
 
-      const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+      const forwarded = req.headers['x-forwarded-for'];
+      const ip = forwarded
+        ? String(forwarded).split(',')[0].trim()
+        : (req.socket?.remoteAddress || '127.0.0.1');
       const key = `${name}:${ip}`;
       const now = Date.now();
+
+      if (this.buckets.size > 1000) {
+        for (const [k, v] of this.buckets.entries()) {
+          if (now > v.resetTime) this.buckets.delete(k);
+        }
+      }
 
       let record = this.buckets.get(key);
       if (!record || now > record.resetTime) {

@@ -997,4 +997,26 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     });
     assert.equal(reusedRefresh.status, 401);
   });
+
+  await suite.test('42. Escena de Mapa 2D/3D y detalle de restaurantes (/api/live/scene y /api/live/places/:id)', async () => {
+    const scene3d = await executeMockRequest('GET', '/api/live/scene?mode=3d');
+    assert.equal(scene3d.status, 200);
+    assert.equal(scene3d.body.data.mode, '3d');
+    assert.equal(scene3d.body.data.camera.pitch, 55);
+    assert.equal(scene3d.body.data.layers.markers_2d.type, 'FeatureCollection');
+    assert.equal(scene3d.body.data.layers.buildings_3d.type, 'FeatureCollection');
+    assert.ok(scene3d.body.data.places.length > 0);
+    assert.ok(scene3d.body.data.places[0].style_3d.height_m > 0);
+    assert.ok(scene3d.body.data.places[0].navigation_links);
+
+    const scene2d = await executeMockRequest('GET', '/api/live/scene?mode=2d');
+    assert.equal(scene2d.status, 200);
+    assert.equal(scene2d.body.data.mode, '2d');
+    assert.equal(scene2d.body.data.camera.pitch, 0);
+
+    const firstId = scene3d.body.data.places[0].id;
+    const detailRes = await executeMockRequest('GET', `/api/live/places/${firstId}`);
+    assert.equal(detailRes.status, 200);
+    assert.equal(detailRes.body.data.id, firstId);
+  });
 });

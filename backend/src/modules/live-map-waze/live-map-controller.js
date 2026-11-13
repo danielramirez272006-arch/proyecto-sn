@@ -1,5 +1,5 @@
 const liveMapService = require('./live-map-service');
-const { success, created, badRequest } = require('../../shared/utils/http-response');
+const { success, created, badRequest, notFound } = require('../../shared/utils/http-response');
 const sseBroadcaster = require('../../shared/realtime/sse-broadcaster');
 
 class LiveMapController {
@@ -8,6 +8,32 @@ class LiveMapController {
       const { lat, lng } = req.query;
       const pins = await liveMapService.getMapPins({ lat, lng });
       return success(res, pins);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getMapScene(req, res, next) {
+    try {
+      const { mode, category, lat, lng, radius_km } = req.query;
+      const scene = await liveMapService.getMapScene({
+        mode: mode || '3d',
+        category,
+        lat,
+        lng,
+        radiusKm: radius_km ? Number(radius_km) : undefined
+      });
+      return success(res, scene);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getPlaceDetail(req, res, next) {
+    try {
+      const detail = await liveMapService.getPlaceDetail(req.params.id);
+      if (!detail) return notFound(res, 'Lugar o restaurante no encontrado');
+      return success(res, detail);
     } catch (err) {
       next(err);
     }

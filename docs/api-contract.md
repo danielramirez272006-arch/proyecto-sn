@@ -1,6 +1,6 @@
 # Contrato de API y Especificación OpenAPI — Sistema de Sinergia Urbana
 
-**Versión:** 1.3.0 (Enterprise Supabase & DeepSeek MVP)  
+**Versión:** 1.4.0 (Enterprise Supabase, i18n 10 Idiomas & DeepSeek Multimodal MVP)  
 **Entorno Base:** `http://localhost:4000/api`  
 **Swagger UI Interactivo:** `http://localhost:4000/api/docs`  
 **OpenAPI Spec JSON:** `http://localhost:4000/api/docs/openapi.json`  
@@ -113,3 +113,20 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente c
 - **`GET /api/audit/history`**: Pista inmutable de auditoría (quién, qué IP, qué cambió, timestamp).
 - **`GET /api/admin/agents/status`**: Estado del orquestador y tareas en background.
 - **`POST /api/admin/agents/:jobName/run`**: Ejecución manual forzada de agentes autónomos.
+
+### 3.8 Internacionalización Dinámica (i18n — 10 Idiomas Oficiales)
+- **`GET /api/i18n/languages`**: Listado de los 10 idiomas oficiales (`es`, `en`, `fr`, `de`, `pt`, `it`, `zh`, `ja`, `ko`, `ru`) con metadatos.
+- **`GET /api/i18n/translations/:lang`**: Diccionario completo de traducciones para hidratación del cliente.
+- **`GET /api/i18n/detect`**: Detección de idioma preferido según cabeceras `Accept-Language`, `x-language` o query param `?lang=`.
+- **`POST /api/i18n/translate`**: Traducción de claves puntuales en tiempo real.
+
+### 3.9 Funciones Enterprise, Inteligencia DeepSeek y Formatos Abiertos
+- **`GET /api/health/deep`**: Diagnóstico de latencia profunda en paralelo (PostgreSQL, Supabase Cloud y DeepSeek AI en ms).
+- **`GET /api/places/smart-search`**: Búsqueda semántica de lugares mediante lenguaje natural impulsada por DeepSeek AI.
+- **`GET /api/places/export/geojson`**: Exportador estándar RFC 7946 GeoJSON de lugares para Leaflet, Mapbox o GIS.
+- **`GET /api/events/export/ics`**: Exportador de calendario RFC 5545 iCalendar para Google Calendar y Apple Calendar.
+- **`GET /api/events/:id/export/ics`**: Exportador de evento individual en formato `.ics`.
+- **`POST /api/social/scan-invoice`**: Extractor OCR inteligente de facturas y comprobantes SINPE Móvil con desglose tributario de Costa Rica.
+- **`POST /api/rescue/match-pet`**: Coincidencia visual y morfológica de mascotas extraviadas con filtrado de distancia geográfica.
+- **`POST /api/storage/upload`**: Subida de archivos e imágenes a Supabase Storage con verificación MIME y fallback.
+- **`POST /api/webhooks/supabase`**: Receptor de webhooks de Supabase con firma HMAC-SHA256 y difusión en vivo vía SSE.

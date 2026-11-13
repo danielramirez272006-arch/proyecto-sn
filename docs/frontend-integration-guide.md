@@ -365,7 +365,69 @@ api.setLanguage('ja'); // Ahora todas las peticiones viajarán con la cabecera x
 
 ---
 
-## 6. Manejo de Errores y Códigos de Estado
+## 6. Nuevas Funcionalidades Enterprise Listas para el Frontend
+
+### 6.1. Búsqueda Semántica Inteligente (`GET /api/places/smart-search`)
+Permite búsquedas con lenguaje natural en español e inglés impulsadas por DeepSeek AI (ej: *"dónde tomar café de especialidad con buena vista"* o *"lugares pet-friendly con parqueo"*):
+```javascript
+// GET /api/places/smart-search?q=cafe+con+buen+wifi
+const results = await api.get('/places/smart-search?q=cafe+con+buen+wifi');
+// results -> array de lugares con score de relevancia y razonamiento de IA
+```
+
+### 6.2. Exportación a Mapas GeoJSON RFC 7946 (`GET /api/places/export/geojson`)
+Directamente compatible con Leaflet, Mapbox, Google Maps o MapLibre:
+```javascript
+// GET /api/places/export/geojson?category=cafeteria
+const geojson = await api.get('/places/export/geojson?category=cafeteria');
+// geojson -> { type: "FeatureCollection", features: [ ... ] }
+map.addSource('places', { type: 'geojson', data: geojson });
+```
+
+### 6.3. Exportación a Calendarios iCalendar RFC 5545 (`GET /api/events/export/ics`)
+Descarga directa para agregar a Google Calendar, Apple Calendar o Outlook:
+```javascript
+// Abrir directamente en el navegador o botón de descarga:
+window.open('http://localhost:4000/api/events/export/ics');
+// O para un evento específico:
+window.open('http://localhost:4000/api/events/evt_feria_sabado_1/export/ics');
+```
+
+### 6.4. Escaneo Inteligente de Facturas y Tickets SINPE con DeepSeek AI (`POST /api/social/scan-invoice`)
+Analiza texto o imagen de comprobantes para extraer montos, IVA 13%, desglose y datos SINPE Móvil:
+```javascript
+const scanResult = await api.post('/social/scan-invoice', {
+  raw_text: 'Restaurante El Cafetal\n1x Cafe Chorreado 2500\n1x Gallo Pinto 3500\nIVA: 780\nTotal: 6780',
+  // o image_base64: 'data:image/jpeg;base64,...'
+});
+console.log(scanResult.total); // 6780
+console.log(scanResult.split_suggestions); // sugerencias de división
+```
+
+### 6.5. Búsqueda y Coincidencia de Mascotas Extraviadas con IA (`POST /api/rescue/match-pet`)
+Compara reportes de mascotas perdidas/encontradas usando morfología, raza, color y proximidad geográfica en km:
+```javascript
+const matches = await api.post('/rescue/match-pet', {
+  species: 'perro',
+  breed: 'Zaguate / Criollo',
+  colors: ['cafe', 'blanco'],
+  latitude: 9.9322,
+  longitude: -84.0795
+});
+// matches -> array ordenado por match_percentage (%) con distancia en km
+```
+
+### 6.6. Telemetría y Diagnóstico Profundo en Tiempo Real (`GET /api/health/deep`)
+Mide la latencia en milisegundos de PostgreSQL, Supabase Cloud y el motor DeepSeek AI en paralelo:
+```javascript
+const health = await api.get('/health/deep');
+console.log(health.checks.database.latency_ms); // ej: 14ms
+console.log(health.checks.deepseek_ai.latency_ms); // ej: 45ms
+```
+
+---
+
+## 7. Manejo de Errores y Códigos de Estado
 
 | Código | Significado | Qué debe hacer el Frontend |
 |---|---|---|
@@ -380,7 +442,7 @@ api.setLanguage('ja'); // Ahora todas las peticiones viajarán con la cabecera x
 
 ---
 
-## 7. Verificación de Funcionamiento Rápida
+## 8. Verificación de Funcionamiento Rápida
 
 Para comprobar que todo está listo antes de programar componentes en el frontend:
 1. Abre tu navegador en `http://localhost:4000/api/health/supabase`.

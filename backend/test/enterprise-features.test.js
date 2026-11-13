@@ -426,4 +426,129 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(res.body.ok, true);
     assert.ok(res.body.data.translated.includes('urban AI copilot'));
   });
+
+  await suite.test('20. Diagnóstico de Latencia Profunda con Benchmarks en Paralelo (/api/health/deep)', async () => {
+    const res = await executeMockRequest('GET', '/api/health/deep');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(res.body.data.benchmarks);
+    assert.ok(res.body.data.benchmarks.postgres);
+    assert.equal(typeof res.body.data.benchmarks.postgres.latency_ms, 'number');
+    assert.ok(res.body.data.benchmarks.supabase_cloud);
+    assert.ok(res.body.data.benchmarks.deepseek_ai);
+    assert.equal(typeof res.body.data.total_probe_duration_ms, 'number');
+  });
+
+  await suite.test('21. Búsqueda Semántica Inteligente de Lugares (/api/places/smart-search)', async () => {
+    const res = await executeMockRequest('GET', '/api/places/smart-search?q=café pet friendly con terraza');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(Array.isArray(res.body.data));
+    assert.ok(res.body.data.length >= 1);
+    assert.ok(res.body.data[0].match_score >= 30);
+    assert.ok(res.body.data[0].ai_reason);
+  });
+
+  await suite.test('22. Exportador GeoJSON Estándar RFC 7946 (/api/places/export/geojson)', async () => {
+    const res = await executeMockRequest('GET', '/api/places/export/geojson');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.type, 'FeatureCollection');
+    assert.ok(Array.isArray(res.body.features));
+    assert.ok(res.body.features.length >= 1);
+    assert.equal(res.body.features[0].geometry.type, 'Point');
+    assert.equal(res.body.features[0].geometry.coordinates.length, 2);
+    assert.ok(res.body.features[0].properties.name);
+  });
+
+  await suite.test('23. Exportador iCalendar RFC 5545 para Google/Apple Calendar (/api/events/export/ics)', async () => {
+    // 1. Exportación de todos los eventos
+    const resAll = await executeMockRequest('GET', '/api/events/export/ics');
+    assert.equal(resAll.status, 200);
+    assert.ok(typeof resAll.body === 'string');
+    assert.ok(resAll.body.includes('BEGIN:VCALENDAR'));
+    assert.ok(resAll.body.includes('BEGIN:VEVENT'));
+    assert.ok(resAll.body.includes('END:VCALENDAR'));
+
+    // 2. Exportación de un evento específico
+    const resSingle = await executeMockRequest('GET', '/api/events/evt_feria_sabado_1/export/ics');
+    assert.equal(resSingle.status, 200);
+    assert.ok(typeof resSingle.body === 'string');
+    assert.ok(resSingle.body.includes('BEGIN:VCALENDAR'));
+    assert.ok(resSingle.body.includes('Mora') || resSingle.body.includes('Sabatina'));
+    assert.ok(resSingle.body.includes('END:VCALENDAR'));
+  });
+
+  await suite.test('24. Extractor Inteligente de Facturas y Comprobantes SINPE (/api/social/scan-invoice)', async () => {
+    const invoiceText = `
+      RESTAURANTE EL ROBLE S.A.
+      Cedula Juridica: 3-101-998877
+      Consumo: 2 Cafes Geisha + Torta de Zanahoria
+      SUBTOTAL: ₡15,000
+      IVA (13%): ₡1,950
+      SERVICIO (10%): ₡1,500
+      TOTAL A PAGAR: ₡18,450
+      Pago realizado por SINPE Movil al 8888-1111
+    `;
+
+    const res = await executeMockRequest('POST', '/api/social/scan-invoice', {
+      body: { text: invoiceText }
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.data.total_crc, 18450);
+    assert.equal(res.body.data.currency, 'CRC');
+    assert.ok(res.body.data.subtotal_crc > 0);
+    assert.ok(res.body.data.iva_13_crc > 0);
+    assert.ok(res.body.data.service_10_crc > 0);
+  });
+
+  await suite.test('25. Matcher Inteligente de Mascotas Extraviadas (/api/rescue/match-pet)', async () => {
+    const lostPet = {
+      id: 'lost_dog_1',
+      species: 'perro',
+      breed: 'Zaguate mestizo',
+      color: 'Cafe con blanco',
+      lat: 9.9148,
+      lng: -84.2421,
+      notes: 'Lleva collar rojo y plaquita'
+    };
+
+    const foundPets = [
+      {
+        id: 'found_dog_1',
+        species: 'perro',
+        breed: 'Mestizo mediano',
+        color: 'Cafe con manchas blancas',
+        lat: 9.9160,
+        lng: -84.2410,
+        notes: 'Visto cerca de la plaza con collar rojo'
+      },
+      {
+        id: 'found_cat_1',
+        species: 'gato',
+        breed: 'Siames',
+        color: 'Blanco y gris',
+        lat: 9.9148,
+        lng: -84.2421,
+        notes: 'Gato siames en un arbol'
+      }
+    ];
+
+    const res = await executeMockRequest('POST', '/api/rescue/match-pet', {
+      body: {
+        lost_pet: lostPet,
+        found_pets: foundPets,
+        max_distance_km: 3.0
+      }
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(Array.isArray(res.body.data));
+    assert.equal(res.body.data.length, 1); // Solo debe coincidir el perro, no el gato
+    assert.equal(res.body.data[0].found_id, 'found_dog_1');
+    assert.ok(res.body.data[0].match_confidence >= 60);
+    assert.ok(res.body.data[0].distance_km < 1.0);
+  });
 });

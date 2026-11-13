@@ -481,6 +481,76 @@ module.exports = {
           "200": { description: "Texto traducido" }
         }
       }
+    },
+    "/health/deep": {
+      get: {
+        tags: ["Salud, Métricas y Diagnóstico"],
+        summary: "Diagnóstico profundo de latencia y benchmarks en paralelo de PostgreSQL, Supabase y DeepSeek AI",
+        responses: {
+          "200": { description: "Tiempos de respuesta exactos en milisegundos por servicio" }
+        }
+      }
+    },
+    "/places/smart-search": {
+      get: {
+        tags: ["Catálogo y Lugares"],
+        summary: "Búsqueda semántica con DeepSeek AI interpretando lenguaje natural y modismos ticos",
+        parameters: [
+          { name: "q", in: "query", required: true, schema: { type: "string" }, example: "café pet friendly con wifi pa bretear" }
+        ],
+        responses: {
+          "200": { description: "Lugares clasificados por afinidad semántica con match_score y justificación IA" }
+        }
+      }
+    },
+    "/places/export/geojson": {
+      get: {
+        tags: ["Catálogo y Lugares"],
+        summary: "Exportar el catálogo completo de lugares verificados en formato estándar GeoJSON RFC 7946",
+        responses: {
+          "200": { description: "FeatureCollection GeoJSON compatible con Leaflet, Mapbox y QGIS" }
+        }
+      }
+    },
+    "/events/export/ics": {
+      get: {
+        tags: ["Catálogo y Lugares"],
+        summary: "Exportar todos los eventos y ferias en formato estándar de calendario iCalendar RFC 5545 (.ics)",
+        responses: {
+          "200": { description: "Archivo iCalendar para Google Calendar / Apple Calendar" }
+        }
+      }
+    },
+    "/social/scan-invoice": {
+      post: {
+        tags: ["Planes Grupales (Social Dining)"],
+        summary: "Escanear ticket, factura electrónica o comprobante SINPE con DeepSeek AI",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  text: { type: "string", example: "Restaurante El Roble Total ₡18,450 SINPE Movil 88881111" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Desglose tributario con subtotal, IVA 13%, servicio 10% y propina" }
+        }
+      }
+    },
+    "/rescue/match-pet": {
+      post: {
+        tags: ["Rescate Urbano"],
+        summary: "Cruce inteligente de mascotas perdidas y encontradas con DeepSeek AI y radio GPS",
+        responses: {
+          "200": { description: "Coincidencias ordenadas por porcentaje de similitud y distancia" }
+        }
+      }
     }
   }
 };

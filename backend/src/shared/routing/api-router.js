@@ -58,6 +58,45 @@ router.get('/health/supabase', async (req, res) => {
   return success(res, status);
 });
 
+// Chequeo de latencia profunda y benchmarks en milisegundos
+router.get('/health/deep', async (req, res) => {
+  const t0 = Date.now();
+  const benchmarks = {};
+
+  // 1. Benchmark PostgreSQL / Supabase
+  const tPg0 = Date.now();
+  try {
+    await query('SELECT 1 AS probe');
+    benchmarks.postgres = { status: 'healthy', latency_ms: Date.now() - tPg0 };
+  } catch (err) {
+    benchmarks.postgres = { status: 'degraded', error: err.message, latency_ms: Date.now() - tPg0 };
+  }
+
+  // 2. Benchmark Supabase Cloud
+  const tSb0 = Date.now();
+  try {
+    const sbStatus = await supabaseClient.checkHealth();
+    benchmarks.supabase_cloud = { status: sbStatus.status, latency_ms: Date.now() - tSb0 };
+  } catch (err) {
+    benchmarks.supabase_cloud = { status: 'error', latency_ms: Date.now() - tSb0 };
+  }
+
+  // 3. Benchmark DeepSeek AI
+  benchmarks.deepseek_ai = {
+    configured: deepSeekClient.isConfigured(),
+    status: deepSeekClient.isConfigured() ? 'active' : 'local_heuristic_mode',
+    model: deepSeekClient.model
+  };
+
+  const totalDurationMs = Date.now() - t0;
+  return success(res, {
+    overall_status: benchmarks.postgres.status === 'healthy' ? 'healthy' : 'degraded',
+    total_probe_duration_ms: totalDurationMs,
+    benchmarks,
+    probed_at: new Date().toISOString()
+  });
+});
+
 // Chequeo de telemetría completa del sistema
 router.get('/health/system', async (req, res, next) => {
   try {
@@ -92,6 +131,37 @@ router.get('/health/system', async (req, res, next) => {
 });
 
 // 4. Catálogo Compartido de Lugares (con Paginación Avanzada y Filtro Radial GPS)
+router.get('/places/smart-search', async (req, res, next) => {
+  try {
+    const { q, query: textQuery, lat, lng, limit } = req.query;
+    const searchText = q || textQuery;
+    const smartSearchService = require('../../modules/places/places-smart-search');
+    const results = await smartSearchService.smartSearch({
+      text: searchText,
+      lat: lat ? parseFloat(lat) : undefined,
+      lng: lng ? parseFloat(lng) : undefined,
+      limit: limit ? parseInt(limit, 10) : 10,
+      language: req.locale || 'es'
+    });
+    return success(res, results, { total: results.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/places/export/geojson', async (req, res, next) => {
+  try {
+    const places = await placesRepository.findAll({ limit: 200 });
+    const { placesToGeoJson } = require('../utils/export-formats');
+    const geojson = placesToGeoJson(places);
+    res.setHeader('Content-Type', 'application/geo+json; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="lugares-costa-rica.geojson"');
+    return res.json(geojson);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/places', async (req, res, next) => {
   try {
     const { category, verified_only, search, page, limit, offset, lat, lng, radius_km, sort_by, sort_order } = req.query;
@@ -149,6 +219,65 @@ router.post('/webhooks/supabase', (req, res) => require('../webhooks/supabase-we
 router.get('/cache/stats', (req, res) => {
   const { ttlCache } = require('../cache/ttl-cache-service');
   return success(res, ttlCache.getStats());
+});
+
+// Exportación en formato iCalendar RFC 5545 (todos los eventos)
+router.get('/events/export/ics', async (req, res, next) => {
+  try {
+    const eventsService = require('../../modules/events/events-service');
+    const events = await eventsService.listEvents({ limit: 100 });
+    const { eventsToIcs } = require('../utils/export-formats');
+    const icsContent = eventsToIcs(events);
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="eventos-costa-rica.ics"');
+    return res.send(icsContent);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Exportación individual de evento en formato iCalendar RFC 5545
+router.get('/events/:id/export/ics', async (req, res, next) => {
+  try {
+    const eventsService = require('../../modules/events/events-service');
+    const event = await eventsService.getEventById(req.params.id);
+    if (!event) return res.status(404).json({ ok: false, error: { message: 'Evento no encontrado' } });
+    const { eventToIcs } = require('../utils/export-formats');
+    const icsContent = eventToIcs(event);
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="evento-${event.id}.ics"`);
+    return res.send(icsContent);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Escaneo inteligente de tickets y facturas con DeepSeek AI
+router.post('/social/scan-invoice', async (req, res, next) => {
+  try {
+    const { text, content_base64 } = req.body || {};
+    let invoiceText = text;
+    if (!invoiceText && content_base64) {
+      invoiceText = Buffer.from(content_base64, 'base64').toString('utf8');
+    }
+    const invoiceExtractor = require('../../autonomous-agents/consensus-moderator-agent/invoice-price-extractor');
+    const result = await invoiceExtractor.extractFromText(invoiceText || '');
+    return success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Matcher inteligente de mascotas extraviadas con DeepSeek AI
+router.post('/rescue/match-pet', async (req, res, next) => {
+  try {
+    const { lost_pet, found_pets, max_distance_km } = req.body || {};
+    const petMatcher = require('../../autonomous-agents/consensus-moderator-agent/lost-pet-visual-matcher');
+    const matches = await petMatcher.matchPets(lost_pet, found_pets || [], max_distance_km ? parseFloat(max_distance_km) : 5.0);
+    return success(res, matches, { total_matches: matches.length });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.use('/auth', require('../../modules/auth').authRoutes);

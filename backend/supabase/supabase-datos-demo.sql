@@ -114,3 +114,4 @@ VALUES
 ('stp_demo_1', 'opt_demo_1', 'plc_feria_1', 'evt_feria_sabado_1', 1, '2026-11-14 08:00:00-06', '2026-11-14 09:30:00-06', 'Feria del Agricultor de Ciudad Colón', 'Costado norte de la plaza'),
 ('stp_demo_2', 'opt_demo_1', 'plc_cafe_1', NULL, 2, '2026-11-14 09:45:00-06', '2026-11-14 11:00:00-06', 'Café de Especialidad El Roble', '100m oeste de la Iglesia')
 ON CONFLICT (id) DO NOTHING;
+

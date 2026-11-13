@@ -74,3 +74,4 @@ module.exports = {
   requireSupabaseAuth,
   optionalSupabaseAuth
 };
+

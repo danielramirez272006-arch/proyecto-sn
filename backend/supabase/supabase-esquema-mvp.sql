@@ -202,3 +202,4 @@ CREATE POLICY "Permitir lectura de eventos publicados" ON app_private.events
 -- Permisos completos para el rol administrativo de Express (service_role / postgres)
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private TO postgres, service_role;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA app_private TO postgres, service_role;
+

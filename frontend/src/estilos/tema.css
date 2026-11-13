@@ -1,0 +1,312 @@
+/* ============================================================
+   TEMA OSCURO — páginas públicas
+   Se activa con <html data-tema="oscuro"> y solo afecta al
+   contenedor .tema-publico (Navbar + páginas + Footer).
+   El panel de administración conserva su aspecto original.
+   ============================================================ */
+
+:root[data-tema='oscuro'] {
+  color-scheme: dark;
+}
+
+:root[data-tema='oscuro'] body {
+  background-color: #0e070c;
+}
+
+:root[data-tema='oscuro'] .gotox-root {
+  background-color: #0e070c;
+  color: #d8c3cc;
+}
+
+/* Paleta oscura derivada de la marca (vino profundo + rosa) */
+:root[data-tema='oscuro'] .tema-publico {
+  --dk-bg: #0e070c;
+  --dk-surface: #1a1017;
+  --dk-surface-2: #21131b;
+  --dk-surface-3: #2a1822;
+  --dk-surface-4: #35202b;
+  --dk-border: rgba(247, 222, 232, 0.12);
+  --dk-border-strong: rgba(247, 222, 232, 0.22);
+  --dk-ink: #f7ebf0;
+  --dk-body: #d8c3cc;
+  --dk-muted: #a98e99;
+  --dk-faint: #9c8290;
+  --dk-accent: #f0a6be;
+  --dk-accent-strong: #e38ca9;
+  --dk-burgundy: #7c2949;
+
+  background-color: var(--dk-bg);
+  color: var(--dk-body);
+}
+
+/* ------------------------------------------------------------
+   Superficies
+   ------------------------------------------------------------ */
+:root[data-tema='oscuro'] .tema-publico .bg-white {
+  background-color: var(--dk-surface);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-white\/85 {
+  background-color: rgba(26, 16, 23, 0.85);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-white\/95 {
+  background-color: rgba(26, 16, 23, 0.95);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-white\/80 {
+  background-color: rgba(26, 16, 23, 0.8);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-white\/70 {
+  background-color: rgba(26, 16, 23, 0.7);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-white\/60 {
+  background-color: rgba(26, 16, 23, 0.6);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-\[\#FBF8FF\] {
+  background-color: var(--dk-bg);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-\[\#FAF9FE\] {
+  background-color: #170d14;
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-\[\#FDF2F4\] {
+  background-color: rgba(124, 41, 73, 0.24);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-\[\#FDF2F4\]\/40 {
+  background-color: rgba(124, 41, 73, 0.16);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-\[\#501228\] {
+  background-color: var(--dk-burgundy);
+}
+
+/* Las tarjetas con degradado claro se vuelven superficie plana oscura */
+:root[data-tema='oscuro'] .tema-publico .from-white {
+  background-image: none;
+  background-color: var(--dk-surface);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-slate-50,
+:root[data-tema='oscuro'] .tema-publico .bg-slate-50\/90 {
+  background-color: var(--dk-surface-2);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-slate-50\/70 {
+  background-color: rgba(33, 19, 27, 0.7);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-slate-100,
+:root[data-tema='oscuro'] .tema-publico .bg-slate-100\/80 {
+  background-color: var(--dk-surface-3);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-slate-100\/60 {
+  background-color: rgba(42, 24, 34, 0.6);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-slate-200 {
+  background-color: var(--dk-surface-4);
+}
+
+/* ------------------------------------------------------------
+   Texto
+   ------------------------------------------------------------ */
+:root[data-tema='oscuro'] .tema-publico .text-\[\#111827\] {
+  color: var(--dk-ink);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-\[\#501228\],
+:root[data-tema='oscuro'] .tema-publico .text-\[\#6E1E3A\] {
+  color: var(--dk-accent);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-\[\#374151\] {
+  color: #e2cfd7;
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-\[\#4B5563\] {
+  color: var(--dk-body);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-\[\#6B7280\] {
+  color: var(--dk-muted);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-slate-900,
+:root[data-tema='oscuro'] .tema-publico .text-slate-800 {
+  color: var(--dk-ink);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-slate-700 {
+  color: #e2cfd7;
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-slate-600 {
+  color: var(--dk-body);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-slate-500 {
+  color: var(--dk-muted);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-slate-400 {
+  color: var(--dk-faint);
+}
+
+/* ------------------------------------------------------------
+   Bordes
+   ------------------------------------------------------------ */
+:root[data-tema='oscuro'] .tema-publico .border-slate-100 {
+  border-color: rgba(247, 222, 232, 0.08);
+}
+
+:root[data-tema='oscuro'] .tema-publico .border-slate-200,
+:root[data-tema='oscuro'] .tema-publico .border-slate-200\/60,
+:root[data-tema='oscuro'] .tema-publico .border-slate-200\/70,
+:root[data-tema='oscuro'] .tema-publico .border-slate-200\/80,
+:root[data-tema='oscuro'] .tema-publico .border-slate-200\/90 {
+  border-color: var(--dk-border);
+}
+
+:root[data-tema='oscuro'] .tema-publico .border-\[\#F9E2E8\] {
+  border-color: rgba(240, 166, 190, 0.24);
+}
+
+:root[data-tema='oscuro'] .tema-publico .border-\[\#501228\],
+:root[data-tema='oscuro'] .tema-publico .border-\[\#501228\]\/30 {
+  border-color: rgba(240, 166, 190, 0.45);
+}
+
+/* ------------------------------------------------------------
+   Hover / focus
+   ------------------------------------------------------------ */
+:root[data-tema='oscuro'] .tema-publico .hover\:text-\[\#111827\]:hover,
+:root[data-tema='oscuro'] .tema-publico .hover\:text-slate-900:hover,
+:root[data-tema='oscuro'] .tema-publico .hover\:text-slate-800:hover {
+  color: var(--dk-ink);
+}
+
+:root[data-tema='oscuro'] .tema-publico .hover\:text-\[\#501228\]:hover {
+  color: var(--dk-accent);
+}
+
+:root[data-tema='oscuro'] .tema-publico .hover\:bg-slate-100:hover,
+:root[data-tema='oscuro'] .tema-publico .hover\:bg-slate-100\/60:hover {
+  background-color: var(--dk-surface-3);
+}
+
+:root[data-tema='oscuro'] .tema-publico .hover\:bg-slate-50:hover {
+  background-color: var(--dk-surface-2);
+}
+
+:root[data-tema='oscuro'] .tema-publico .hover\:bg-\[\#FDF2F4\]:hover {
+  background-color: rgba(124, 41, 73, 0.28);
+}
+
+:root[data-tema='oscuro'] .tema-publico .hover\:bg-white\/60:hover {
+  background-color: rgba(42, 24, 34, 0.6);
+}
+
+/* ------------------------------------------------------------
+   Estados / badges (pasteles a versiones tenues)
+   ------------------------------------------------------------ */
+:root[data-tema='oscuro'] .tema-publico .bg-emerald-50,
+:root[data-tema='oscuro'] .tema-publico .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.14);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-emerald-700,
+:root[data-tema='oscuro'] .tema-publico .text-emerald-800 {
+  color: #6ee7b7;
+}
+
+:root[data-tema='oscuro'] .tema-publico .border-emerald-200\/60,
+:root[data-tema='oscuro'] .tema-publico .border-emerald-300 {
+  border-color: rgba(110, 231, 183, 0.3);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-amber-50,
+:root[data-tema='oscuro'] .tema-publico .bg-amber-50\/70 {
+  background-color: rgba(245, 158, 11, 0.14);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-amber-800,
+:root[data-tema='oscuro'] .tema-publico .text-amber-900 {
+  color: #fcd34d;
+}
+
+:root[data-tema='oscuro'] .tema-publico .border-amber-200\/60,
+:root[data-tema='oscuro'] .tema-publico .border-amber-200\/50 {
+  border-color: rgba(252, 211, 77, 0.3);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-rose-50,
+:root[data-tema='oscuro'] .tema-publico .bg-rose-100 {
+  background-color: rgba(244, 63, 94, 0.14);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-rose-800 {
+  color: #fda4af;
+}
+
+:root[data-tema='oscuro'] .tema-publico .border-rose-200\/60 {
+  border-color: rgba(253, 164, 175, 0.3);
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.16);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-blue-700,
+:root[data-tema='oscuro'] .tema-publico .text-blue-600 {
+  color: #93c5fd;
+}
+
+:root[data-tema='oscuro'] .tema-publico .bg-purple-50 {
+  background-color: rgba(168, 85, 247, 0.16);
+}
+
+:root[data-tema='oscuro'] .tema-publico .text-purple-700 {
+  color: #d8b4fe;
+}
+
+/* Inputs y selector de rango */
+:root[data-tema='oscuro'] .tema-publico input::placeholder,
+:root[data-tema='oscuro'] .tema-publico .placeholder\:text-slate-400::placeholder {
+  color: var(--dk-faint);
+}
+
+:root[data-tema='oscuro'] .tema-publico .accent-\[\#501228\] {
+  accent-color: var(--dk-accent);
+}
+
+/* ------------------------------------------------------------
+   Excepción: la medalla QR debe seguir siendo clara
+   (un QR oscuro no se escanea bien)
+   ------------------------------------------------------------ */
+:root[data-tema='oscuro'] .tema-publico .qr-claro,
+:root[data-tema='oscuro'] .tema-publico .qr-claro .bg-white {
+  background-color: #ffffff;
+}
+
+:root[data-tema='oscuro'] .tema-publico .qr-claro .text-\[\#501228\] {
+  color: #501228;
+}
+
+:root[data-tema='oscuro'] .tema-publico .qr-claro .text-\[\#111827\] {
+  color: #111827;
+}
+
+:root[data-tema='oscuro'] .tema-publico .qr-claro .border-slate-100 {
+  border-color: #f1f5f9;
+}
+
+:root[data-tema='oscuro'] .tema-publico .qr-claro .border-white {
+  border-color: #ffffff;
+}

@@ -17,16 +17,25 @@ async function initDatabase() {
     if ((env.db.dialect === 'postgres' || env.db.dialect === 'supabase' || env.db.supabaseDbUrl) && env.nodeEnv !== 'test') {
       try {
         const { Pool } = require('pg');
-        const poolConfig = env.db.supabaseDbUrl 
-          ? { connectionString: env.db.supabaseDbUrl, ssl: { rejectUnauthorized: false } }
-          : {
-              host: env.db.host,
-              port: env.db.port || 5432,
-              user: env.db.user,
-              password: env.db.password,
-              database: env.db.database,
-              ssl: { rejectUnauthorized: false }
-            };
+        let poolConfig;
+        if (env.db.supabaseDbUrl) {
+          const cleanedUrl = env.db.supabaseDbUrl.replace(/\[([^\]]+)\]/, '$1');
+          poolConfig = { 
+            connectionString: cleanedUrl, 
+            ssl: { rejectUnauthorized: false },
+            connectionTimeoutMillis: 5000
+          };
+        } else {
+          poolConfig = {
+            host: env.db.host,
+            port: env.db.port || 5432,
+            user: env.db.user,
+            password: env.db.password,
+            database: env.db.database,
+            ssl: { rejectUnauthorized: false },
+            connectionTimeoutMillis: 5000
+          };
+        }
         const pool = new Pool(poolConfig);
         pool.on('connect', (client) => {
           client.query('SET search_path TO app_private, public').catch(() => {});

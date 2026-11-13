@@ -13,6 +13,44 @@ class ApiClient {
     this.token = typeof localStorage !== 'undefined' ? localStorage.getItem('sn_auth_token') : null;
     this.guestToken = typeof localStorage !== 'undefined' ? localStorage.getItem('sn_guest_token') : null;
     this.language = typeof localStorage !== 'undefined' ? localStorage.getItem('sn_language') || 'es' : 'es';
+    this.refreshPromise = null;
+  }
+
+  async _tryRefreshToken() {
+    if (typeof localStorage === 'undefined') return null;
+    const refreshToken = localStorage.getItem('sn_refresh_token');
+    if (!refreshToken) return null;
+
+    if (!this.refreshPromise) {
+      this.refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error('REFRESH_FAILED');
+          const json = await res.json();
+          const payload = json?.data || json;
+          if (payload?.token) {
+            this.setToken(payload.token);
+            if (payload.refresh_token) {
+              localStorage.setItem('sn_refresh_token', payload.refresh_token);
+            }
+            return payload.token;
+          }
+          throw new Error('REFRESH_FAILED');
+        })
+        .catch(() => {
+          this.setToken(null);
+          localStorage.removeItem('sn_refresh_token');
+          return null;
+        })
+        .finally(() => {
+          this.refreshPromise = null;
+        });
+    }
+
+    return this.refreshPromise;
   }
 
   setLanguage(lang) {
@@ -39,7 +77,7 @@ class ApiClient {
     }
   }
 
-  async request(endpoint, { method = 'GET', body = null, headers = {} } = {}) {
+  async request(endpoint, { method = 'GET', body = null, headers = {}, _retried = false } = {}) {
     const defaultHeaders = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -66,6 +104,19 @@ class ApiClient {
 
     try {
       const response = await fetch(`${BASE_URL}${endpoint}`, config);
+      if (
+        response.status === 401 &&
+        !_retried &&
+        !endpoint.startsWith('/auth/login') &&
+        !endpoint.startsWith('/auth/register') &&
+        !endpoint.startsWith('/auth/refresh')
+      ) {
+        const newToken = await this._tryRefreshToken();
+        if (newToken) {
+          return this.request(endpoint, { method, body, headers, _retried: true });
+        }
+      }
+
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {

@@ -59,5 +59,9 @@ const env = {
   }
 };
 
+if (env.isProd && !process.env.JWT_SECRET) {
+  console.warn('[Security] ADVERTENCIA: NODE_ENV=production sin JWT_SECRET configurado. Define JWT_SECRET en .env.');
+}
+
 module.exports = env;
 

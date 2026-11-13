@@ -223,7 +223,7 @@ class AuthService {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const rawToken = authHeader.replace(/^Bearer\s+/, '');
       const decoded = verifyToken(rawToken);
-      if (decoded) {
+      if (decoded && !decoded.is_refresh) {
         return {
           authenticated: true,
           type: 'registered_user',

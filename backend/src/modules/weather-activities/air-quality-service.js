@@ -1,4 +1,5 @@
 const httpClient = require('../../shared/clients/http-client');
+const env = require('../../shared/config/env-config');
 
 class AirQualityService {
   /**
@@ -22,13 +23,15 @@ class AirQualityService {
     const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=european_aqi,us_aqi,pm10,pm2_5,ozone,carbon_monoxide&timezone=America%2FCosta_Rica`;
 
     let data = fallback;
-    try {
-      const res = await httpClient.getJson(url, fallback, 3000);
-      if (res && res.current) {
-        data = { ...res, source: 'open_meteo_air_quality_live' };
+    if (!env.isTest) {
+      try {
+        const res = await httpClient.getJson(url, fallback, 3000);
+        if (res && res.current) {
+          data = { ...res, source: 'open_meteo_air_quality_live' };
+        }
+      } catch {
+        data = fallback;
       }
-    } catch {
-      data = fallback;
     }
 
     const aqi = data.current?.us_aqi || 30;

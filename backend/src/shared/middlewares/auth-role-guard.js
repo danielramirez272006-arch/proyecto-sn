@@ -43,7 +43,7 @@ function authenticateOptional(req, res, next) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
-    if (decoded) {
+    if (decoded && !decoded.is_refresh) {
       req.user = decoded;
     }
   }

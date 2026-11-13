@@ -4,8 +4,12 @@
   "private": true,
   "description": "Monorepo raíz para Sistema de Sinergia Urbana",
   "scripts": {
-    "dev:all": "node -e \"console.log('Inicie frontend y backend en terminales separadas: cd backend && npm run dev | cd frontend && npm run dev')\"",
+    "dev": "node scripts/dev-all.js",
+    "dev:all": "node scripts/dev-all.js",
     "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
     "backup": "node backend/src/autonomous-agents/maintenance-agent/auto-backup-json.js",
     "test:backend": "cd backend && npm test"
   }

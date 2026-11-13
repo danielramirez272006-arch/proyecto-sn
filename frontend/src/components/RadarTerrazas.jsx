@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TERRAZAS } from '../data/terrazas';
+import { api } from '../shared/services/api-client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
@@ -10,6 +11,21 @@ export function RadarTerrazas() {
   const [filtroRuido, setFiltroRuido] = useState('todos');
   const [soloEspacioDisponible, setSoloEspacioDisponible] = useState(false);
   const [terrazaSeleccionada, setTerrazaSeleccionada] = useState(null);
+  const [backendPlacesCount, setBackendPlacesCount] = useState(null);
+
+  useEffect(() => {
+    let activo = true;
+    api.get('/places?limit=20')
+      .then((places) => {
+        if (activo && Array.isArray(places)) {
+          setBackendPlacesCount(places.length);
+        }
+      })
+      .catch(() => {
+        // Modo local sin backend activo
+      });
+    return () => { activo = false; };
+  }, []);
 
   const terrazasFiltradas = TERRAZAS.filter((terraza) => {
     if (filtroRuido !== 'todos') {

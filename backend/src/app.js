@@ -46,6 +46,18 @@ if (fs.existsSync(demoFrontendPath)) {
   app.get('/demo*', (req, res) => res.sendFile(path.join(demoFrontendPath, 'index.html')));
 }
 
+// 5.2 Frontend principal compilado (frontend/dist) - unificado con el backend
+const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/demo')) {
+      return next();
+    }
+    return res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
+
 // 6. Manejador de rutas no encontradas
 app.use((req, res) => {
   res.status(404).json({

@@ -3,26 +3,37 @@ const placesRepository = require('../places/places-repository');
 
 class VetHubService {
   async getEmergencyClinics24h() {
-    return [
-      {
-        id: 'vet_emergencia_1',
-        name: 'Hospital Veterinario 24/7 San Antonio',
-        address: 'Escazú Centro, 200m Sur de la Iglesia',
-        phone: '+506 2289-5566',
+    // 1. Consultar la base de datos en tiempo real
+    const places = await placesRepository.findAll({ category: 'veterinaria', limit: 20 });
+    if (places && places.length > 0) {
+      return places.map(p => ({
+        id: p.id,
+        name: p.name,
+        address: p.address,
+        phone: p.phone,
+        is_24h_verified: Boolean(p.attributes_metadata?.is_24h || p.attributes_metadata?.emergency_24h),
+        sinac_exotics_certified: Boolean(p.attributes_metadata?.sinac_exotics_certified),
+        coords: { lat: p.lat, lng: p.lng },
+        source: 'database_app_private'
+      }));
+    }
+
+    // 2. Si aún no hay veterinarias en la base de datos, consultar el catálogo general de salud
+    const generalPlaces = await placesRepository.findAll({ limit: 10 });
+    const healthClinics = generalPlaces.filter(p => p.category === 'salud' || p.category === 'clinica');
+    if (healthClinics.length > 0) {
+      return healthClinics.map(p => ({
+        id: p.id,
+        name: p.name,
+        address: p.address,
+        phone: p.phone,
         is_24h_verified: true,
-        sinac_exotics_certified: true,
-        coords: { lat: 9.9180, lng: -84.1410 }
-      },
-      {
-        id: 'vet_emergencia_2',
-        name: 'Clínica Veterinaria Santa Ana Nocturna',
-        address: 'Santa Ana, frente a la Cruz Roja',
-        phone: '+506 2282-4411',
-        is_24h_verified: true,
-        sinac_exotics_certified: false,
-        coords: { lat: 9.9320, lng: -84.1820 }
-      }
-    ];
+        coords: { lat: p.lat, lng: p.lng },
+        source: 'database_app_private'
+      }));
+    }
+
+    return [];
   }
 
   triageIngestion(substance) {
@@ -45,4 +56,3 @@ class VetHubService {
 }
 
 module.exports = new VetHubService();
-

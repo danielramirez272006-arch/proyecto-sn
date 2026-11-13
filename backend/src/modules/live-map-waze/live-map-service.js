@@ -4,17 +4,7 @@ const sseBroadcaster = require('../../shared/realtime/sse-broadcaster');
 class LiveMapService {
   constructor() {
     this.communityReports = [];
-    this.utilityOutages = [
-      {
-        id: 'outage_aya_1',
-        utility: 'AyA Acueductos',
-        service_type: 'corte_de_agua',
-        location: 'Santa Ana y Pozos',
-        status: 'en_reparacion',
-        estimated_restoration: '16:00',
-        coords: { lat: 9.9320, lng: -84.1820 }
-      }
-    ];
+    this.utilityOutages = [];
   }
 
   async getMapPins({ lat, lng, radiusKm = 10 } = {}) {
@@ -31,7 +21,29 @@ class LiveMapService {
   }
 
   getOutages() {
-    return this.utilityOutages;
+    // Retornar solo reportes activos no vencidos
+    const now = Date.now();
+    return this.utilityOutages.filter(o => !o.expires_at || o.expires_at > now);
+  }
+
+  reportOutage({ utility = 'AyA Acueductos', service_type = 'corte_de_agua', location, coords, note }) {
+    const outage = {
+      id: `outage_${Date.now()}`,
+      utility,
+      service_type,
+      location: location || 'Área Metropolitana',
+      status: 'reportado',
+      coords: coords || { lat: 9.9320, lng: -84.1820 },
+      note: note || '',
+      reported_at: new Date().toISOString(),
+      expires_at: Date.now() + (6 * 60 * 60 * 1000) // Válido por 6 horas
+    };
+
+    this.utilityOutages.unshift(outage);
+    if (this.utilityOutages.length > 50) this.utilityOutages.pop();
+
+    sseBroadcaster.broadcast('live-map', 'UTILITY_OUTAGE', outage);
+    return outage;
   }
 
   addReport({ type, lat, lng, note, reportedBy = 'anonymous' }) {
@@ -58,4 +70,3 @@ class LiveMapService {
 }
 
 module.exports = new LiveMapService();
-

@@ -30,11 +30,6 @@ class AuthService {
       return legacy === storedHash;
     }
 
-    // En entorno de test / demo aceptamos 'demo' o password coincidente con hash efímero
-    if (password === 'password123' || password === 'admin123' || storedHash.includes('ephemeral') || storedHash.includes('mock')) {
-      return true;
-    }
-
     const simpleHash = crypto.createHash('sha256').update(password).digest('hex');
     return simpleHash === storedHash;
   }

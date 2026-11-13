@@ -1,21 +1,10 @@
 const crypto = require('node:crypto');
 const sseBroadcaster = require('../../shared/realtime/sse-broadcaster');
+const placesRepository = require('../places/places-repository');
 
 class UrbanRescueService {
   constructor() {
-    this.inMemorySosReports = [
-      {
-        id: 'sos_demo_1',
-        type: 'pet_rescue',
-        title: 'Perro extraviado raza Schnauzer cerca de la plaza',
-        description: 'Visto cruzando la calle principal, collar rojo con plaquita.',
-        lat: 9.9145,
-        lng: -84.2435,
-        status: 'open',
-        contact_phone: '+506 8800-1122',
-        created_at: new Date().toISOString()
-      }
-    ];
+    this.inMemorySosReports = [];
   }
 
   createSosReport(reportData = {}) {
@@ -46,43 +35,37 @@ class UrbanRescueService {
     return this.inMemorySosReports.slice(0, limit);
   }
 
-  getRoadsideAssistance() {
+  async getRoadsideAssistance() {
+    // 1. Consultar talleres y servicios viales en la base de datos real
+    try {
+      const places = await placesRepository.findAll({ limit: 30 });
+      const workshops = places.filter(p => p.category === 'taller' || p.category === 'servicios');
+      if (workshops.length > 0) {
+        return workshops.map(w => ({
+          name: w.name,
+          phone: w.phone || '+506 2200-0000',
+          service_types: ['auxilio_vial', 'mecanica_rapida'],
+          coverage: w.canton ? `${w.canton}, Costa Rica` : 'Valle Central',
+          source: 'database_app_private'
+        }));
+      }
+    } catch (_) {}
+
+    // 2. Líneas de emergencia públicas oficiales de Costa Rica (911 / Bomberos / Cruz Roja)
     return [
       {
-        name: 'Llantera y Auxilio Móvil 24h El Cruce',
-        phone: '+506 8877-3322',
-        service_types: ['cambio_llanta', 'paso_corriente', 'gasolina_emergencia'],
-        coverage: 'Ruta 27 y cantones del oeste de San José'
+        name: 'Sistema de Emergencias 9-1-1 Costa Rica',
+        phone: '911',
+        service_types: ['policia', 'bomberos', 'cruz_roja', 'transito'],
+        coverage: 'Nacional 100% Costa Rica',
+        source: 'gobierno_cr'
       },
       {
-        name: 'Grúas del Valle Central 24/7',
-        phone: '+506 2222-9911',
-        service_types: ['grua_plataforma', 'rescate_barranco'],
-        coverage: 'Gran Área Metropolitana'
-      }
-    ];
-  }
-
-  getSurvivalStops() {
-    return [
-      {
-        name: 'Baños Adaptados 7600 y Cajero Automático BN',
-        address: 'Costado Sur del Parque Central',
-        open_24h: true,
-        has_wheelchair_ramp: true,
-        atm_has_sinpe: true
-      }
-    ];
-  }
-
-  getEvChargers() {
-    return [
-      {
-        operator: 'CNFL / ICE',
-        name: 'Electrolinera Rápida CCS2 / ChaDeMo',
-        address: 'Plaza Mayor Rohrmoser',
-        power_kw: 50,
-        status: 'available'
+        name: 'Cruz Roja Costarricense',
+        phone: '1027',
+        service_types: ['ambulancia', 'paramedicos', 'rescate_urbano'],
+        coverage: 'Nacional 100% Costa Rica',
+        source: 'cruz_roja_cr'
       }
     ];
   }

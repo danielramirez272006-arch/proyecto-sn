@@ -2,8 +2,9 @@ const rescueService = require('./rescue-service');
 const { success, created, badRequest } = require('../../shared/utils/http-response');
 
 class UrbanRescueController {
-  getRoadside(req, res) {
-    return success(res, rescueService.getRoadsideAssistance());
+  async getRoadside(req, res) {
+    const data = await rescueService.getRoadsideAssistance();
+    return success(res, data);
   }
 
   getSurvivalStops(req, res) {

@@ -11,7 +11,7 @@ class PlacesRepository {
       params.push(category);
     }
     if (verifiedOnly) {
-      sql += ' AND verified_by_admin = 1';
+      sql += ' AND (verified_by_admin IS TRUE OR verified_by_admin = 1)';
     }
     if (search) {
       sql += ' AND (name LIKE ? OR address LIKE ? OR district LIKE ?)';
@@ -52,8 +52,9 @@ class PlacesRepository {
       params.push(category);
     }
     if (verifiedOnly) {
-      countSql += ' AND verified_by_admin = 1';
-      sql += ' AND verified_by_admin = 1';
+      countSql += ' AND (verified_by_admin IS TRUE OR verified_by_admin = 1)';
+      sql += ' AND (verified_by_admin IS TRUE OR verified_by_admin = 1)';
+      params.push();
     }
     if (search) {
       const term = `%${search}%`;

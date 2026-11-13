@@ -1,4 +1,5 @@
 const foodService = require('./food-service');
+const placesRepository = require('../places/places-repository');
 const { success } = require('../../shared/utils/http-response');
 
 class FoodRadarController {
@@ -16,19 +17,31 @@ class FoodRadarController {
     }
   }
 
-  getCoffeePairing(req, res) {
-    const pairings = foodService.getCoffeePairings();
-    return success(res, pairings);
+  async getCoffeePairing(req, res, next) {
+    try {
+      const pairings = await foodService.getCoffeePairings();
+      return success(res, pairings);
+    } catch (err) {
+      next(err);
+    }
   }
 
-  getZeroWasteDiscounts(req, res) {
-    return success(res, [
-      {
-        place_name: 'Café Aromas del Valle',
-        discount: '30% en repostería del día después de las 5:00 PM',
-        zero_waste_badge: true,
-      }
-    ]);
+  async getZeroWasteDiscounts(req, res, next) {
+    try {
+      const places = await placesRepository.findAll({ limit: 20 });
+      const discounts = places
+        .filter(p => p.attributes_metadata?.zero_waste || p.category === 'cafe' || p.category === 'feria')
+        .map(p => ({
+          place_id: p.id,
+          place_name: p.name,
+          discount: 'Descuento solidario de fin de tarde / productos locales frescos',
+          zero_waste_badge: Boolean(p.attributes_metadata?.zero_waste),
+          verified: p.verified_by_admin
+        }));
+      return success(res, discounts);
+    } catch (err) {
+      next(err);
+    }
   }
 
   async checkMenuRealPrice(req, res, next) {
@@ -43,4 +56,3 @@ class FoodRadarController {
 }
 
 module.exports = new FoodRadarController();
-

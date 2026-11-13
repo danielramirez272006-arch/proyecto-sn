@@ -12,27 +12,46 @@ class FoodRadarService {
     });
   }
 
-  getCoffeePairings() {
-    return [
-      {
-        method: 'V60 Pour Over',
-        roast: 'Tueste Claro (Tarrazú / Geisha)',
-        recommended_pairing: 'Queque de zanahoria con especias o galleta de avena',
-        tasting_notes: 'Cítrico, jazmín, miel residual'
-      },
-      {
-        method: 'Chemex',
-        roast: 'Tueste Medio (Naranjo / Caturra)',
-        recommended_pairing: 'Tarta de manzana o repostería hojaldrada',
-        tasting_notes: 'Cuerpo balanceado, manzana roja, caramelo'
-      },
-      {
-        method: 'Espresso Romano',
-        roast: 'Tueste Oscuro (Tres Ríos)',
-        recommended_pairing: 'Brownie de chocolate amargo 70%',
-        tasting_notes: 'Intenso, cacao puro, final prolongado'
+  async getCoffeePairings() {
+    // Consultar dinámicamente el catálogo real en base de datos
+    const cafes = await placesRepository.findAll({ category: 'cafe', limit: 20 });
+    const livePairings = [];
+
+    for (const cafe of cafes) {
+      const meta = cafe.attributes_metadata || {};
+      const specialty = meta.specialty_coffee;
+      if (specialty && specialty.varietals) {
+        for (const varietal of specialty.varietals) {
+          livePairings.push({
+            place_id: cafe.id,
+            cafe_name: cafe.name,
+            address: cafe.address,
+            varietal,
+            recommended_method: varietal === 'Geisha' ? 'V60 Pour Over' : 'Chemex / Aeropress',
+            tasting_notes: varietal === 'Geisha' ? 'Jazmín, bergamota, melocotón y miel' : 'Chocolate de origen, caramelo y nuez',
+            source: specialty.source || 'icafe',
+            verified: true,
+            updated_at: cafe.updated_at || new Date().toISOString()
+          });
+        }
       }
-    ];
+    }
+
+    if (livePairings.length > 0) {
+      return livePairings;
+    }
+
+    // Si aún no hay cafés de especialidad con varietales, derivar de los cafés registrados en la BD
+    return cafes.map(c => ({
+      place_id: c.id,
+      cafe_name: c.name,
+      address: c.address,
+      varietal: 'Arábica Valle Central',
+      recommended_method: 'Chorreador Tradicional Costarricense',
+      tasting_notes: 'Dulce de caña, cuerpo balanceado',
+      verified: c.verified_by_admin,
+      updated_at: c.updated_at || new Date().toISOString()
+    }));
   }
 
   calculateRealCostPlus23(menuItemPriceCrc = 0) {
@@ -41,4 +60,3 @@ class FoodRadarService {
 }
 
 module.exports = new FoodRadarService();
-

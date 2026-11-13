@@ -2,8 +2,8 @@ module.exports = {
   openapi: "3.0.3",
   info: {
     title: "Sinergia Urbana Costa Rica - Backend Enterprise API",
-    version: "1.2.0",
-    description: "API REST Enterprise, Copiloto DeepSeek V3/R1 AI, Transacciones ACID, Auditoría Inmutable y Métricas Prometheus para Costa Rica.",
+    version: "1.6.0",
+    description: "API REST Enterprise, Copiloto DeepSeek V3/R1 AI, Transacciones ACID, BCCR, Confort Urbano, Calidad de Aire, Auditoría Inmutable y Métricas Prometheus para Costa Rica.",
     contact: {
       name: "Sinergia Urbana Core Engineering Team",
       url: "https://github.com/danielramirez272006-arch/proyecto-sn"
@@ -24,7 +24,16 @@ module.exports = {
     { name: "Agentes Autónomos", description: "Scheduler y monitoreo de tareas periódicas en background" },
     { name: "Rescate Urbano", description: "Alertas ciudadanas SOS en tiempo real y auxilio vial" },
     { name: "Auditoría y Administración", description: "Pista inmutable de auditoría y operaciones de control" },
-    { name: "Internacionalización (i18n)", description: "Soporte multilingüe para 10 idiomas, diccionarios y traducción automática" }
+    { name: "Internacionalización (i18n)", description: "Soporte multilingüe para 10 idiomas, diccionarios y traducción automática" },
+    { name: "Auditoría Criptográfica", description: "Hash Chain Ledger inmutable y verificación matemática de integridad" },
+    { name: "Notificaciones Multicanal", description: "Web Push RFC 8292 VAPID, WhatsApp/SMS y cola Outbox resiliente" },
+    { name: "Seguridad QR Criptográfico", description: "Generación y validación de tokens QR con HMAC-SHA256 y canje único" },
+    { name: "Movilidad Sostenible", description: "Factores oficiales de emisión Costa Rica (MINAE/IMN), huella de CO2 y ahorro CRC" },
+    { name: "Webhooks para Comercios", description: "Webhooks salientes firmados criptográficamente para socios locales" },
+    { name: "Finanzas y BCCR", description: "Tipo de cambio oficial BCCR, multi-divisa y redondeo de efectivo" },
+    { name: "Clima y Confort Urbano", description: "Open-Meteo satelital, alerta de aguaceros y calidad del aire GAM" },
+    { name: "Geolocalización y Navegación", description: "Geocodificación territorial tica y deep-links para Waze/Google Maps" },
+    { name: "Verificación Tributaria", description: "Consulta pública ante el Ministerio de Hacienda para cédulas físicas y jurídicas" }
   ],
   paths: {
     "/metrics": {
@@ -479,6 +488,130 @@ module.exports = {
         },
         responses: {
           "200": { description: "Texto traducido" }
+        }
+      }
+    },
+    "/health/deep": {
+      get: {
+        tags: ["Salud, Métricas y Diagnóstico"],
+        summary: "Diagnóstico profundo de latencia y benchmarks en paralelo de PostgreSQL, Supabase y DeepSeek AI",
+        responses: {
+          "200": { description: "Tiempos de respuesta exactos en milisegundos por servicio" }
+        }
+      }
+    },
+    "/places/smart-search": {
+      get: {
+        tags: ["Catálogo y Lugares"],
+        summary: "Búsqueda semántica con DeepSeek AI interpretando lenguaje natural y modismos ticos",
+        parameters: [
+          { name: "q", in: "query", required: true, schema: { type: "string" }, example: "café pet friendly con wifi pa bretear" }
+        ],
+        responses: {
+          "200": { description: "Lugares clasificados por afinidad semántica con match_score y justificación IA" }
+        }
+      }
+    },
+    "/places/export/geojson": {
+      get: {
+        tags: ["Catálogo y Lugares"],
+        summary: "Exportar el catálogo completo de lugares verificados en formato estándar GeoJSON RFC 7946",
+        responses: {
+          "200": { description: "FeatureCollection GeoJSON compatible con Leaflet, Mapbox y QGIS" }
+        }
+      }
+    },
+    "/events/export/ics": {
+      get: {
+        tags: ["Catálogo y Lugares"],
+        summary: "Exportar todos los eventos y ferias en formato estándar de calendario iCalendar RFC 5545 (.ics)",
+        responses: {
+          "200": { description: "Archivo iCalendar para Google Calendar / Apple Calendar" }
+        }
+      }
+    },
+    "/social/scan-invoice": {
+      post: {
+        tags: ["Planes Grupales (Social Dining)"],
+        summary: "Escanear ticket, factura electrónica o comprobante SINPE con DeepSeek AI",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  text: { type: "string", example: "Restaurante El Roble Total ₡18,450 SINPE Movil 88881111" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Desglose tributario con subtotal, IVA 13%, servicio 10% y propina" }
+        }
+      }
+    },
+    "/rescue/match-pet": {
+      post: {
+        tags: ["Rescate Urbano"],
+        summary: "Cruce inteligente de mascotas perdidas y encontradas con DeepSeek AI y radio GPS",
+        responses: {
+          "200": { description: "Coincidencias ordenadas por porcentaje de similitud y distancia" }
+        }
+      }
+    },
+    "/audit/verify-chain": {
+      get: {
+        tags: ["Auditoría Criptográfica"],
+        summary: "Verificar la integridad matemática de toda la cadena de bloques de auditoría",
+        responses: {
+          "200": { description: "Estado de validez de la cadena de hashes SHA-256 inmutables" }
+        }
+      }
+    },
+    "/notifications/vapid-public-key": {
+      get: {
+        tags: ["Notificaciones Multicanal"],
+        summary: "Obtener clave pública VAPID (RFC 8292) para suscripciones Web Push en el navegador",
+        responses: {
+          "200": { description: "Clave pública VAPID" }
+        }
+      }
+    },
+    "/security/qr/generate": {
+      post: {
+        tags: ["Seguridad QR Criptográfico"],
+        summary: "Generar código QR firmado con HMAC-SHA256, expiración y payload personalizado",
+        responses: {
+          "201": { description: "Token firmado, URL de validación y preview SVG" }
+        }
+      }
+    },
+    "/security/qr/redeem": {
+      post: {
+        tags: ["Seguridad QR Criptográfico"],
+        summary: "Canjear código QR con validación de un solo uso e idempotencia",
+        responses: {
+          "200": { description: "Comprobante de canje exitoso" }
+        }
+      }
+    },
+    "/mobility/carbon-footprint": {
+      post: {
+        tags: ["Movilidad Sostenible"],
+        summary: "Calcular ahorro de CO2 (g/kg) y colones (CRC) según estándares oficiales MINAE/IMN de Costa Rica",
+        responses: {
+          "200": { description: "Cálculo comparativo vs línea base de auto particular" }
+        }
+      }
+    },
+    "/merchants/webhooks/subscriptions": {
+      post: {
+        tags: ["Webhooks para Comercios"],
+        summary: "Registrar endpoint de webhook para un comercio aliado",
+        responses: {
+          "201": { description: "Suscripción creada con clave secreta compartida para verificación HMAC" }
         }
       }
     }

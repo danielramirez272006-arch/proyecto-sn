@@ -426,4 +426,449 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(res.body.ok, true);
     assert.ok(res.body.data.translated.includes('urban AI copilot'));
   });
+
+  await suite.test('20. Diagnóstico de Latencia Profunda con Benchmarks en Paralelo (/api/health/deep)', async () => {
+    const res = await executeMockRequest('GET', '/api/health/deep');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(res.body.data.benchmarks);
+    assert.ok(res.body.data.benchmarks.postgres);
+    assert.equal(typeof res.body.data.benchmarks.postgres.latency_ms, 'number');
+    assert.ok(res.body.data.benchmarks.supabase_cloud);
+    assert.ok(res.body.data.benchmarks.deepseek_ai);
+    assert.equal(typeof res.body.data.total_probe_duration_ms, 'number');
+  });
+
+  await suite.test('21. Búsqueda Semántica Inteligente de Lugares (/api/places/smart-search)', async () => {
+    const res = await executeMockRequest('GET', '/api/places/smart-search?q=café pet friendly con terraza');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(Array.isArray(res.body.data));
+    assert.ok(res.body.data.length >= 1);
+    assert.ok(res.body.data[0].match_score >= 30);
+    assert.ok(res.body.data[0].ai_reason);
+  });
+
+  await suite.test('22. Exportador GeoJSON Estándar RFC 7946 (/api/places/export/geojson)', async () => {
+    const res = await executeMockRequest('GET', '/api/places/export/geojson');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.type, 'FeatureCollection');
+    assert.ok(Array.isArray(res.body.features));
+    assert.ok(res.body.features.length >= 1);
+    assert.equal(res.body.features[0].geometry.type, 'Point');
+    assert.equal(res.body.features[0].geometry.coordinates.length, 2);
+    assert.ok(res.body.features[0].properties.name);
+  });
+
+  await suite.test('23. Exportador iCalendar RFC 5545 para Google/Apple Calendar (/api/events/export/ics)', async () => {
+    // 1. Exportación de todos los eventos
+    const resAll = await executeMockRequest('GET', '/api/events/export/ics');
+    assert.equal(resAll.status, 200);
+    assert.ok(typeof resAll.body === 'string');
+    assert.ok(resAll.body.includes('BEGIN:VCALENDAR'));
+    assert.ok(resAll.body.includes('BEGIN:VEVENT'));
+    assert.ok(resAll.body.includes('END:VCALENDAR'));
+
+    // 2. Exportación de un evento específico
+    const resSingle = await executeMockRequest('GET', '/api/events/evt_feria_sabado_1/export/ics');
+    assert.equal(resSingle.status, 200);
+    assert.ok(typeof resSingle.body === 'string');
+    assert.ok(resSingle.body.includes('BEGIN:VCALENDAR'));
+    assert.ok(resSingle.body.includes('Mora') || resSingle.body.includes('Sabatina'));
+    assert.ok(resSingle.body.includes('END:VCALENDAR'));
+  });
+
+  await suite.test('24. Extractor Inteligente de Facturas y Comprobantes SINPE (/api/social/scan-invoice)', async () => {
+    const invoiceText = `
+      RESTAURANTE EL ROBLE S.A.
+      Cedula Juridica: 3-101-998877
+      Consumo: 2 Cafes Geisha + Torta de Zanahoria
+      SUBTOTAL: ₡15,000
+      IVA (13%): ₡1,950
+      SERVICIO (10%): ₡1,500
+      TOTAL A PAGAR: ₡18,450
+      Pago realizado por SINPE Movil al 8888-1111
+    `;
+
+    const res = await executeMockRequest('POST', '/api/social/scan-invoice', {
+      body: { text: invoiceText }
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.data.total_crc, 18450);
+    assert.equal(res.body.data.currency, 'CRC');
+    assert.ok(res.body.data.subtotal_crc > 0);
+    assert.ok(res.body.data.iva_13_crc > 0);
+    assert.ok(res.body.data.service_10_crc > 0);
+  });
+
+  await suite.test('25. Matcher Inteligente de Mascotas Extraviadas (/api/rescue/match-pet)', async () => {
+    const lostPet = {
+      id: 'lost_dog_1',
+      species: 'perro',
+      breed: 'Zaguate mestizo',
+      color: 'Cafe con blanco',
+      lat: 9.9148,
+      lng: -84.2421,
+      notes: 'Lleva collar rojo y plaquita'
+    };
+
+    const foundPets = [
+      {
+        id: 'found_dog_1',
+        species: 'perro',
+        breed: 'Mestizo mediano',
+        color: 'Cafe con manchas blancas',
+        lat: 9.9160,
+        lng: -84.2410,
+        notes: 'Visto cerca de la plaza con collar rojo'
+      },
+      {
+        id: 'found_cat_1',
+        species: 'gato',
+        breed: 'Siames',
+        color: 'Blanco y gris',
+        lat: 9.9148,
+        lng: -84.2421,
+        notes: 'Gato siames en un arbol'
+      }
+    ];
+
+    const res = await executeMockRequest('POST', '/api/rescue/match-pet', {
+      body: {
+        lost_pet: lostPet,
+        found_pets: foundPets,
+        max_distance_km: 3.0
+      }
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(Array.isArray(res.body.data));
+    assert.equal(res.body.data.length, 1); // Solo debe coincidir el perro, no el gato
+    assert.equal(res.body.data[0].found_id, 'found_dog_1');
+    assert.ok(res.body.data[0].match_confidence >= 60);
+    assert.ok(res.body.data[0].distance_km < 1.0);
+  });
+
+  await suite.test('26. Auditoría Inmutable Criptográfica (Hash Chain Ledger)', async () => {
+    // 1. Registrar dos bloques encadenados
+    const block1Res = await executeMockRequest('POST', '/api/audit/chain', {
+      body: {
+        record_id: 'pln_sabatino_1',
+        entity_type: 'plan',
+        action: 'PLAN_CREATED',
+        actor_id: 'usr_organizer_1',
+        data: { title: 'Salida Cafetal', budget: 15000 }
+      }
+    });
+    assert.equal(block1Res.status, 201);
+    assert.equal(block1Res.body.ok, true);
+    assert.equal(block1Res.body.data.sequence_number, 1);
+    assert.equal(block1Res.body.data.previous_hash, '0'.repeat(64));
+    assert.ok(block1Res.body.data.block_hash);
+
+    const block2Res = await executeMockRequest('POST', '/api/audit/chain', {
+      body: {
+        record_id: 'pln_sabatino_1',
+        entity_type: 'plan',
+        action: 'VOTE_CAST',
+        actor_id: 'usr_guest_2',
+        data: { option_id: 'opt_cafe_1', vote: 'prefer' }
+      }
+    });
+    assert.equal(block2Res.status, 201);
+    assert.equal(block2Res.body.ok, true);
+    assert.equal(block2Res.body.data.sequence_number, 2);
+    assert.equal(block2Res.body.data.previous_hash, block1Res.body.data.block_hash);
+
+    // 2. Verificar integridad matemática de toda la cadena
+    const verifyRes = await executeMockRequest('GET', '/api/audit/verify-chain');
+    assert.equal(verifyRes.status, 200);
+    assert.equal(verifyRes.body.ok, true);
+    assert.equal(verifyRes.body.data.valid, true);
+    assert.ok(verifyRes.body.data.total_blocks >= 2);
+    assert.equal(verifyRes.body.data.genesis_hash, block1Res.body.data.block_hash);
+
+    // 3. Consultar la pista encadenada para el plan
+    const trailRes = await executeMockRequest('GET', '/api/audit/chain/plan/pln_sabatino_1');
+    assert.equal(trailRes.status, 200);
+    assert.equal(trailRes.body.ok, true);
+    assert.ok(trailRes.body.data.length >= 2);
+  });
+
+  await suite.test('27. Notificaciones Multicanal y Patrón Outbox (/api/notifications/*)', async () => {
+    // 1. Clave pública VAPID para Web Push
+    const vapidRes = await executeMockRequest('GET', '/api/notifications/vapid-public-key');
+    assert.equal(vapidRes.status, 200);
+    assert.equal(vapidRes.body.ok, true);
+    assert.ok(vapidRes.body.data.public_key);
+
+    // 2. Suscripción Web Push
+    const subRes = await executeMockRequest('POST', '/api/notifications/subscribe', {
+      body: {
+        user_id: 'usr_push_1',
+        endpoint: 'https://fcm.googleapis.com/fcm/send/fake_token_123',
+        keys: {
+          p256dh: 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QT9t0A4If_BpEg6VNB0W9g_fpSoO0w7',
+          auth: 'tBHItJI5svbpez7KI4CCXg'
+        }
+      }
+    });
+    assert.equal(subRes.status, 201);
+    assert.equal(subRes.body.ok, true);
+    assert.equal(subRes.body.data.channel, 'webpush');
+
+    // 3. Encolar notificación en Outbox
+    const queueRes = await executeMockRequest('POST', '/api/notifications/queue', {
+      body: {
+        channel: 'whatsapp',
+        recipient: '+50688887777',
+        type: 'plan_confirmed',
+        title: 'Tu plan está listo',
+        payload: {
+          guest_name: 'Daniel',
+          plan_title: 'Café y Feria Mora',
+          first_stop: 'Cafetería La Colina',
+          start_time: '9:00 AM',
+          plan_code: 'pln_demo'
+        }
+      }
+    });
+    assert.equal(queueRes.status, 201);
+    assert.equal(queueRes.body.ok, true);
+    assert.equal(queueRes.body.data.enqueued, true);
+
+    // 4. Procesar lote de Outbox
+    const processRes = await executeMockRequest('POST', '/api/notifications/outbox/process', {
+      body: { batch_size: 5 }
+    });
+    assert.equal(processRes.status, 200);
+    assert.equal(processRes.body.ok, true);
+
+    // 5. Estado y telemetría de la cola
+    const statusRes = await executeMockRequest('GET', '/api/notifications/outbox/status');
+    assert.equal(statusRes.status, 200);
+    assert.equal(statusRes.body.ok, true);
+    assert.ok(statusRes.body.data.active_push_subscriptions >= 1);
+  });
+
+  await suite.test('28. Generación, Inspección y Canje de Códigos QR Criptográficos (/api/security/qr/*)', async () => {
+    // 1. Generar token QR firmado
+    const genRes = await executeMockRequest('POST', '/api/security/qr/generate', {
+      body: {
+        type: 'merchant_voucher',
+        ref_id: 'plc_cafe_1',
+        ttl_seconds: 3600,
+        metadata: { discount_percent: 20, description: '20% en Café Geisha' }
+      }
+    });
+    assert.equal(genRes.status, 201);
+    assert.equal(genRes.body.ok, true);
+    assert.ok(genRes.body.data.token);
+    assert.ok(genRes.body.data.svg_preview.includes('<svg'));
+
+    const qrToken = genRes.body.data.token;
+
+    // 2. Inspeccionar token QR (sin canjear)
+    const inspectRes = await executeMockRequest('GET', `/api/security/qr/inspect/${qrToken}`);
+    assert.equal(inspectRes.status, 200);
+    assert.equal(inspectRes.body.ok, true);
+    assert.equal(inspectRes.body.data.valid, true);
+    assert.equal(inspectRes.body.data.payload.ref_id, 'plc_cafe_1');
+
+    // 3. Canjear token QR por primera vez
+    const redeemRes = await executeMockRequest('POST', '/api/security/qr/redeem', {
+      body: {
+        token: qrToken,
+        redeemed_by: 'caja_restaurante_1'
+      }
+    });
+    assert.equal(redeemRes.status, 200);
+    assert.equal(redeemRes.body.ok, true);
+    assert.equal(redeemRes.body.data.redeemed, true);
+    assert.equal(redeemRes.body.data.redeemed_by, 'caja_restaurante_1');
+
+    // 4. Intentar canjear por segunda vez (debe rechazar con 400 por idempotencia/ya canjeado)
+    const doubleRedeemRes = await executeMockRequest('POST', '/api/security/qr/redeem', {
+      body: {
+        token: qrToken,
+        redeemed_by: 'caja_restaurante_1'
+      }
+    });
+    assert.equal(doubleRedeemRes.status, 400);
+    assert.equal(doubleRedeemRes.body.ok, false);
+    assert.equal(doubleRedeemRes.body.error.already_redeemed, true);
+  });
+
+  await suite.test('29. Calculador de Movilidad Sostenible y Huella de Carbono MINAE/IMN (/api/mobility/*)', async () => {
+    // 1. Factores oficiales de emisión para Costa Rica
+    const factorsRes = await executeMockRequest('GET', '/api/mobility/gam-transit-factors');
+    assert.equal(factorsRes.status, 200);
+    assert.equal(factorsRes.body.ok, true);
+    assert.equal(factorsRes.body.data.country, 'Costa Rica');
+    assert.ok(factorsRes.body.data.baseline_car_g_co2_per_km > 0);
+
+    // 2. Cálculo de viaje compartido (carpooling de 3 personas por 12 km en San José)
+    const calcRes = await executeMockRequest('POST', '/api/mobility/carbon-footprint', {
+      body: {
+        distance_km: 12.0,
+        transport_mode: 'carpool',
+        passengers_count: 3,
+        user_id: 'usr_daniel_green'
+      }
+    });
+    assert.equal(calcRes.status, 200);
+    assert.equal(calcRes.body.ok, true);
+    assert.equal(calcRes.body.data.distance_km, 12.0);
+    assert.ok(calcRes.body.data.co2_saved_grams > 1000);
+    assert.ok(calcRes.body.data.colones_saved > 0);
+    assert.ok(calcRes.body.data.equivalent_trees > 0);
+
+    // 3. Insignias e impacto acumulado del usuario en tiempo real
+    const badgesRes = await executeMockRequest('GET', '/api/mobility/badges/usr_daniel_green');
+    assert.equal(badgesRes.status, 200);
+    assert.equal(badgesRes.body.ok, true);
+    assert.ok(badgesRes.body.data.total_co2_saved_kg >= 1.0);
+    assert.ok(Array.isArray(badgesRes.body.data.badges));
+    assert.ok(badgesRes.body.data.badges.some(b => b.code === 'tico_verde'));
+  });
+
+  await suite.test('30. Motor de Webhooks Salientes con Firma HMAC para Comercios (/api/merchants/webhooks/*)', async () => {
+    // 1. Registrar webhook para una cafetería socia
+    const subRes = await executeMockRequest('POST', '/api/merchants/webhooks/subscriptions', {
+      body: {
+        merchant_id: 'mch_cafe_mora_1',
+        target_url: 'https://httpbin.org/post',
+        events: ['plan.confirmed', 'voucher.redeemed']
+      }
+    });
+    assert.equal(subRes.status, 201);
+    assert.equal(subRes.body.ok, true);
+    assert.ok(subRes.body.data.secret.startsWith('sec_'));
+
+    const subId = subRes.body.data.id;
+
+    // 2. Listar webhooks del comercio
+    const listRes = await executeMockRequest('GET', '/api/merchants/webhooks/subscriptions?merchant_id=mch_cafe_mora_1');
+    assert.equal(listRes.status, 200);
+    assert.equal(listRes.body.ok, true);
+    assert.equal(listRes.body.data.length, 1);
+
+    // 3. Despachar evento y verificar registro de delivery firmado
+    const dispatchRes = await executeMockRequest('POST', '/api/merchants/webhooks/dispatch', {
+      body: {
+        event_type: 'plan.confirmed',
+        payload: {
+          plan_code: 'pln_sabatino_1',
+          people_count: 5,
+          estimated_arrival: '10:30 AM'
+        }
+      }
+    });
+    assert.equal(dispatchRes.status, 200);
+    assert.equal(dispatchRes.body.ok, true);
+    assert.ok(dispatchRes.body.data.dispatched_count >= 1);
+
+    // 4. Consultar bitácora de entregas
+    const delivRes = await executeMockRequest('GET', '/api/merchants/webhooks/deliveries?merchant_id=mch_cafe_mora_1');
+    assert.equal(delivRes.status, 200);
+    assert.equal(delivRes.body.ok, true);
+    assert.ok(delivRes.body.data.length >= 1);
+    assert.equal(delivRes.body.data[0].event_type, 'plan.confirmed');
+
+    // 5. Eliminar suscripción
+    const deleteRes = await executeMockRequest('DELETE', `/api/merchants/webhooks/subscriptions/${subId}?merchant_id=mch_cafe_mora_1`);
+    assert.equal(deleteRes.status, 200);
+    assert.equal(deleteRes.body.ok, true);
+  });
+
+  await suite.test('31. Motor Financiero BCCR, Multi-divisa y Redondeo en Efectivo (/api/finance/*)', async () => {
+    // 1. Tipos de cambio BCCR en vivo
+    const ratesRes = await executeMockRequest('GET', '/api/finance/exchange-rates');
+    assert.equal(ratesRes.status, 200);
+    assert.equal(ratesRes.body.ok, true);
+    assert.ok(ratesRes.body.data.usd_to_crc_compra > 400);
+    assert.ok(ratesRes.body.data.usd_to_crc_venta > 400);
+
+    // 2. Conversión dinámica CRC a USD
+    const convertRes = await executeMockRequest('POST', '/api/finance/convert', {
+      body: { amount: 25000, from: 'CRC', to: 'USD' }
+    });
+    assert.equal(convertRes.status, 200);
+    assert.equal(convertRes.body.ok, true);
+    assert.ok(convertRes.body.data.converted_amount > 40);
+
+    // 3. Regla oficial de redondeo de efectivo BCCR
+    const roundRes = await executeMockRequest('POST', '/api/finance/cash-rounding', {
+      body: { amount_crc: 2453 }
+    });
+    assert.equal(roundRes.status, 200);
+    assert.equal(roundRes.body.ok, true);
+    assert.equal(roundRes.body.data.cash_rounded_crc, 2455); // 3 sube a 5
+
+    // 4. División de cuenta de restaurante con IVA 13% y 10% ley de servicio
+    const billRes = await executeMockRequest('POST', '/api/finance/split-bill-cr', {
+      body: { subtotal_crc: 10000, people_count: 2, extra_tip_percentage: 0 }
+    });
+    assert.equal(billRes.status, 200);
+    assert.equal(billRes.body.ok, true);
+    assert.equal(billRes.body.data.iva_13_crc, 1300);
+    assert.equal(billRes.body.data.service_10_crc, 1000);
+    assert.equal(billRes.body.data.total_card_crc, 12300);
+    assert.equal(billRes.body.data.per_person.people_count, 2);
+    assert.equal(billRes.body.data.per_person.amount_crc_card, 6150);
+  });
+
+  await suite.test('32. Confort Urbano, Alerta de Aguacero Tico y Calidad del Aire (/api/weather/*)', async () => {
+    // 1. Índice de confort al aire libre y alerta de lluvia
+    const comfortRes = await executeMockRequest('GET', '/api/weather/comfort-index?lat=9.9333&lng=-84.0833');
+    assert.equal(comfortRes.status, 200);
+    assert.equal(comfortRes.body.ok, true);
+    assert.equal(typeof comfortRes.body.data.outdoor_comfort_score, 'number');
+    assert.ok(comfortRes.body.data.outdoor_comfort_score >= 0 && comfortRes.body.data.outdoor_comfort_score <= 100);
+    assert.ok(typeof comfortRes.body.data.aguacero_alert.detected === 'boolean');
+    assert.ok(comfortRes.body.data.recommendation);
+
+    // 2. Calidad del aire en el GAM
+    const aqiRes = await executeMockRequest('GET', '/api/weather/air-quality?lat=9.9333&lng=-84.0833');
+    assert.equal(aqiRes.status, 200);
+    assert.equal(aqiRes.body.ok, true);
+    assert.ok(aqiRes.body.data.aqi_us >= 0);
+    assert.ok(aqiRes.body.data.health_recommendation);
+  });
+
+  await suite.test('33. Geocodificación Territorial Inversa en Costa Rica (/api/places/reverse-geocode)', async () => {
+    const geoRes = await executeMockRequest('GET', '/api/places/reverse-geocode?lat=9.9148&lng=-84.2421');
+    assert.equal(geoRes.status, 200);
+    assert.equal(geoRes.body.ok, true);
+    assert.ok(geoRes.body.data.territorial_division);
+    assert.equal(geoRes.body.data.territorial_division.country, 'Costa Rica');
+    assert.ok(geoRes.body.data.formatted_tico_address.includes('Costa Rica'));
+  });
+
+  await suite.test('34. Generador Universal de Enlaces de Navegación Waze/Google Maps (/api/places/navigation-links)', async () => {
+    const navRes = await executeMockRequest('GET', '/api/places/navigation-links?lat=9.9148&lng=-84.2421&label=Feria+del+Agricultor+Mora');
+    assert.equal(navRes.status, 200);
+    assert.equal(navRes.body.ok, true);
+    assert.ok(navRes.body.data.links.waze_app.includes('waze://'));
+    assert.ok(navRes.body.data.links.google_maps.includes('google.com/maps'));
+    assert.ok(navRes.body.data.links.apple_maps.includes('maps.apple.com'));
+    assert.ok(navRes.body.data.qr_waze_url);
+  });
+
+  await suite.test('35. Verificación de Cédula Física y Jurídica ante Hacienda CR (/api/businesses/verify-id/:id)', async () => {
+    // 1. Cédula Jurídica (10 dígitos)
+    const jurRes = await executeMockRequest('GET', '/api/businesses/verify-id/3101123456');
+    assert.equal(jurRes.status, 200);
+    assert.equal(jurRes.body.ok, true);
+    assert.equal(jurRes.body.data.classification.type, 'juridica');
+    assert.ok(jurRes.body.data.legal_name);
+
+    // 2. Rechazo de cédula inválida con menos de 9 dígitos
+    const invRes = await executeMockRequest('GET', '/api/businesses/verify-id/1234');
+    assert.equal(invRes.status, 400);
+    assert.equal(invRes.body.ok, false);
+  });
 });

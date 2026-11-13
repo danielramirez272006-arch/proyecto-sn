@@ -365,7 +365,223 @@ api.setLanguage('ja'); // Ahora todas las peticiones viajarán con la cabecera x
 
 ---
 
-## 6. Manejo de Errores y Códigos de Estado
+## 6. Nuevas Funcionalidades Enterprise Listas para el Frontend
+
+### 6.1. Búsqueda Semántica Inteligente (`GET /api/places/smart-search`)
+Permite búsquedas con lenguaje natural en español e inglés impulsadas por DeepSeek AI (ej: *"dónde tomar café de especialidad con buena vista"* o *"lugares pet-friendly con parqueo"*):
+```javascript
+// GET /api/places/smart-search?q=cafe+con+buen+wifi
+const results = await api.get('/places/smart-search?q=cafe+con+buen+wifi');
+// results -> array de lugares con score de relevancia y razonamiento de IA
+```
+
+### 6.2. Exportación a Mapas GeoJSON RFC 7946 (`GET /api/places/export/geojson`)
+Directamente compatible con Leaflet, Mapbox, Google Maps o MapLibre:
+```javascript
+// GET /api/places/export/geojson?category=cafeteria
+const geojson = await api.get('/places/export/geojson?category=cafeteria');
+// geojson -> { type: "FeatureCollection", features: [ ... ] }
+map.addSource('places', { type: 'geojson', data: geojson });
+```
+
+### 6.3. Exportación a Calendarios iCalendar RFC 5545 (`GET /api/events/export/ics`)
+Descarga directa para agregar a Google Calendar, Apple Calendar o Outlook:
+```javascript
+// Abrir directamente en el navegador o botón de descarga:
+window.open('http://localhost:4000/api/events/export/ics');
+// O para un evento específico:
+window.open('http://localhost:4000/api/events/evt_feria_sabado_1/export/ics');
+```
+
+### 6.4. Escaneo Inteligente de Facturas y Tickets SINPE con DeepSeek AI (`POST /api/social/scan-invoice`)
+Analiza texto o imagen de comprobantes para extraer montos, IVA 13%, desglose y datos SINPE Móvil:
+```javascript
+const scanResult = await api.post('/social/scan-invoice', {
+  raw_text: 'Restaurante El Cafetal\n1x Cafe Chorreado 2500\n1x Gallo Pinto 3500\nIVA: 780\nTotal: 6780',
+  // o image_base64: 'data:image/jpeg;base64,...'
+});
+console.log(scanResult.total); // 6780
+console.log(scanResult.split_suggestions); // sugerencias de división
+```
+
+### 6.5. Búsqueda y Coincidencia de Mascotas Extraviadas con IA (`POST /api/rescue/match-pet`)
+Compara reportes de mascotas perdidas/encontradas usando morfología, raza, color y proximidad geográfica en km:
+```javascript
+const matches = await api.post('/rescue/match-pet', {
+  species: 'perro',
+  breed: 'Zaguate / Criollo',
+  colors: ['cafe', 'blanco'],
+  latitude: 9.9322,
+  longitude: -84.0795
+});
+// matches -> array ordenado por match_percentage (%) con distancia en km
+```
+
+### 6.6. Telemetría y Diagnóstico Profundo en Tiempo Real (`GET /api/health/deep`)
+Mide la latencia en milisegundos de PostgreSQL, Supabase Cloud y el motor DeepSeek AI en paralelo:
+```javascript
+const health = await api.get('/health/deep');
+console.log(health.checks.database.latency_ms); // ej: 14ms
+console.log(health.checks.deepseek_ai.latency_ms); // ej: 45ms
+```
+
+### 6.7. Códigos QR Criptográficos Firmados y Canje Único (`/api/security/qr/*`)
+Genera y canjea vales de descuento, check-in en eventos o placas inteligentes de mascotas con firma `HMAC-SHA256`:
+```javascript
+// 1. Generar código QR con expiración y preview SVG
+const qr = await api.post('/security/qr/generate', {
+  type: 'merchant_voucher',
+  ref_id: 'plc_cafe_1',
+  ttl_seconds: 7200,
+  metadata: { discount_percent: 15, item: 'Café Chorreado' }
+});
+// qr.token -> token criptográfico firmado
+// qr.svg_preview -> string SVG listo para inyectar directo en un <div>
+
+// 2. Canjear QR en caja (idempotente: rechaza con 400 si ya fue canjeado)
+const redeem = await api.post('/security/qr/redeem', {
+  token: qr.token,
+  redeemed_by: 'cajero_1'
+});
+console.log(redeem.redeemed); // true
+```
+
+### 6.8. Notificaciones Web Push y Mensajería Multicanal (`/api/notifications/*`)
+Soporte para notificaciones nativas en el navegador vía estándar RFC 8292 VAPID:
+```javascript
+// 1. Obtener clave pública VAPID
+const { public_key } = await api.get('/notifications/vapid-public-key');
+
+// 2. Registrar la suscripción del navegador
+const pushSub = await registration.pushManager.subscribe({
+  userVisibleOnly: true,
+  applicationServerKey: public_key
+});
+await api.post('/notifications/subscribe', {
+  endpoint: pushSub.endpoint,
+  keys: {
+    p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(pushSub.getKey('p256dh')))),
+    auth: btoa(String.fromCharCode.apply(null, new Uint8Array(pushSub.getKey('auth'))))
+  }
+});
+```
+
+### 6.9. Calculador de Movilidad Sostenible y Huella de Carbono (`/api/mobility/*`)
+Calcula en tiempo real el ahorro de emisiones de $\text{CO}_2$ y colones según factores oficiales MINAE/IMN de Costa Rica:
+```javascript
+// POST /api/mobility/carbon-footprint
+const eco = await api.post('/mobility/carbon-footprint', {
+  origin_lat: 9.9322,
+  origin_lng: -84.0795,
+  dest_lat: 9.9148,
+  dest_lng: -84.2421,
+  transport_mode: 'carpool', // 'carpool', 'bus', 'train', 'bike', 'walk'
+  passengers_count: 3,
+  user_id: 'usr_actual'
+});
+console.log(eco.co2_saved_kg); // ej: 1.85 kg de CO2 evitados
+console.log(eco.colones_saved); // ej: ₡1,200 CRC ahorrados en gasolina
+console.log(eco.eco_summary); // Resumen legible listo para mostrar en la interfaz
+
+// Obtener medallas ecológicas del usuario
+const { badges } = await api.get('/mobility/badges/usr_actual');
+// badges -> [{ code: 'tico_verde', name: 'Tico Verde 🌱' }, ...]
+```
+
+### 6.10. Auditoría Inmutable Criptográfica (Hash Chain Ledger) (`/api/audit/*`)
+Verifica matemáticamente que la bitácora de auditoría no ha sufrido adulteraciones:
+```javascript
+// GET /api/audit/verify-chain
+const audit = await api.get('/audit/verify-chain');
+console.log(audit.valid); // true
+console.log(audit.total_blocks); // N bloques encadenados por SHA-256
+```
+
+### 6.11. Webhooks Salientes para Comercios Aliados (`/api/merchants/webhooks/*`)
+Permite a negocios locales registrar URLs de callback para enterarse al momento cuando un grupo vota o confirma visita a su local:
+```javascript
+// Registrar webhook para una cafetería
+const webhook = await api.post('/merchants/webhooks/subscriptions', {
+  merchant_id: 'plc_cafe_1',
+  target_url: 'https://mi-cafeteria.cr/api/webhook',
+  events: ['plan.confirmed', 'voucher.redeemed']
+});
+console.log(webhook.secret); // Secreto para validar firma HMAC-SHA256 en cabecera X-Sinergia-Signature
+```
+
+### 6.12. Motor Financiero BCCR, Multi-divisa y Redondeo en Efectivo (`/api/finance/*`)
+Consulta tasas del Banco Central en vivo, convierte monedas y aplica la regla de redondeo oficial de efectivo del BCCR:
+```javascript
+// 1. Tipos de cambio BCCR oficiales
+const { usd_to_crc_compra, usd_to_crc_venta } = await api.get('/finance/exchange-rates');
+
+// 2. Conversión entre divisas en vivo (CRC, USD, EUR, GBP)
+const conv = await api.post('/finance/convert', { amount: 15000, from: 'CRC', to: 'USD' });
+console.log(conv.converted_amount); // ej: 29.17 USD
+
+// 3. Redondeo en efectivo BCCR (monedas de ₡1 y ₡2 retiradas)
+const cash = await api.post('/finance/cash-rounding', { amount_crc: 2453 });
+console.log(cash.cash_rounded_crc); // 2455 CRC (redondeado hacia arriba a 5)
+
+// 4. División de cuenta tica con 13% IVA y 10% ley de servicio
+const bill = await api.post('/finance/split-bill-cr', {
+  subtotal_crc: 12000,
+  people_count: 3
+});
+console.log(bill.per_person.amount_crc_card); // Monto exacto por persona en tarjeta
+console.log(bill.per_person.amount_crc_cash); // Monto redondeado por persona en efectivo
+console.log(bill.total_usd); // Total equivalente en USD para turistas
+```
+
+### 6.13. Índice de Confort Urbano y "Alerta de Aguacero Tico" (`/api/weather/comfort-index`)
+Mide las condiciones para salir al aire libre y detecta aguaceros de la tarde típicos del Valle Central:
+```javascript
+// GET /api/weather/comfort-index?lat=9.9333&lng=-84.0833
+const comfort = await api.get('/weather/comfort-index?lat=9.9333&lng=-84.0833');
+console.log(comfort.outdoor_comfort_score); // Puntaje 0 a 100
+console.log(comfort.aguacero_alert.detected); // true si hay aguacero inminente
+console.log(comfort.recommendation); // Recomendación de local techado o al aire libre
+```
+
+### 6.14. Calidad del Aire Satelital en el GAM (`/api/weather/air-quality`)
+Mide polvo, partículas PM2.5 y ozono en tiempo real para deportistas, corredores y mascotas:
+```javascript
+// GET /api/weather/air-quality?lat=9.9333&lng=-84.0833
+const aqi = await api.get('/weather/air-quality?lat=9.9333&lng=-84.0833');
+console.log(aqi.category); // "Buena" o "Moderada"
+console.log(aqi.safe_for_exercise); // true
+```
+
+### 6.15. Geocodificación Territorial Inversa de Costa Rica (`/api/places/reverse-geocode`)
+Convierte coordenadas GPS en provincia, cantón, distrito y código postal costarricense:
+```javascript
+// GET /api/places/reverse-geocode?lat=9.9148&lng=-84.2421
+const geo = await api.get('/places/reverse-geocode?lat=9.9148&lng=-84.2421');
+console.log(geo.territorial_division.canton); // "Mora"
+console.log(geo.formatted_tico_address); // "Vía Principal, Colón, Mora, San José, Costa Rica"
+```
+
+### 6.16. Enlaces Directos para Waze, Google Maps y Apple Maps (`/api/places/navigation-links`)
+Genera enlaces nativos y códigos QR para que el usuario o una grúa abra la ruta con un toque:
+```javascript
+// GET /api/places/navigation-links?lat=9.9148&lng=-84.2421&label=Feria+Mora
+const nav = await api.get('/places/navigation-links?lat=9.9148&lng=-84.2421&label=Feria+Mora');
+// nav.links.waze_app -> abre la app nativa de Waze
+// nav.links.google_maps -> abre Google Maps con la ruta trazada
+```
+
+### 6.17. Verificación de Cédula y Comercios ante Hacienda (`/api/businesses/verify-id/:id`)
+Valida cédulas físicas (9 dígitos) o jurídicas (10 dígitos) y devuelve la razón social oficial registrada en Costa Rica:
+```javascript
+// GET /api/businesses/verify-id/3101123456
+const tax = await api.get('/businesses/verify-id/3101123456');
+console.log(tax.legal_name); // Razón social oficial del comercio
+console.log(tax.classification.label); // "Cédula Jurídica (Empresa o Comercio)"
+```
+
+---
+
+## 7. Manejo de Errores y Códigos de Estado
 
 | Código | Significado | Qué debe hacer el Frontend |
 |---|---|---|
@@ -380,7 +596,7 @@ api.setLanguage('ja'); // Ahora todas las peticiones viajarán con la cabecera x
 
 ---
 
-## 7. Verificación de Funcionamiento Rápida
+## 8. Verificación de Funcionamiento Rápida
 
 Para comprobar que todo está listo antes de programar componentes en el frontend:
 1. Abre tu navegador en `http://localhost:4000/api/health/supabase`.

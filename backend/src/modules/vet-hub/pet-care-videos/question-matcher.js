@@ -4,7 +4,7 @@
  * detecta consultas sobre síntomas clínicos para derivar al directorio veterinario.
  */
 
-const CLINICAL_SYMPTOMS_REGEX = /\b(v[oó]mit[aoe]|sangr[ae]|convulsi[oó]n|fiebre|diarrea|envenena|intoxica|atraganta|asfixi|paracetamol|ibuprofeno|acetaminof[eé]n|antibi[oó]tic[ao]|dosis|medicament[ao]|f[aá]rmac[ao]|fractur[ae]|atropell|herida\s+abierta|infecci[oó]n|moquillo|parvovirus|rabia|letarg[ao]|dolor\s+agudo|diagn[oó]stic[ao]|tratamient[ao]\s+m[eé]dico)\b/i;
+const CLINICAL_SYMPTOMS_REGEX = /\b(v[oó]mit[aoe]|sangr[ae]|convulsi[oó]n|fiebre|diarrea|envenena|intoxica|chocolate|veneno|temblor|tiembl[ae]|atraganta|asfixi|paracetamol|ibuprofeno|acetaminof[eé]n|antibi[oó]tic[ao]|dosis|medicament[ao]|f[aá]rmac[ao]|fractur[ae]|atropell|herida\s+abierta|infecci[oó]n|moquillo|parvovirus|rabia|letarg[ao]|dolor\s+agudo|diagn[oó]stic[ao]|tratamient[ao]\s+m[eé]dico)\b/i;
 
 const SPANISH_STOPWORDS = new Set([
   'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',

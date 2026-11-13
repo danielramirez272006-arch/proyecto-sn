@@ -663,6 +663,88 @@ router.get('/businesses/verify-id/:id', async (req, res, next) => {
   }
 });
 
+// ============================================================================
+// 10. Calendario de Feriados y Suspensión de Restricción Vehicular en CR
+// ============================================================================
+const holidaysCrService = require('../../modules/calendar/holidays-cr-service');
+
+router.get('/calendar/holidays/cr', async (req, res, next) => {
+  try {
+    const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+    const holidays = await holidaysCrService.getHolidays(year);
+    return success(res, holidays, { total: holidays.length, country: 'Costa Rica' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/calendar/holidays/status', async (req, res, next) => {
+  try {
+    const status = await holidaysCrService.getTodayStatus();
+    return success(res, status);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 11. Monitor Sísmico y Tectónico de Costa Rica (USGS / OVSICORI Feed)
+// ============================================================================
+const seismicMonitorService = require('../../modules/urban-rescue/seismic-monitor-service');
+
+router.get('/rescue/seismic-monitor', async (req, res, next) => {
+  try {
+    const activity = await seismicMonitorService.getSeismicActivity();
+    return success(res, activity);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 12. Optimizador de Rutas Multi-Parada para Salidas Grupales (TSP Heurístico)
+// ============================================================================
+const routeOptimizerService = require('../../modules/social-dining/route-optimizer-service');
+
+router.post('/social/plans/optimize-route', (req, res) => {
+  const stops = req.body?.stops || [];
+  const result = routeOptimizerService.optimizeItinerary(stops);
+  return success(res, result);
+});
+
+// ============================================================================
+// 13. Generador de Enlaces Rápidos y QR para Pagos SINPE Móvil
+// ============================================================================
+const sinpeDeepLinkService = require('../finance/sinpe-deep-link-service');
+
+router.post('/finance/sinpe-deep-link', (req, res) => {
+  try {
+    const { amount_crc, recipient_phone, description } = req.body || {};
+    const links = sinpeDeepLinkService.generateBankCommands({
+      amountCrc: amount_crc,
+      recipientPhone: recipient_phone,
+      description
+    });
+    return success(res, links);
+  } catch (err) {
+    return res.status(400).json({ ok: false, error: { message: err.message } });
+  }
+});
+
+// ============================================================================
+// 14. Generador de Tarjetas de Metadatos Sociales (Open Graph / Twitter Cards)
+// ============================================================================
+const socialShareCardService = require('../utils/social-share-card');
+
+router.get('/social/share-card/:type/:id', async (req, res, next) => {
+  try {
+    const meta = await socialShareCardService.generateShareMetadata(req.params.type, req.params.id);
+    return success(res, meta);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.use('/auth', require('../../modules/auth').authRoutes);
 router.use('/events', require('../../modules/events').eventsRoutes);
 router.use('/social', require('../../modules/social-dining').socialRoutes);

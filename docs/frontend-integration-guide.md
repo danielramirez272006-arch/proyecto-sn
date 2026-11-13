@@ -579,6 +579,63 @@ console.log(tax.legal_name); // Razón social oficial del comercio
 console.log(tax.classification.label); // "Cédula Jurídica (Empresa o Comercio)"
 ```
 
+### 6.18. Feriados Oficiales y Suspensión de Restricción Vehicular (`/api/calendar/holidays/*`)
+Verifica feriados nacionales de Costa Rica y si la restricción de San José está suspendida:
+```javascript
+// GET /api/calendar/holidays/status
+const calendarStatus = await api.get('/calendar/holidays/status');
+console.log(calendarStatus.vehicular_restriction_suspended); // true en feriados o fines de semana
+console.log(calendarStatus.restriction_status_note); // Razón legal de la suspensión
+console.log(calendarStatus.next_holiday); // Próximo feriado patrio
+```
+
+### 6.19. Monitor Sísmico y Tectónico en Tiempo Real (`/api/rescue/seismic-monitor`)
+Monitorea sismos recientes en el territorio costarricense y analiza el impacto en el GAM:
+```javascript
+// GET /api/rescue/seismic-monitor
+const seismic = await api.get('/rescue/seismic-monitor');
+console.log(seismic.emergency_alert_active); // true si hubo sismo >= 4.5
+console.log(seismic.latest_events); // Array de últimos eventos con magnitud y distancia al GAM
+```
+
+### 6.20. Optimizador de Rutas Multi-Parada para Salidas Grupales (`/api/social/plans/optimize-route`)
+Calcula el orden óptimo de paradas para ahorrar tiempo, kilometraje y gasolina en presas:
+```javascript
+// POST /api/social/plans/optimize-route
+const route = await api.post('/social/plans/optimize-route', {
+  stops: [
+    { id: 'p1', name: 'Desayuno en Mora', lat: 9.9148, lng: -84.2421 },
+    { id: 'p2', name: 'Mirador Salitral', lat: 9.9450, lng: -84.2150 },
+    { id: 'p3', name: 'Café La Colina', lat: 9.9200, lng: -84.2350 }
+  ]
+});
+console.log(route.distance_saved_km); // Kilómetros ahorrados
+console.log(route.estimated_minutes_saved); // Minutos ahorrados en presas
+console.log(route.optimized_stops); // Paradas reordenadas eficientemente
+```
+
+### 6.21. Enlaces Rápidos y QR para Pagos SINPE Móvil (`/api/finance/sinpe-deep-link`)
+Genera comandos nativos para abrir la app de SMS con el formato de cada banco de Costa Rica:
+```javascript
+// POST /api/finance/sinpe-deep-link
+const sinpe = await api.post('/finance/sinpe-deep-link', {
+  amount_crc: 5000,
+  recipient_phone: '88887766',
+  description: 'Almuerzo'
+});
+// sinpe.banks.bac.one_click_sms_uri -> sms:2026?body=PASE%205000%2088887766%20Almuerzo
+// sinpe.qr_code_url -> URL del QR listo para pagar
+```
+
+### 6.22. Tarjetas de Metadatos Sociales Open Graph (`/api/social/share-card/:type/:id`)
+Metadatos dinámicos listos para previsualización al compartir en WhatsApp, Facebook o Twitter:
+```javascript
+// GET /api/social/share-card/plan/pln_demo
+const share = await api.get('/social/share-card/plan/pln_demo');
+console.log(share.open_graph['og:title']); // Título formateado con código de invitación
+console.log(share.html_meta_tags); // <meta property="og:title" ... />
+```
+
 ---
 
 ## 7. Manejo de Errores y Códigos de Estado

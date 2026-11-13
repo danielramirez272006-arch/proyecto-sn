@@ -871,4 +871,76 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(invRes.status, 400);
     assert.equal(invRes.body.ok, false);
   });
+
+  await suite.test('36. Feriados Oficiales de Costa Rica y Suspensión de Restricción (/api/calendar/holidays/*)', async () => {
+    // 1. Lista de feriados de Costa Rica
+    const listRes = await executeMockRequest('GET', '/api/calendar/holidays/cr?year=2026');
+    assert.equal(listRes.status, 200);
+    assert.equal(listRes.body.ok, true);
+    assert.ok(Array.isArray(listRes.body.data));
+    assert.ok(listRes.body.data.length >= 8);
+    assert.ok(listRes.body.data.some(h => h.local_name.includes('Juan Santamaría') || h.local_name.includes('Navidad')));
+
+    // 2. Estado de hoy y restricción vehicular
+    const statusRes = await executeMockRequest('GET', '/api/calendar/holidays/status');
+    assert.equal(statusRes.status, 200);
+    assert.equal(statusRes.body.ok, true);
+    assert.equal(typeof statusRes.body.data.is_holiday, 'boolean');
+    assert.equal(typeof statusRes.body.data.vehicular_restriction_suspended, 'boolean');
+    assert.ok(statusRes.body.data.restriction_status_note);
+  });
+
+  await suite.test('37. Monitor Sísmico y Tectónico de Costa Rica (/api/rescue/seismic-monitor)', async () => {
+    const seismicRes = await executeMockRequest('GET', '/api/rescue/seismic-monitor');
+    assert.equal(seismicRes.status, 200);
+    assert.equal(seismicRes.body.ok, true);
+    assert.equal(seismicRes.body.data.country, 'Costa Rica');
+    assert.equal(typeof seismicRes.body.data.emergency_alert_active, 'boolean');
+    assert.ok(Array.isArray(seismicRes.body.data.latest_events));
+  });
+
+  await suite.test('38. Optimizador de Rutas Multi-Parada para Salidas Grupales (/api/social/plans/optimize-route)', async () => {
+    const rawStops = [
+      { id: 'stop_1', name: 'Desayuno en Mora', lat: 9.9148, lng: -84.2421 },
+      { id: 'stop_2', name: 'Mirador en Salitral', lat: 9.9450, lng: -84.2150 },
+      { id: 'stop_3', name: 'Cafetería La Colina', lat: 9.9200, lng: -84.2350 },
+      { id: 'stop_4', name: 'Heladería Artesanal', lat: 9.9250, lng: -84.2280 }
+    ];
+
+    const optRes = await executeMockRequest('POST', '/api/social/plans/optimize-route', {
+      body: { stops: rawStops }
+    });
+    assert.equal(optRes.status, 200);
+    assert.equal(optRes.body.ok, true);
+    assert.equal(optRes.body.data.optimized, true);
+    assert.equal(optRes.body.data.optimized_stops.length, 4);
+    assert.ok(optRes.body.data.optimized_distance_km <= optRes.body.data.original_distance_km);
+    assert.ok(optRes.body.data.traffic_advice);
+  });
+
+  await suite.test('39. Generador de Enlaces Rápidos y QR para Pagos SINPE Móvil (/api/finance/sinpe-deep-link)', async () => {
+    const sinpeRes = await executeMockRequest('POST', '/api/finance/sinpe-deep-link', {
+      body: {
+        amount_crc: 8500,
+        recipient_phone: '88887766',
+        description: 'Almuerzo Soda'
+      }
+    });
+    assert.equal(sinpeRes.status, 200);
+    assert.equal(sinpeRes.body.ok, true);
+    assert.equal(sinpeRes.body.data.recipient_phone, '+50688887766');
+    assert.equal(sinpeRes.body.data.amount_crc, 8500);
+    assert.ok(sinpeRes.body.data.banks.bac.command_text.includes('PASE 8500 88887766'));
+    assert.ok(sinpeRes.body.data.banks.bncr.one_click_sms_uri.includes('sms:2627'));
+    assert.ok(sinpeRes.body.data.qr_code_url);
+  });
+
+  await suite.test('40. Generador de Tarjetas de Metadatos Sociales Open Graph (/api/social/share-card/:type/:id)', async () => {
+    const cardRes = await executeMockRequest('GET', '/api/social/share-card/place/plc_cafe_1');
+    assert.equal(cardRes.status, 200);
+    assert.equal(cardRes.body.ok, true);
+    assert.ok(cardRes.body.data.open_graph['og:title']);
+    assert.ok(cardRes.body.data.open_graph['og:image']);
+    assert.ok(cardRes.body.data.html_meta_tags.includes('<meta property="og:title"'));
+  });
 });

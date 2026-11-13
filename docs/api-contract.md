@@ -1,6 +1,6 @@
 # Contrato de API y Especificación OpenAPI — Sistema de Sinergia Urbana
 
-**Versión:** 1.6.0 (Enterprise Supabase, BCCR Live, Confort Urbano, Calidad de Aire, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
+**Versión:** 1.7.0 (Enterprise Supabase, BCCR Live, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
 **Entorno Base:** `http://localhost:4000/api`  
 **Swagger UI Interactivo:** `http://localhost:4000/api/docs`  
 **OpenAPI Spec JSON:** `http://localhost:4000/api/docs/openapi.json`  
@@ -176,3 +176,19 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente c
 
 ### 3.18 Verificación Tributaria de Comercios y Cédulas (Hacienda CR)
 - **`GET /api/businesses/verify-id/:id`**: Consulta oficial en el padrón del Ministerio de Hacienda para cédulas físicas (9 dígitos) y jurídicas (10 dígitos). Retorna razón social legal, estado tributario y actividades económicas registradas.
+
+### 3.19 Feriados Oficiales y Suspensión de Restricción Vehicular
+- **`GET /api/calendar/holidays/cr`**: Catálogo anual de feriados patrios y de ley de Costa Rica.
+- **`GET /api/calendar/holidays/status`**: Estado del día actual en Costa Rica, verificación de día festivo y suspensión legal de la restricción vehicular de San José.
+
+### 3.20 Monitor Sísmico y Tectónico de Costa Rica
+- **`GET /api/rescue/seismic-monitor`**: Monitoreo en vivo de actividad sísmica en territorio nacional, proximidad al GAM y activación de protocolos de emergencia.
+
+### 3.21 Optimizador de Rutas Multi-Parada para Salidas Grupales
+- **`POST /api/social/plans/optimize-route`**: Reordenamiento algorítmico de paradas (TSP heurístico) para minimizar presas, kilometraje y huella de $\text{CO}_2$.
+
+### 3.22 Generador de Enlaces Rápidos y QR para Pagos SINPE Móvil
+- **`POST /api/finance/sinpe-deep-link`**: Generación de comandos SMS nativos para los 7 principales bancos de Costa Rica y enlace QR de pago directo.
+
+### 3.23 Tarjetas de Metadatos Sociales Open Graph
+- **`GET /api/social/share-card/:type/:id`**: Generación de metadatos `og:` y `twitter:` dinámicos para compartir en WhatsApp, Facebook y Twitter.

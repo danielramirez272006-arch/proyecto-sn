@@ -1,7 +1,15 @@
 # Contrato de API y Especificación OpenAPI — Sistema de Sinergia Urbana
 
-**Versión:** 1.0.0 (MVP)  
+**Versión:** 1.9.0 (Arquitectura Híbrida de IA: Cliente con Google Gemini & Admins con DeepSeek AI, Enterprise Supabase, Videos de Cuidado Animal, Pregúntale al Video, BCCR Live, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
 **Entorno Base:** `http://localhost:4000/api`  
+**Swagger UI Interactivo:** `http://localhost:4000/api/docs`  
+**OpenAPI Spec JSON:** `http://localhost:4000/api/docs/openapi.json`  
+**Métricas Prometheus:** `http://localhost:4000/api/metrics`  
+**Base de Datos Principal:** Supabase PostgreSQL 17 (`app_private` cerrado con RLS)  
+**Motores de Inteligencia Artificial:**
+- **Cliente (Usuarios Finales):** Google Gemini (`gemini-1.5-flash`) en `/api/concierge/*` y `/api/places/smart-search` (con fallback heurístico $0).
+- **Administración y Agentes Autónomos:** DeepSeek AI (`deepseek-chat` V3 / `deepseek-reasoner` R1) en `/api/admin/*` y tareas en background.  
+**Trazabilidad Distribuida:** Cabecera `x-request-id` (UUIDv4) inyectada en todas las peticiones y respuestas  
 **Zona Horaria Oficial:** `America/Costa_Rica` (Almacenamiento interno en UTC ISO-8601)  
 **Moneda Principal:** Colones Costarricenses (`CRC`), con soporte de conversión oficial BCCR/Hacienda a Dólares (`USD`).  
 
@@ -9,7 +17,7 @@
 
 ## 1. Convenciones y Formato Estandarizado de Respuesta
 
-Todas las respuestas del backend siguen estrictamente la estructura envolvente:
+Todas las respuestas del backend siguen estrictamente la estructura envolvente con identificador único de trazabilidad:
 
 ### Respuesta Exitosa (`ok: true`)
 ```json
@@ -17,7 +25,8 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente:
   "ok": true,
   "data": { ... },
   "meta": {
-    "timestamp": "2026-11-12T15:30:00.000Z",
+    "timestamp": "2026-11-13T14:30:00.000Z",
+    "request_id": "req_1773489200000_3a8f1b",
     "total": 3
   },
   "error": null
@@ -30,7 +39,8 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente:
   "ok": false,
   "data": null,
   "meta": {
-    "timestamp": "2026-11-12T15:30:00.000Z"
+    "timestamp": "2026-11-13T14:30:00.000Z",
+    "request_id": "req_1773489200000_3a8f1b"
   },
   "error": {
     "code": "STALE_REVISION_CONFLICT",
@@ -42,72 +52,159 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente:
 
 ---
 
-## 2. Matriz de Roles y Autenticación
+## 2. Matriz de Roles, Permisos y Autenticación
 
-| Rol | Método de Identificación | Permisos |
+| Rol | Método de Identificación | Permisos Granulares |
 |---|---|---|
-| **Visitante** | Sin credenciales | Consulta pública de lugares, eventos, clima y vista del plan por código. |
-| **Invitado** | Cabecera `x-guest-token: tok_guest_...` | Votar opciones (`can`, `prefer`, `cannot`), reconfirmar asistencia. No puede editar plan ni ver emails privados. |
-| **Organizador** | Bearer JWT / Sesión de usuario | Crear plan, invocar IA para alternativas, confirmar opción definitiva, editar paradas manualmente, aceptar/rechazar propuestas. |
-| **Comercio** | Bearer JWT (`role: merchant`) | Proponer correcciones de local (`POST /api/businesses/place-corrections`) con evidencia. |
-| **Admin** | Bearer JWT (`role: admin`) | CRUD de catálogo, candado `verified_by_admin`, reprogramar/cancelar eventos, aprobar correcciones, auditar webhooks y telemetría de agentes. |
+| **Visitante** | Sin credenciales | `plans:view`, `places:view`, `events:view` |
+| **Invitado** | Cabecera `x-guest-token: gst_tok_...` | `plans:vote` (sin cuenta requerida) |
+| **Organizador** | Bearer JWT / Sesión de usuario | `plans:create`, `plans:vote`, `plans:confirm`, `plans:edit` |
+| **Comercio** | Bearer JWT (`role: merchant`) | `businesses:claim`, `businesses:corrections` |
+| **Admin** | Bearer JWT (`role: admin`) | Todos los permisos: `admin:agents`, `admin:telemetry`, `events:cancel`, `places:verify`, `audit:read` |
 
 ---
 
-## 3. Endpoints Principales [MVP]
+## 3. Endpoints Principales
 
-### 3.1 Salud y Estado de Servicios
-- **`GET /api/health`**
-  - Chequeo general del servidor HTTP y tiempo activo.
-- **`GET /api/health/db`**
-  - Chequeo de disponibilidad de la base de datos (MySQL 8 / SQLite integrado).
+### 3.1 Observabilidad, Diagnóstico y Documentación
+- **`GET /api/docs`**: Interfaz web interactiva Swagger UI.
+- **`GET /api/docs/openapi.json`**: Especificación OpenAPI 3.0.3 en formato JSON.
+- **`GET /api/metrics`**: Métricas de rendimiento en formato estándar Prometheus (OpenMetrics).
+- **`GET /api/health`**: Estado del servidor y modelo DeepSeek activo.
+- **`GET /api/health/supabase`**: Estado en vivo de la conexión con Supabase Cloud (Auth & Storage).
+- **`GET /api/health/db`**: Estado de conexión a la base de datos relacional (Supabase PostgreSQL con fallback a SQLite).
+- **`GET /api/health/system`**: Telemetría completa (memoria RSS/Heap, CPU, estado de la base y tareas de agentes).
 
-### 3.2 Catálogo de Lugares y Eventos
+### 3.2 Autenticación, Hashing PBKDF2 y Sesiones
+- **`POST /api/auth/login`**: Login con verificación PBKDF2 (100.000 iteraciones). Retorna Access Token + Refresh Token.
+- **`POST /api/auth/register`**: Registro de usuarios con contraseña hasheada y sal criptográfica.
+- **`POST /api/auth/refresh`**: Rotación segura de Refresh Token y renovación de Access Token.
+- **`POST /api/auth/logout`**: Cierre de sesión y revocación del Refresh Token.
+- **`GET /api/auth/me`**: Identificación del usuario o invitado activo.
+- **`POST /api/auth/guest-session`**: Generación de token criptográfico temporal para votación sin registro.
+
+### 3.3 Catálogo de Lugares y Eventos (Paginación + GPS)
 - **`GET /api/places`**
-  - **Query Params:** `category` (`cafe`, `feria`, `veterinaria`), `verified_only` (`true`/`false`), `search`, `limit`, `offset`.
-  - Devuelve locales con su candado `verified_by_admin` y metadatos de verificación por atributo (`pet_friendly`, `ley_7600_ramp`, `sinpe_movil`).
-- **`GET /api/events`**
-  - **Query Params:** `status` (`published`, `rescheduled`, `cancelled`), `category`, `fromDate`.
-- **`GET /api/events/:id`**
+  - **Query Params:** `category`, `verified_only`, `search`, `page`, `limit`, `lat`, `lng`, `radius_km`, `sort_by`, `sort_order`.
+  - Soporta cálculo de distancia radial (Haversine) y metadatos de paginación (`total_pages`, `has_next_page`).
+- **`GET /api/events`**: Consulta de eventos con filtros de fecha y categoría.
+- **`GET /api/events/:id`**: Detalle de evento programado.
 
-### 3.3 Planes Grupales (`social-dining`)
-- **`POST /api/social/plans`**
-  - Crea un nuevo plan con código único compartible (ej. `PLAN-CR-772`).
-  - **Body:** `{ title, budget_crc, options: [ { title, stops: [ { place_id, event_id, start_time, end_time } ] } ] }`
-- **`GET /api/social/plans/:code`**
-  - Obtiene el plan completo con opciones, paradas, conteo de votos agregados y propuesta activa si existe. Máscara datos privados si quien consulta no es organizador.
-- **`POST /api/social/plans/:code/guests`**
-  - Onboarding de invitado. Devuelve `guest_token`.
-- **`PUT /api/social/plans/:code/votes/:optionId`**
-  - Emite o actualiza voto (`vote_type`: `can`, `prefer`, `cannot`). Es idempotente y no duplica votos.
-- **`POST /api/social/plans/:code/confirm`**
-  - Confirmación del organizador (`selected_option_id`). Genera snapshot inmutable de paradas e incrementa la revisión.
-- **`PUT /api/social/plans/:code`**
-  - Edición manual por parte del organizador (`title`, `budget_crc`, `selected_option_id`).
-- **`POST /api/social/plans/:code/proposals/:id/decision`**
-  - Acepta o rechaza propuesta alternativa. Si `expected_revision` no coincide con la actual, devuelve `409 Conflict`.
-- **`GET /api/social/plans/:code/stream`**
-  - Conexión Server-Sent Events (SSE) para actualizaciones en vivo (votos, confirmación, propuestas).
+### 3.4 Planes Grupales (`social-dining`) con Transacciones ACID
+- **`POST /api/social/plans`**: Creación atómica de plan, opciones y paradas con rollback automático ante fallos.
+- **`GET /api/social/plans/:code`**: Detalle completo con opciones, paradas, votos y propuesta activa.
+- **`PUT /api/social/plans/:code/votes/:optionId`**: Votación idempotente (`can`, `prefer`, `cannot`).
+- **`POST /api/social/plans/:code/confirm`**: Confirmación del organizador con snapshot inmutable de paradas.
+- **`POST /api/social/plans/:code/proposals/:id/decision`**: Decisión sobre propuesta IA con control de concurrencia optimista (409 Conflict).
+- **`GET /api/social/plans/:code/stream`**: Canal Server-Sent Events (SSE) para actualizaciones en vivo.
 
-### 3.4 Herramientas de Mesa y Finanzas
-- **`POST /api/social/midpoint`**
-  - Triangula el punto medio justo de múltiples coordenadas geográficas.
-- **`POST /api/social/split-bill`**
-  - Divide cuenta considerando 13% IVA y 10% servicio oficial de Costa Rica con escudo anti-doble propina.
-- **`POST /api/social/sinpe-sms`**
-  - Genera comandos y enlaces nativos SMS para SINPE Móvil (BAC, BNCR, BCR).
+### 3.5 Copiloto DeepSeek AI (V3 / R1)
+- **`GET /api/concierge/status`**: Estado, modelo activo y métricas del motor DeepSeek.
+- **`POST /api/concierge/voice-intent`**: Clasificación de intenciones por voz/texto en lenguaje coloquial tico.
+- **`POST /api/concierge/chat`**: Conversación multi-turn con memoria de sesión (`session_id`).
+- **`POST /api/concierge/multi-day-itinerary`**: Generador de itinerarios de 1 a 3 días con desglose de presupuesto en CRC.
+- **`POST /api/concierge/deep-reason`**: Razonamiento analítico con DeepSeek R1 para problemas complejos de optimización de rutas y restricciones.
 
-### 3.5 Copiloto IA y Voz
-- **`POST /api/concierge/voice-intent`**
-  - Recibe audio transcripto o texto y devuelve intención estructurada, presupuesto estimado en CRC y texto para síntesis de voz.
-- **`POST /api/concierge/plan-drafts`**
-  - Genera un borrador editable de salida con presupuesto desglosado.
+### 3.6 Rescate Urbano y Auxilio Ciudadano (S.O.S.)
+- **`GET /api/rescue/roadside`**: Red de auxilio vial y grúas 24/7 en Costa Rica.
+- **`GET /api/rescue/survival-stops`**: Paradas con baños Ley 7600 y cajeros SINPE.
+- **`GET /api/rescue/sos`**: Feed de alertas comunitarias abiertas.
+- **`POST /api/rescue/sos`**: Crear nueva alerta ciudadana con difusión inmediata por SSE.
 
-### 3.6 Administración y Operaciones
-- **`PATCH /api/admin/events/:id`**
-  - Publica, reprograma o cancela eventos. Si se cancela o reprograma, el `plan-operations-agent` detecta automáticamente planes afectados y genera propuestas alternativas.
-- **`POST /api/admin/places`**, **`PUT /api/admin/places/:id`**, **`PUT /api/admin/places/:id/lock`**
-- **`GET /api/admin/duplicates`**, **`POST /api/admin/merge-duplicates`**
-- **`GET /api/admin/corrections`**, **`POST /api/admin/corrections/:id/decision`**
-- **`GET /api/admin/notifications`**, **`POST /api/admin/notifications/:id/retry`**
+### 3.7 Administración y Auditoría
+- **`GET /api/audit/history`**: Pista inmutable de auditoría (quién, qué IP, qué cambió, timestamp).
+- **`GET /api/admin/agents/status`**: Estado del orquestador y tareas en background.
+- **`POST /api/admin/agents/:jobName/run`**: Ejecución manual forzada de agentes autónomos.
 
+### 3.8 Internacionalización Dinámica (i18n — 10 Idiomas Oficiales)
+- **`GET /api/i18n/languages`**: Listado de los 10 idiomas oficiales (`es`, `en`, `fr`, `de`, `pt`, `it`, `zh`, `ja`, `ko`, `ru`) con metadatos.
+- **`GET /api/i18n/translations/:lang`**: Diccionario completo de traducciones para hidratación del cliente.
+- **`GET /api/i18n/detect`**: Detección de idioma preferido según cabeceras `Accept-Language`, `x-language` o query param `?lang=`.
+- **`POST /api/i18n/translate`**: Traducción de claves puntuales en tiempo real.
+
+### 3.9 Funciones Enterprise, Inteligencia DeepSeek y Formatos Abiertos
+- **`GET /api/health/deep`**: Diagnóstico de latencia profunda en paralelo (PostgreSQL, Supabase Cloud y DeepSeek AI en ms).
+- **`GET /api/places/smart-search`**: Búsqueda semántica de lugares mediante lenguaje natural impulsada por DeepSeek AI.
+- **`GET /api/places/export/geojson`**: Exportador estándar RFC 7946 GeoJSON de lugares para Leaflet, Mapbox o GIS.
+- **`GET /api/events/export/ics`**: Exportador de calendario RFC 5545 iCalendar para Google Calendar y Apple Calendar.
+- **`GET /api/events/:id/export/ics`**: Exportador de evento individual en formato `.ics`.
+- **`POST /api/social/scan-invoice`**: Extractor OCR inteligente de facturas y comprobantes SINPE Móvil con desglose tributario de Costa Rica.
+- **`POST /api/rescue/match-pet`**: Coincidencia visual y morfológica de mascotas extraviadas con filtrado de distancia geográfica.
+- **`POST /api/storage/upload`**: Subida de archivos e imágenes a Supabase Storage con verificación MIME y fallback.
+- **`POST /api/webhooks/supabase`**: Receptor de webhooks de Supabase con firma HMAC-SHA256 y difusión en vivo vía SSE.
+
+### 3.10 Auditoría Inmutable Criptográfica (Hash Chain Ledger)
+- **`GET /api/audit/verify-chain`**: Verificación matemática de la cadena inmutable de hashes SHA-256 (`genesis_hash` a `latest_hash`).
+- **`POST /api/audit/chain`**: Registro de un nuevo bloque encadenado con hash canónico de datos.
+- **`GET /api/audit/chain/:entityType/:recordId`**: Historial completo de bloques auditados para una entidad específica.
+
+### 3.11 Notificaciones Multicanal y Patrón Outbox
+- **`GET /api/notifications/vapid-public-key`**: Retorna la clave pública VAPID (RFC 8292) para Web Push en navegadores.
+- **`POST /api/notifications/subscribe`**: Registro o actualización de una suscripción Push del navegador.
+- **`POST /api/notifications/queue`**: Encolamiento resiliente en la tabla Outbox (`email`, `webpush`, `whatsapp`).
+- **`POST /api/notifications/outbox/process`**: Despacho de lotes pendientes con idempotencia y reintentos automáticos.
+- **`GET /api/notifications/outbox/status`**: Estado, suscriptores activos y métricas de entrega.
+
+### 3.12 Seguridad QR Criptográfico y Canje Único
+- **`POST /api/security/qr/generate`**: Generación de token QR firmado con HMAC-SHA256, expiración (TTL) y previsualización SVG.
+- **`GET /api/security/qr/inspect/:token`**: Inspección y validación de firma sin consumir el código QR.
+- **`POST /api/security/qr/redeem`**: Canje de un solo uso con protección contra doble gasto (idempotente).
+
+### 3.13 Movilidad Sostenible y Huella de Carbono (Costa Rica MINAE / IMN)
+- **`GET /api/mobility/gam-transit-factors`**: Factores oficiales de emisión (MINAE/IMN), matriz 99% renovable y costo de gasolina RECOPE.
+- **`POST /api/mobility/carbon-footprint`**: Cálculo comparativo de emisiones ahorradas ($\text{CO}_2$ en gramos/kg) y colones (CRC) por compartir vehículo (*carpool*), usar autobús o tren urbano Incofer.
+- **`GET /api/mobility/badges/:userId`**: Resumen de impacto ecológico acumulado y condecoraciones verdes ganadas.
+
+### 3.14 Motor de Webhooks Salientes para Comercios Locales (*Outbound Webhooks*)
+- **`POST /api/merchants/webhooks/subscriptions`**: Registro de URL de callback y generación de secreto de firma `sec_...`.
+- **`GET /api/merchants/webhooks/subscriptions`**: Listado de webhooks activos para un comercio.
+- **`DELETE /api/merchants/webhooks/subscriptions/:id`**: Revocación de webhook.
+- **`POST /api/merchants/webhooks/dispatch`**: Despacho de eventos firmados con `X-Sinergia-Signature` (HMAC-SHA256).
+- **`GET /api/merchants/webhooks/deliveries`**: Pista de auditoría con código HTTP de respuesta, duración en ms y estado de entrega.
+
+### 3.15 Motor Financiero BCCR, Multi-divisa y Redondeo en Efectivo
+- **`GET /api/finance/exchange-rates`**: Tipos de cambio compra/venta del Banco Central de Costa Rica en vivo y tasas de paridad global (USD, EUR, GBP, CAD).
+- **`POST /api/finance/convert`**: Conversión dinámica entre divisas en tiempo real.
+- **`POST /api/finance/cash-rounding`**: Redondeo oficial en efectivo del BCCR para eliminación de monedas de ₡1 y ₡2 al múltiplo de ₡5.
+- **`POST /api/finance/split-bill-cr`**: División de cuentas de restaurante con cálculo de 13% IVA, 10% propina legal de mesa y desglose en efectivo vs tarjeta.
+
+### 3.16 Clima Satelital, Confort al Aire Libre y Calidad del Aire (Open-Meteo)
+- **`GET /api/weather/comfort-index`**: Índice de confort para salidas (0 a 100), alerta temprana de aguacero vespertino del Valle Central y radiación UV extrema.
+- **`GET /api/weather/air-quality`**: Calidad del aire en el GAM, material particulado $PM_{2.5}$ / $PM_{10}$, ozono y recomendación deportiva.
+
+### 3.17 Geolocalización Territorial Inversa y Navegación Universal
+- **`GET /api/places/reverse-geocode`**: Resolución territorial de coordenadas GPS en provincia, cantón, distrito y código postal costarricense.
+- **`GET /api/places/navigation-links`**: Enlaces directos de navegación para Waze, Google Maps, Apple Maps y códigos QR de geolocalización.
+
+### 3.18 Verificación Tributaria de Comercios y Cédulas (Hacienda CR)
+- **`GET /api/businesses/verify-id/:id`**: Consulta oficial en el padrón del Ministerio de Hacienda para cédulas físicas (9 dígitos) y jurídicas (10 dígitos). Retorna razón social legal, estado tributario y actividades económicas registradas.
+
+### 3.19 Feriados Oficiales y Suspensión de Restricción Vehicular
+- **`GET /api/calendar/holidays/cr`**: Catálogo anual de feriados patrios y de ley de Costa Rica.
+- **`GET /api/calendar/holidays/status`**: Estado del día actual en Costa Rica, verificación de día festivo y suspensión legal de la restricción vehicular de San José.
+
+### 3.20 Monitor Sísmico y Tectónico de Costa Rica
+- **`GET /api/rescue/seismic-monitor`**: Monitoreo en vivo de actividad sísmica en territorio nacional, proximidad al GAM y activación de protocolos de emergencia.
+
+### 3.21 Optimizador de Rutas Multi-Parada para Salidas Grupales
+- **`POST /api/social/plans/optimize-route`**: Reordenamiento algorítmico de paradas (TSP heurístico) para minimizar presas, kilometraje y huella de $\text{CO}_2$.
+
+### 3.22 Generador de Enlaces Rápidos y QR para Pagos SINPE Móvil
+- **`POST /api/finance/sinpe-deep-link`**: Generación de comandos SMS nativos para los 7 principales bancos de Costa Rica y enlace QR de pago directo.
+
+### 3.23 Tarjetas de Metadatos Sociales Open Graph
+- **`GET /api/social/share-card/:type/:id`**: Generación de metadatos `og:` y `twitter:` dinámicos para compartir en WhatsApp, Facebook y Twitter.
+
+### 3.24 Videos de Cuidado Animal y «Pregúntale al Video» (YouTube + Gemini Multimodal)
+- **`GET /api/pet-videos`**: Catálogo público de videos aprobados con filtros por `species`, `topic` y búsqueda textual `search` con paginación (`page`, `limit`). (Alias: `GET /api/vet/videos`).
+- **`GET /api/pet-videos/:id`**: Ficha completa del video con sus fragmentos aprobados verificados. Los borradores retornan `404 Not Found`.
+- **`POST /api/pet-videos/:id/questions`**: «Pregúntale al video». Busca primero en fragmentos del video actual; si no hay respuesta adecuada, busca en otros videos aprobados del catálogo. Si detecta síntomas clínicos o emergencias, devuelve advertencia médica veterinaria y enlaces a SOS 24h y directorio veterinario.
+- **`POST /api/pet-videos/:id/report-broken`**: Reporte público de enlaces caídos o videos no disponibles para revisión de administradores.
+- **`GET /api/admin/pet-videos/search-youtube`**: Búsqueda admin en YouTube Data API v3 con fallback simulado cuando no hay API key o se agota la cuota.
+- **`POST /api/admin/pet-videos/register`**: Registro de video mediante URL HTTPS de YouTube. Conversión automática a ID canónico de 11 caracteres y deduplicación.
+- **`POST /api/admin/pet-videos/:id/analyze`**: Análisis estructurado con Gemini (especie, tema, resumen y hasta 3 fragmentos con marcas de tiempo `start_seconds` y `end_seconds`). Si ya fue analizado previamente, reutiliza el resultado para no gastar cuota de IA.
+- **`PUT /api/admin/pet-videos/:id`**: Edición y corrección de admin sobre título, especie, tema, resumen y fragmentos antes de aprobar.
+- **`POST /api/admin/pet-videos/:id/approve`**: Aprobación formal de ficha (`status: 'approved'`), guardando `approved_by` y `approved_at`.
+- **`POST /api/admin/pet-videos/:id/retire`**: Retiro de video del catálogo público (`status: 'retired'`), con motivo opcional.
+- **`GET /api/admin/pet-videos`**: Listado administrativo con soporte de filtro por estado (`draft`, `approved`, `retired`).
+- **`GET /api/admin/pet-videos/broken-reports`**: Listado de reportes de enlaces rotos recibidos.

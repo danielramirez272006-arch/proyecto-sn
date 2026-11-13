@@ -1,0 +1,37 @@
+{
+  "name": "sn-backend",
+  "version": "1.0.0",
+  "description": "Backend API, IA Copilot and Open Connectors for Costa Rica Urban Synergy Engine",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node src/shared/config/migrate-cli.js up",
+    "seed": "node src/shared/config/migrate-cli.js seed",
+    "db:supabase:check": "node src/shared/config/supabase-cli.js check",
+    "db:supabase:migrate": "node src/shared/config/supabase-cli.js migrate",
+    "db:supabase:seed": "node src/shared/config/supabase-cli.js seed",
+    "test": "node --test test/**/*.test.js"
+  },
+  "keywords": [
+    "express",
+    "mysql",
+    "ai-agent",
+    "costa-rica",
+    "social-dining",
+    "osrm",
+    "open-meteo"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "i18n": "^0.15.4",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.12.0",
+    "pg": "^8.23.1"
+  }
+}

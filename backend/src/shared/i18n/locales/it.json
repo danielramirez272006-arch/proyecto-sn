@@ -1,0 +1,30 @@
+{
+  "app_name": "Sinergia Urbana Costa Rica",
+  "system": {
+    "healthy": "Sistema operativo e in salute",
+    "unauthorized": "Non autorizzato o sessione scaduta",
+    "forbidden": "Accesso negato",
+    "not_found": "Risorsa non trovata",
+    "rate_limit": "Limite di richieste superato. Riprova più tardi.",
+    "conflict": "Conflitto di concorrenza: il piano è stato modificato da un altro organizzatore."
+  },
+  "places": {
+    "verified": "Attività verificata",
+    "pet_friendly": "Animali ammessi (Pet Friendly)",
+    "ramp_7600": "Accessibilità disabili (Legge 7600) verificata",
+    "sinpe_movil": "Accetta pagamenti SINPE Móvil"
+  },
+  "plans": {
+    "created": "Piano di gruppo creato con successo",
+    "confirmed": "Piano confermato dall'organizzatore con tappe immutabili",
+    "vote_recorded": "Voto registrato con successo senza duplicati"
+  },
+  "concierge": {
+    "greeting": "Pura vida! Sono il tuo copilota urbano per la Costa Rica con DeepSeek AI. Cosa programmiamo oggi?"
+  },
+  "storage": {
+    "uploaded": "File caricato con successo",
+    "too_large": "Il file supera la dimensione massima consentita di 5 MB"
+  }
+}
+

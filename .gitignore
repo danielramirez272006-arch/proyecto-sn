@@ -1,7 +1,15 @@
 node_modules/
+# Demo frontend local para pruebas (no subir a git)
+demo-frontend/
+demo/
+playground/
 .env
+backend/.env
+*.env
 *.db
 *.db-journal
+backend/data/local-sqlite-dev.db
+backend/data/backups/
 server/data/local-sqlite-dev.db
 server/data/backups/
 .DS_Store

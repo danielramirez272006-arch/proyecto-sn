@@ -11,3 +11,4 @@ Este directorio contiene los archivos necesarios para inicializar y configurar e
 2. Ir a **SQL Editor** y ejecutar el contenido de `supabase-esquema-mvp.sql`.
 3. (Opcional en desarrollo) Ejecutar `supabase-datos-demo.sql`.
 4. Copiar las credenciales del pooler a `backend/.env`.
+

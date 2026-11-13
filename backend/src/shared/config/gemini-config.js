@@ -4,7 +4,7 @@ const metricsCollector = require('../telemetry/metrics-collector');
 class GeminiSafeClient {
   constructor() {
     this.apiKey = env.gemini?.apiKey || process.env.GEMINI_API_KEY || '';
-    this.model = env.gemini?.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    this.model = env.gemini?.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash';
     this.dailyLimit = env.gemini?.freeTierDailyQuota || 1500;
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
     this.currentDate = new Date().toISOString().slice(0, 10);

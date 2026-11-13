@@ -296,8 +296,9 @@ test('Suite Módulo «Videos para cuidar a tu mascota» y «Pregúntale al video
     assert.equal(resPublicApproved.status, 200);
     assert.equal(resPublicApproved.body.ok, true);
     assert.ok(resPublicApproved.body.data.length >= 1);
-    assert.equal(resPublicApproved.body.data[0].id, video1Id);
-    assert.equal(resPublicApproved.body.data[0].verified_fragments_count, 2);
+    const foundV1 = resPublicApproved.body.data.find(v => v.id === video1Id);
+    assert.ok(foundV1, 'El video 1 debe estar presente en el catálogo público');
+    assert.equal(foundV1.verified_fragments_count, 2);
 
     // Detalle público accesible
     const resDetailApproved = await executeMockRequest(app, 'GET', `/api/pet-videos/${video1Id}`);

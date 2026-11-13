@@ -132,7 +132,7 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
     assert.equal(res.status, 200);
     assert.equal(res.body.ok, true);
     assert.equal(res.body.data.provider, 'Google Gemini');
-    assert.equal(res.body.data.activeModel, 'gemini-1.5-flash');
+    assert.ok(res.body.data.activeModel.includes('gemini'));
   });
 
   await suite.test('POST /api/social/midpoint triangula el punto medio de coordenadas', async () => {

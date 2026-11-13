@@ -103,10 +103,11 @@ class PetCareVideosService {
       video.duration_seconds
     );
 
-    const species = analysisResult.species || video.species || 'general';
-    const topic = analysisResult.topic || video.topic || 'cuidado_general';
-    const summary = analysisResult.summary || video.summary || '';
-    const fragments = analysisResult.fragments || [];
+    const effectiveAnalysis = analysisResult.species ? analysisResult : (analysisResult.fallback_analysis || analysisResult);
+    const species = effectiveAnalysis.species || video.species || 'general';
+    const topic = effectiveAnalysis.topic || video.topic || 'cuidado_general';
+    const summary = effectiveAnalysis.summary || video.summary || '';
+    const fragments = effectiveAnalysis.fragments || [];
 
     // Guardar borrador en base de datos
     await execute(

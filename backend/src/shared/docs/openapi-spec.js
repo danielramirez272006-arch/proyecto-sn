@@ -2,8 +2,8 @@ module.exports = {
   openapi: "3.0.3",
   info: {
     title: "Sinergia Urbana Costa Rica - Backend Enterprise API",
-    version: "1.8.0",
-    description: "API REST Enterprise, Copiloto DeepSeek V3/R1 AI, Gemini Video Analysis, Videos de Cuidado de Mascotas, Transacciones ACID, BCCR, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, Auditoría Inmutable y Métricas Prometheus para Costa Rica.",
+    version: "1.9.0",
+    description: "API REST Enterprise, Copiloto Cliente Google Gemini AI, IA Administrativa DeepSeek V3/R1, Videos de Cuidado de Mascotas, Transacciones ACID, BCCR, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, Auditoría Inmutable y Métricas Prometheus para Costa Rica.",
     contact: {
       name: "Sinergia Urbana Core Engineering Team",
       url: "https://github.com/danielramirez272006-arch/proyecto-sn"
@@ -20,7 +20,8 @@ module.exports = {
     { name: "Autenticación y Sesiones", description: "PBKDF2 Hashing, JWT, rotación de Refresh Tokens y sesiones de invitado" },
     { name: "Catálogo y Lugares", description: "Búsqueda radial GPS, paginación avanzada y comercios verificados" },
     { name: "Planes Grupales (Social Dining)", description: "Coordinación transaccional, votación idempotente y confirmación inmutable" },
-    { name: "DeepSeek AI Copiloto", description: "Chat multi-turn, razonador R1 e itinerarios multi-día" },
+    { name: "Google Gemini Copiloto (Cliente)", description: "Copiloto conversacional de clientes: Chat multi-turn, clasificador de voz e itinerarios con Google Gemini" },
+    { name: "DeepSeek AI (Admin y Agentes)", description: "Motor de razonamiento para administradores, moderadores y agentes autónomos" },
     { name: "Agentes Autónomos", description: "Scheduler y monitoreo de tareas periódicas en background" },
     { name: "Rescate Urbano", description: "Alertas ciudadanas SOS en tiempo real y auxilio vial" },
     { name: "Auditoría y Administración", description: "Pista inmutable de auditoría y operaciones de control" },
@@ -278,8 +279,8 @@ module.exports = {
     },
     "/concierge/voice-intent": {
       post: {
-        tags: ["DeepSeek AI Copiloto"],
-        summary: "Clasificar transcripción de voz o texto con DeepSeek",
+        tags: ["Google Gemini Copiloto (Cliente)"],
+        summary: "Clasificar transcripción de voz o texto con Google Gemini (Cliente)",
         requestBody: {
           required: true,
           content: {
@@ -301,17 +302,17 @@ module.exports = {
     },
     "/concierge/status": {
       get: {
-        tags: ["DeepSeek AI Copiloto"],
-        summary: "Consultar estado, modelo y métricas del motor DeepSeek AI",
+        tags: ["Google Gemini Copiloto (Cliente)"],
+        summary: "Consultar estado, modelo y métricas del motor Google Gemini (Cliente)",
         responses: {
-          "200": { description: "Estado y telemetría de DeepSeek" }
+          "200": { description: "Estado y telemetría de Google Gemini" }
         }
       }
     },
     "/concierge/chat": {
       post: {
-        tags: ["DeepSeek AI Copiloto"],
-        summary: "Conversación contextual multi-turn persistente con DeepSeek AI",
+        tags: ["Google Gemini Copiloto (Cliente)"],
+        summary: "Conversación contextual multi-turn persistente con Google Gemini (Cliente)",
         requestBody: {
           required: true,
           content: {
@@ -334,7 +335,7 @@ module.exports = {
     },
     "/concierge/multi-day-itinerary": {
       post: {
-        tags: ["DeepSeek AI Copiloto"],
+        tags: ["Google Gemini Copiloto (Cliente)"],
         summary: "Generador de itinerarios de múltiples días con presupuesto en colones y paradas",
         requestBody: {
           required: true,

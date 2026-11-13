@@ -61,7 +61,7 @@ function renderSwaggerUiHtml(specUrl = '/api/docs/openapi.json') {
   <div class="hero-banner">
     <h1>🇨🇷 Sinergia Urbana Costa Rica — Documentación de API</h1>
     <p>Endpoints REST, Conectores Abiertos y Copiloto Inteligente</p>
-    <div class="badge-ai">Potenciado por DeepSeek AI</div>
+    <div class="badge-ai">Cliente: Google Gemini AI | Admins: DeepSeek AI</div>
   </div>
   <div id="swagger-ui" class="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5.18.2/swagger-ui-bundle.js" charset="UTF-8"></script>

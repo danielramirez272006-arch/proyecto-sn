@@ -127,12 +127,12 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
     assert.ok(res.body.data.guest_token.startsWith('gst_tok_'));
   });
 
-  await suite.test('GET /api/concierge/status reporta estado de DeepSeek AI', async () => {
+  await suite.test('GET /api/concierge/status reporta estado de Google Gemini AI (Cliente)', async () => {
     const res = await executeMockRequest('GET', '/api/concierge/status');
     assert.equal(res.status, 200);
     assert.equal(res.body.ok, true);
-    assert.equal(res.body.data.provider, 'DeepSeek');
-    assert.equal(res.body.data.activeModel, 'deepseek-chat');
+    assert.equal(res.body.data.provider, 'Google Gemini');
+    assert.equal(res.body.data.activeModel, 'gemini-1.5-flash');
   });
 
   await suite.test('POST /api/social/midpoint triangula el punto medio de coordenadas', async () => {
@@ -180,7 +180,7 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
     assert.ok(res.body.data.sms_body.includes('PASE 6150 88112233'));
   });
 
-  await suite.test('POST /api/concierge/voice-intent clasifica intenciones con DeepSeek', async () => {
+  await suite.test('POST /api/concierge/voice-intent clasifica intenciones con Google Gemini (Cliente)', async () => {
     const res = await executeMockRequest('POST', '/api/concierge/voice-intent', {
       body: { text: 'Quiero un café con terraza pet friendly' }
     });
@@ -227,6 +227,16 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
     assert.equal(res.status, 200);
     assert.equal(res.body.ok, true);
     assert.ok(res.body.data.jobs.length >= 5);
+  });
+
+  await suite.test('GET /api/admin/telemetry reporta telemetría de DeepSeek AI (Admin)', async () => {
+    const res = await executeMockRequest('GET', '/api/admin/telemetry', {
+      headers: { 'authorization': `Bearer ${adminToken}` }
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.data.ai_metrics.provider, 'DeepSeek');
+    assert.equal(res.body.data.ai_metrics.activeModel, 'deepseek-chat');
   });
 
   await suite.test('POST /api/admin/agents/:jobName/run ejecuta tarea de agente manualmente', async () => {

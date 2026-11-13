@@ -4,6 +4,8 @@ class MetricsCollector {
     this.httpRequestDurations = [];
     this.dbQueriesTotal = 0;
     this.dbErrorsTotal = 0;
+    this.geminiRequestsTotal = 0;
+    this.geminiFallbacksTotal = 0;
     this.deepSeekRequestsTotal = 0;
     this.deepSeekFallbacksTotal = 0;
     this.startTime = Date.now();
@@ -25,6 +27,11 @@ class MetricsCollector {
   recordDbQuery(success = true) {
     this.dbQueriesTotal++;
     if (!success) this.dbErrorsTotal++;
+  }
+
+  recordGeminiCall(fallback = false) {
+    this.geminiRequestsTotal++;
+    if (fallback) this.geminiFallbacksTotal++;
   }
 
   recordDeepSeekCall(fallback = false) {
@@ -77,6 +84,10 @@ class MetricsCollector {
         errors_total: this.dbErrorsTotal,
       },
       ai_copilot: {
+        client_provider: 'Google Gemini',
+        admin_provider: 'DeepSeek',
+        gemini_requests_total: this.geminiRequestsTotal,
+        gemini_fallbacks_total: this.geminiFallbacksTotal,
         deepseek_requests_total: this.deepSeekRequestsTotal,
         deepseek_fallbacks_total: this.deepSeekFallbacksTotal,
       }
@@ -123,7 +134,12 @@ class MetricsCollector {
       `db_queries_total ${summary.database.queries_total}`,
       `db_errors_total ${summary.database.errors_total}`,
       '',
-      '# HELP deepseek_requests_total Total calls to DeepSeek AI Copilot',
+      '# HELP gemini_requests_total Total calls to Google Gemini AI Copilot (Client)',
+      '# TYPE gemini_requests_total counter',
+      `gemini_requests_total ${summary.ai_copilot.gemini_requests_total}`,
+      `gemini_fallbacks_total ${summary.ai_copilot.gemini_fallbacks_total}`,
+      '',
+      '# HELP deepseek_requests_total Total calls to DeepSeek AI Copilot (Admin)',
       '# TYPE deepseek_requests_total counter',
       `deepseek_requests_total ${summary.ai_copilot.deepseek_requests_total}`,
       `deepseek_fallbacks_total ${summary.ai_copilot.deepseek_fallbacks_total}`

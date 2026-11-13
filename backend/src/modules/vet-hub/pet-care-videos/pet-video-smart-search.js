@@ -23,7 +23,10 @@ class PetVideoSmartSearchService {
     const isClinicalEmergency = this.detectEmergencySymptoms(cleanQuery);
 
     // 1. Obtener videos aprobados con sus fragmentos de la base de datos
-    const approvedVideos = await this.getApprovedVideosWithFragments(species);
+    let approvedVideos = await this.getApprovedVideosWithFragments(species);
+    if (approvedVideos.length === 0 && species && species !== 'all') {
+      approvedVideos = await this.getApprovedVideosWithFragments(null);
+    }
 
     // 2. Si Gemini está disponible, ejecutar recomendación semántica profunda
     if (geminiClient.isConfigured()) {

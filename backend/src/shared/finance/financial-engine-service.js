@@ -15,11 +15,13 @@ class FinancialEngineService {
     let bccrData = fallbackBccr;
     try {
       const res = await httpClient.getJson('https://api.hacienda.go.cr/indicadores/tc/dolar', fallbackBccr, 2500);
-      if (res && res.compra && res.venta) {
+      const compraVal = Number(res?.compra?.valor ?? res?.compra);
+      const ventaVal = Number(res?.venta?.valor ?? res?.venta);
+      if (Number.isFinite(compraVal) && compraVal > 0 && Number.isFinite(ventaVal) && ventaVal > 0) {
         bccrData = {
-          compra: Number(res.compra),
-          venta: Number(res.venta),
-          fecha: res.fecha || fallbackBccr.fecha,
+          compra: compraVal,
+          venta: ventaVal,
+          fecha: res?.venta?.fecha || res?.compra?.fecha || res?.fecha || fallbackBccr.fecha,
           fuente: 'Banco Central de Costa Rica (vía Ministerio de Hacienda)'
         };
       }

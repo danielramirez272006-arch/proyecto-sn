@@ -3,6 +3,7 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Sparkles, Send, CornerDownLeft, Bot, CheckCircle2, AlertTriangle, ShieldCheck, Activity } from 'lucide-react';
+import { api } from '../shared/services/api-client';
 
 const SUGERENCIAS_RAPIDAS = [
   "Consultar aforo en Barrio Escalante",
@@ -53,34 +54,59 @@ export function ConsolaIA() {
     accionSugerida: "Selecciona una sugerencia rápida o escribe tu duda."
   });
 
-  const procesarConsulta = (texto) => {
-    const query = (texto || consulta).toLowerCase();
+  const resolverFallbackLocal = (textoOriginal, query) => {
+    if (query.includes('escalante') || query.includes('aforo') || query.includes('franco') || query.includes('local')) {
+      return BASE_CONOCIMIENTO.escalante;
+    }
+    if (query.includes('sabana') || query.includes('lluvia') || query.includes('clima') || query.includes('agua')) {
+      return BASE_CONOCIMIENTO.sabana;
+    }
+    if (query.includes('sos') || query.includes('ambulancia') || query.includes('emergencia') || query.includes('flota')) {
+      return BASE_CONOCIMIENTO.sos;
+    }
+    if (query.includes('decibelio') || query.includes('ruido') || query.includes('reactivo') || query.includes('ansiedad')) {
+      return BASE_CONOCIMIENTO.decibelios;
+    }
+    return {
+      titulo: `Análisis para: "${textoOriginal}"`,
+      tipo: "info",
+      contenido: `Inferencia procesada con telemetría de San José: Asfalto a 23.2 °C, radiación UV moderada y 0 incidentes acústicos en los últimos 45 minutos. Los espacios gastronómicos cumplen la norma Pet-OS.`,
+      kpi: "Condiciones estables en GAM",
+      accionSugerida: "Puedes consultar sobre terrazas específicas o solicitar asistencia veterinaria inmediata."
+    };
+  };
+
+  const procesarConsulta = async (texto) => {
+    const textoOriginal = texto || consulta;
+    const query = textoOriginal.toLowerCase();
     if (!query.trim()) return;
 
     setCargando(true);
-    setTimeout(() => {
-      let resultado = null;
-      if (query.includes('escalante') || query.includes('aforo') || query.includes('franco') || query.includes('local')) {
-        resultado = BASE_CONOCIMIENTO.escalante;
-      } else if (query.includes('sabana') || query.includes('lluvia') || query.includes('clima') || query.includes('agua')) {
-        resultado = BASE_CONOCIMIENTO.sabana;
-      } else if (query.includes('sos') || query.includes('ambulancia') || query.includes('emergencia') || query.includes('flota')) {
-        resultado = BASE_CONOCIMIENTO.sos;
-      } else if (query.includes('decibelio') || query.includes('ruido') || query.includes('reactivo') || query.includes('ansiedad')) {
-        resultado = BASE_CONOCIMIENTO.decibelios;
-      } else {
-        resultado = {
-          titulo: `Análisis para: "${texto || consulta}"`,
-          tipo: "info",
-          contenido: `Inferencia procesada con telemetría de San José: Asfalto a 23.2 °C, radiación UV moderada y 0 incidentes acústicos en los últimos 45 minutos. Los espacios gastronómicos cumplen la norma Pet-OS.`,
-          kpi: "Condiciones estables en GAM",
-          accionSugerida: "Puedes consultar sobre terrazas específicas o solicitar asistencia veterinaria inmediata."
-        };
+    if (texto) setConsulta(texto);
+
+    try {
+      const data = await api.post('/concierge/chat', {
+        session_id: 'gotox_frontend',
+        message: textoOriginal
+      });
+      const textoBackend = data?.reply || data?.response || data?.message || data?.text || data?.answer;
+      if (textoBackend) {
+        setRespuesta({
+          titulo: `Copiloto Backend: "${textoOriginal}"`,
+          tipo: "exito",
+          contenido: typeof textoBackend === 'string' ? textoBackend : JSON.stringify(textoBackend),
+          kpi: data?.provider ? `Conectado (${data.provider})` : "Backend Conectado",
+          accionSugerida: data?.suggested_action || "Respuesta generada desde /api/concierge/chat."
+        });
+        setCargando(false);
+        return;
       }
-      setRespuesta(resultado);
-      setCargando(false);
-      if (texto) setConsulta(texto);
-    }, 400);
+    } catch {
+      // Si el backend no está activo o no hay APIs configuradas, usar respaldo local sin romper la UI
+    }
+
+    setRespuesta(resolverFallbackLocal(textoOriginal, query));
+    setCargando(false);
   };
 
   const handleSubmit = (e) => {

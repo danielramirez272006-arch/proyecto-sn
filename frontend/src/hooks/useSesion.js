@@ -1,5 +1,6 @@
 import { useLocalStorage } from './useLocalStorage';
 import { MASCOTA_ACTIVA_DEFECTO } from '../data/mascota';
+import { api } from '../shared/services/api-client';
 
 const SESION_DEFECTO = {
   isLoggedIn: true,
@@ -33,6 +34,18 @@ export function useSesion() {
         nombre: nombre || prev.usuario.nombre
       }
     }));
+
+    // Sincronización no bloqueante con el backend (/api/auth/guest-session)
+    api.post('/auth/guest-session', {
+      email: correo,
+      name: nombre
+    }).then((data) => {
+      if (data?.guest_token) {
+        api.setGuestToken(data.guest_token);
+      }
+    }).catch(() => {
+      // Modo local sin backend activo
+    });
   };
 
   const cerrarSesion = () => {

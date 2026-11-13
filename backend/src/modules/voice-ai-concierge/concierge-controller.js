@@ -31,12 +31,13 @@ class ConciergeController {
 
   async handleMultiDayItinerary(req, res, next) {
     try {
-      const { days, zone, budget_crc, preferences } = req.body || {};
+      const { days, zone, budget_crc, preferences, prompt } = req.body || {};
       const itinerary = await conciergeService.generateMultiDayItinerary({
         days: days ? parseInt(days, 10) : 2,
         zone: zone || 'Gran Área Metropolitana',
         budgetCrc: budget_crc ? parseInt(budget_crc, 10) : 35000,
-        preferences
+        preferences,
+        prompt: prompt || ''
       });
       return success(res, itinerary);
     } catch (err) {

@@ -306,9 +306,133 @@ class PetCareVideosService {
   }
 
   /**
+   * Inicializa semillas verificadas por defecto en entorno de desarrollo si el catálogo está vacío
+   */
+  async ensureDefaultVideosSeeded() {
+    if (process.env.NODE_ENV === 'test') return;
+    try {
+      const countRows = await query("SELECT COUNT(*) as total FROM pet_videos WHERE status = 'approved'");
+      const total = countRows && countRows[0] ? Number(countRows[0].total) : 0;
+      if (total > 0) return;
+
+      const defaultVideos = [
+        {
+          id: 'vid_seed_perros_higiene',
+          youtube_id: 'c2eWkJ3bA78',
+          youtube_url: 'https://www.youtube.com/watch?v=c2eWkJ3bA78',
+          title: 'Cómo bañar y cuidar el pelaje de tu perro paso a paso',
+          channel_title: 'ExpertoAnimal',
+          duration_seconds: 315,
+          thumbnail_url: 'https://i.ytimg.com/vi/c2eWkJ3bA78/hqdefault.jpg',
+          species: 'perros',
+          topic: 'higiene',
+          summary: 'Guía veterinaria paso a paso sobre temperatura del agua, frecuencia de baño, secado y cepillado dental canino.',
+          fragments: [
+            {
+              id: 'frg_seed_1',
+              question: '¿A qué temperatura debe estar el agua para bañar a mi perro?',
+              answer: 'El agua debe estar tibia (entre 37°C y 38°C), similar a su temperatura corporal, evitando cambios bruscos y corrientes de aire.',
+              start_seconds: 40,
+              end_seconds: 95
+            },
+            {
+              id: 'frg_seed_2',
+              question: '¿Cada cuánto tiempo debo bañar a mi perro y cepillar sus dientes?',
+              answer: 'Se recomienda bañar al perro cada 3 o 4 semanas con champú neutro canino, y cepillar sus dientes de 2 a 3 veces por semana con pasta enzimática veterinaria.',
+              start_seconds: 120,
+              end_seconds: 185
+            }
+          ]
+        },
+        {
+          id: 'vid_seed_gatos_auxilios',
+          youtube_id: 'NoifKxNNwlg',
+          youtube_url: 'https://www.youtube.com/watch?v=NoifKxNNwlg',
+          title: 'Primeros auxilios para gatos - Salud felina Royal Canin',
+          channel_title: 'Royal Canin España',
+          duration_seconds: 111,
+          thumbnail_url: 'https://i.ytimg.com/vi/NoifKxNNwlg/hqdefault.jpg',
+          species: 'gatos',
+          topic: 'primeros_auxilios',
+          summary: 'Protocolo básico de primeros auxilios en gatos ante heridas, atragantamientos e intoxicaciones domésticas antes de acudir al veterinario.',
+          fragments: [
+            {
+              id: 'frg_seed_3',
+              question: '¿Qué hacer ante una emergencia o primeros auxilios con mi gato en casa?',
+              answer: 'Mantén la calma, envuelve al gato suavemente en una toalla para evitar arañazos por estrés, evalúa su respiración y trasládalo de inmediato a una clínica veterinaria.',
+              start_seconds: 15,
+              end_seconds: 60
+            },
+            {
+              id: 'frg_seed_4',
+              question: '¿Cómo limpiar una herida superficial en la pata de mi mascota?',
+              answer: 'Lava con suero fisiológico estéril y aplica gasa limpia ejerciendo presión suave por 2 minutos antes de que el veterinario la revise.',
+              start_seconds: 65,
+              end_seconds: 105
+            }
+          ]
+        },
+        {
+          id: 'vid_seed_perros_auxilios',
+          youtube_id: 'MHLTo88pZyo',
+          youtube_url: 'https://www.youtube.com/watch?v=MHLTo88pZyo',
+          title: 'Primeros Auxilios para PERROS 🐕 🚑 ¡Conoce qué hacer en cada caso!',
+          channel_title: 'Agroplay',
+          duration_seconds: 236,
+          thumbnail_url: 'https://i.ytimg.com/vi/MHLTo88pZyo/hqdefault.jpg',
+          species: 'perros',
+          topic: 'primeros_auxilios',
+          summary: 'Maniobras de emergencia canina ante atragantamiento, intoxicación por alimentos tóxicos como chocolate y golpes de calor.',
+          fragments: [
+            {
+              id: 'frg_seed_5',
+              question: '¿Qué hago si mi perro comió chocolate o tiene síntomas de intoxicación?',
+              answer: 'El chocolate contiene teobromina, altamente tóxica para los perros. No induzcas el vómito sin indicación médica, conserva la envoltura para calcular la dosis ingerida y acude de urgencia al veterinario.',
+              start_seconds: 30,
+              end_seconds: 95
+            },
+            {
+              id: 'frg_seed_6',
+              question: '¿Cómo actuar si mi perro se atraganta con un objeto o comida?',
+              answer: 'Abre su boca con cuidado para verificar si el objeto es visible y extraíble; si no respira, aplica compresiones abdominales (maniobra de Heimlich canina) detrás de las costillas.',
+              start_seconds: 110,
+              end_seconds: 175
+            }
+          ]
+        }
+      ];
+
+      for (const v of defaultVideos) {
+        await execute(
+          `INSERT INTO pet_videos (
+            id, youtube_id, youtube_url, title, channel_title, duration_seconds,
+            thumbnail_url, species, topic, summary, status, approved_by, approved_at, created_by, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 'admin_seed', CURRENT_TIMESTAMP, 'admin_seed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          ON CONFLICT (id) DO NOTHING`,
+          [v.id, v.youtube_id, v.youtube_url, v.title, v.channel_title, v.duration_seconds, v.thumbnail_url, v.species, v.topic, v.summary]
+        );
+
+        for (let i = 0; i < v.fragments.length; i++) {
+          const f = v.fragments[i];
+          await execute(
+            `INSERT INTO pet_video_fragments (
+              id, video_id, question, answer, start_seconds, end_seconds, status, order_index, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'approved', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO NOTHING`,
+            [f.id, v.id, f.question, f.answer, f.start_seconds, f.end_seconds, i + 1]
+          );
+        }
+      }
+    } catch (err) {
+      console.warn('[PetCareVideos] Aviso al inicializar semillas de videos:', err.message);
+    }
+  }
+
+  /**
    * Lista pública: devuelve ÚNICAMENTE fichas aprobadas con filtros
    */
   async listApprovedVideos({ species = null, topic = null, search = null, page = 1, limit = 20 } = {}) {
+    await this.ensureDefaultVideosSeeded();
     const conditions = ["status = 'approved'"];
     const params = [];
 
@@ -402,26 +526,34 @@ class PetCareVideosService {
   }
 
   /**
-   * «Pregúntale al video»: busca primero en el video actual y si no, en otros videos aprobados
+   * «Pregúntale al video»: busca primero en el video actual, luego en otros videos aprobados
+   * y (cuando useGemini=true o es un video dinámico) utiliza Google Gemini + YouTube para responder y sugerir el mejor video.
    */
-  async askQuestion(videoId, userQuestion) {
+  async askQuestion(videoId, userQuestion, { useGemini = false } = {}) {
     if (!userQuestion || typeof userQuestion !== 'string' || userQuestion.trim().length === 0) {
       throw new Error('La pregunta no puede estar vacía.');
     }
 
-    // 1. Obtener el video abierto
+    await this.ensureDefaultVideosSeeded();
+
+    // 1. Obtener el video abierto (o permitir video dinámico de YouTube si useGemini=true)
+    const isDynamicVideo = Boolean(useGemini || videoId === 'general' || String(videoId).startsWith('yt_'));
     const currentVideo = await this.getVideoDetail(videoId, { allowDraft: false });
-    if (!currentVideo) {
+    if (!currentVideo && !isDynamicVideo) {
       throw new Error('Video no encontrado o no disponible en el catálogo verificado.');
     }
 
-    const currentFragments = currentVideo.fragments || [];
+    const currentFragments = currentVideo ? (currentVideo.fragments || []) : [];
 
     // 2. Obtener los demás videos aprobados con sus fragmentos (para fallback entre videos)
-    const otherApprovedRows = await query(
-      "SELECT id, youtube_id, title, channel_title, species, topic FROM pet_videos WHERE status = 'approved' AND id != ?",
-      [currentVideo.id]
-    );
+    const otherApprovedRows = currentVideo
+      ? await query(
+          "SELECT id, youtube_id, title, channel_title, species, topic FROM pet_videos WHERE status = 'approved' AND id != ?",
+          [currentVideo.id]
+        )
+      : await query(
+          "SELECT id, youtube_id, title, channel_title, species, topic FROM pet_videos WHERE status = 'approved'"
+        );
 
     const otherVideosWithFragments = [];
     if (otherApprovedRows && otherApprovedRows.length > 0) {
@@ -456,7 +588,7 @@ class PetCareVideosService {
     });
 
     // 4. Si la coincidencia fue en el video actual, inyectar los metadatos del video actual
-    if (matchResult.matched && matchResult.match_source === 'current_video') {
+    if (matchResult.matched && matchResult.match_source === 'current_video' && currentVideo) {
       return {
         ...matchResult,
         video_id: currentVideo.id,
@@ -464,6 +596,40 @@ class PetCareVideosService {
         video_title: currentVideo.title,
         channel_title: currentVideo.channel_title
       };
+    }
+
+    // 5. Si no hubo coincidencia en fragmentos locales y el cliente usa Gemini (modo interactivo)
+    if (!matchResult.matched && isDynamicVideo) {
+      try {
+        const smartResult = await petVideoSmartSearch.smartSearch({
+          text: userQuestion.trim(),
+          allowYouTubeFallback: true
+        });
+        if (smartResult && smartResult.best_match) {
+          const best = smartResult.best_match;
+          return {
+            matched: true,
+            match_source: smartResult.source === 'youtube_live' ? 'gemini_youtube_ai' : 'other_video',
+            ai_powered: true,
+            provider: 'Google Gemini Cloud',
+            answer: best.direct_answer || best.why_recommended,
+            why_recommended: best.why_recommended,
+            question_matched: smartResult.interpreted_need || userQuestion.trim(),
+            start_seconds: best.start_seconds || 0,
+            end_seconds: (best.start_seconds || 0) + 45,
+            video_id: best.id,
+            youtube_id: best.youtube_id,
+            video_title: best.title,
+            channel_title: best.channel_title,
+            thumbnail_url: best.thumbnail_url,
+            duration_seconds: best.duration_seconds,
+            clinical_notice: matchResult.clinical_notice || (smartResult.is_medical_emergency ? questionMatcher.detectClinicalEmergency('vómito urgencia') : null),
+            recommended_video: best
+          };
+        }
+      } catch (err) {
+        console.warn('[PetCareVideos] Error en asistencia Gemini para askQuestion:', err.message);
+      }
     }
 
     return matchResult;

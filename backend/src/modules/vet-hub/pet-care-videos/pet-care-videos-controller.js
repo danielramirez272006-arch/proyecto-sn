@@ -186,7 +186,8 @@ class PetCareVideosController {
       if (!question || typeof question !== 'string' || question.trim().length === 0) {
         return badRequest(res, 'Debe formular una pregunta en el cuerpo de la solicitud.');
       }
-      const result = await petCareVideosService.askQuestion(req.params.id, question);
+      const useGemini = Boolean(req.body?.use_gemini);
+      const result = await petCareVideosService.askQuestion(req.params.id, question, { useGemini });
       return success(res, result);
     } catch (err) {
       if (err.message.includes('no encontrado') || err.message.includes('no disponible')) {

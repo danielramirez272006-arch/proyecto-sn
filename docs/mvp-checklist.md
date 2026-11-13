@@ -10,7 +10,7 @@ Esta guía permite al equipo frontend y evaluadores reproducir y validar el 100%
 # 1. Posicionarse en el backend
 cd backend
 
-# 2. Instalar dependencias
+# 2. Instalar dependencias (si es primera vez)
 npm install
 
 # 3. Aplicar migraciones y seeds del catálogo (1 feria, 2 cafés, 1 plan demo)
@@ -22,28 +22,33 @@ npm run dev
 ```
 
 El servidor quedará escuchando en `http://localhost:4000`.
+- **Swagger UI Interactivo:** `http://localhost:4000/api/docs`
+- **Especificación OpenAPI 3.0:** `http://localhost:4000/api/docs/openapi.json`
+- **Chequeo de Salud y Telemetría:** `http://localhost:4000/api/health/system`
 
 ---
 
 ## 2. Recorrido de Prueba Paso a Paso (Flujo Crítico)
 
-### Paso 1: Verificación de Salud y Base Relacional
+### Paso 1: Verificación de Salud, Base de Datos y DeepSeek AI
 - Ejecutar: `GET http://localhost:4000/api/health`
-- Respuesta esperada: `{ ok: true, data: { status: "healthy", mode: "development" } }`
+  - Respuesta esperada: `{ ok: true, data: { status: "healthy", ai_copilot: "DeepSeek AI Active" } }`
 - Ejecutar: `GET http://localhost:4000/api/health/db`
-- Respuesta esperada: `{ ok: true, data: { ok: true, status: "connected" } }`
+  - Respuesta esperada: `{ ok: true, data: { ok: true, status: "connected" } }`
+- Ejecutar: `GET http://localhost:4000/api/concierge/status`
+  - Respuesta esperada: `{ ok: true, data: { provider: "DeepSeek", activeModel: "deepseek-chat" } }`
 
 ### Paso 2: Consulta del Catálogo Semilla
 - Ejecutar: `GET http://localhost:4000/api/places`
-- Verificar: 3 lugares cargados (`plc_feria_1`, `plc_cafe_1`, `plc_cafe_2`) con `verified_by_admin: true` y sus metadatos por atributo.
+  - Verificar: 3 lugares cargados (`plc_feria_1`, `plc_cafe_1`, `plc_cafe_2`) con `verified_by_admin: true` y sus metadatos por atributo.
 - Ejecutar: `GET http://localhost:4000/api/events`
-- Verificar: Evento `evt_feria_sabado_1` en estado `published`.
+  - Verificar: Evento `evt_feria_sabado_1` en estado `published`.
 
 ### Paso 3: Plan Demo y Votación Idempotente
 - Ejecutar: `GET http://localhost:4000/api/social/plans/PLAN-CR-772`
 - Unirse como invitado:
   - `POST http://localhost:4000/api/social/plans/PLAN-CR-772/guests` con `{ "name": "Elena Rojas" }`
-  - Guardar el `guest_token` devuelto.
+  - Guardar el `guest_token` devuelto (o usar `POST /api/auth/guest-session`).
 - Votar:
   - `PUT http://localhost:4000/api/social/plans/PLAN-CR-772/votes/opt_demo_1`
   - Cabecera: `x-guest-token: <guest_token>`
@@ -56,7 +61,7 @@ El servidor quedará escuchando en `http://localhost:4000`.
 - Body: `{ "selected_option_id": "opt_demo_1" }`
 - Verificar: El plan pasa a `status: "confirmed"`, su `revision` pasa a `2`, y las paradas guardan su snapshot inmutable.
 
-### Paso 5: Cancelación de Evento y Propuesta Automática de IA
+### Paso 5: Cancelación de Evento y Propuesta Automática de DeepSeek IA
 - El Administrador cancela el evento debido a alerta meteorológica:
   - `PATCH http://localhost:4000/api/admin/events/evt_feria_sabado_1`
   - Cabecera: `Authorization: Bearer <token_admin>`
@@ -83,9 +88,26 @@ El servidor quedará escuchando en `http://localhost:4000`.
 
 ## 3. Estado de la Suite de Pruebas Automatizadas
 
-Ejecutar:
+Ejecutar desde el directorio raíz o `backend/`:
 ```bash
-npm test
+npm run test:backend
 ```
-Cubre 100% de los casos de aceptación descritos en el enunciado.
-
+Resultado: **37/37 pruebas superadas (100% pass)** distribuidas en 3 suites:
+1. **Suite Enterprise (10 tests)**:
+   - Inyección y propagación de `x-request-id` para trazabilidad distribuida.
+   - Métricas Prometheus en `/api/metrics` (CPU, memoria RSS/heap, requests y DeepSeek).
+   - Transacciones ACID y Rollback garantizado ante errores.
+   - Seguridad criptográfica con Hashing PBKDF2 (100.000 iteraciones y sal aleatoria).
+   - Rotación y revocación de Refresh Tokens en `/api/auth/refresh`.
+   - Conversaciones contextuales multi-turn persistentes con DeepSeek AI (`/api/concierge/chat`).
+   - Generación de itinerarios multi-día con presupuesto en colones (`/api/concierge/multi-day-itinerary`).
+   - Catálogo con paginación avanzada y búsqueda radial GPS (fórmula Haversine).
+   - Verificación de integridad con firmas criptográficas HMAC-SHA256 en webhooks.
+   - Pista inmutable de auditoría en `/api/audit/history`.
+2. **Suite de Flujo Completo Sinergia Urbana (8 tests)**:
+   - Migraciones relacionales y carga de seeds.
+   - Votación idempotente, confirmación inmutable y control optimista de concurrencia (409 Conflict).
+   - Detección de afectación y generación de alternativas IA.
+   - Operación offline / sin red a costo $0.
+3. **Suite de Endpoints HTTP y Contrato de API (19 tests)**:
+   - Cobertura de endpoints REST, copiloto, finanzas grupales, auxilio ciudadano SOS y administración.

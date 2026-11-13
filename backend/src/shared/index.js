@@ -2,6 +2,8 @@ module.exports = {
   config: {
     env: require('./config/env-config'),
     database: require('./config/database'),
+    supabase: require('./config/supabase-config'),
+    deepseek: require('./config/deepseek-config'),
     gemini: require('./config/gemini-config'),
     JsonStoreEngine: require('./config/json-store-engine'),
   },

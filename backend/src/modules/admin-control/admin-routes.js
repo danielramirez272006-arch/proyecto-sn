@@ -25,9 +25,12 @@ router.post('/corrections/:id/decision', (req, res, next) => placeCorrectionRevi
 router.get('/notifications', (req, res, next) => adminController.getNotificationsStatus(req, res, next));
 router.post('/notifications/:id/retry', (req, res, next) => adminController.retryNotification(req, res, next));
 
-// Telemetría del copiloto IA y agentes autónomos
+// Orquestador de agentes autónomos y ejecución forzada
+router.get('/agents/status', (req, res) => adminController.getAgentsStatus(req, res));
+router.post('/agents/:jobName/run', (req, res, next) => adminController.runAgentJob(req, res, next));
+
+// Telemetría del copiloto IA y auditoría
 router.get('/telemetry', (req, res) => adminController.getCopilotTelemetry(req, res));
 router.get('/audit-logs', (req, res, next) => adminController.getAuditLogs(req, res, next));
 
 module.exports = router;
-

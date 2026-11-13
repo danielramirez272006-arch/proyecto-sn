@@ -1,4 +1,7 @@
+const path = require('node:path');
 require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../../../.env') });
 
 const env = {
   port: parseInt(process.env.PORT || '4000', 10),
@@ -18,9 +21,22 @@ const env = {
       ? (process.env.DB_NAME_TEST || ':memory:') 
       : (process.env.DB_NAME || 'sn_db'),
     connectionLimit: parseInt(process.env.DB_POOL_LIMIT || '10', 10),
+    supabaseDbUrl: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || '',
+  },
+  supabase: {
+    url: process.env.SUPABASE_URL || '',
+    anonKey: process.env.SUPABASE_ANON_KEY || '',
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    dbUrl: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || '',
+  },
+  deepseek: {
+    apiKey: process.env.DEEPSEEK_API_KEY || '',
+    baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
+    model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+    temperature: parseFloat(process.env.DEEPSEEK_TEMPERATURE || '0.2'),
   },
   gemini: {
-    apiKey: process.env.GEMINI_API_KEY || '',
+    apiKey: process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY || '',
     freeTierDailyQuota: parseInt(process.env.GEMINI_DAILY_QUOTA || '1500', 10),
   },
   webhook: {

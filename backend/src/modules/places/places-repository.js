@@ -1,4 +1,5 @@
 const { query, execute } = require('../../shared/config/database');
+const { haversineDistanceKm } = require('../../shared/utils/geo-math');
 
 class PlacesRepository {
   async findAll({ category, verifiedOnly, search, limit = 50, offset = 0 } = {}) {
@@ -11,7 +12,6 @@ class PlacesRepository {
     }
     if (verifiedOnly) {
       sql += ' AND verified_by_admin = 1';
-      params.push();
     }
     if (search) {
       sql += ' AND (name LIKE ? OR address LIKE ? OR district LIKE ?)';
@@ -24,6 +24,106 @@ class PlacesRepository {
 
     const rows = await query(sql, params);
     return rows.map(r => this.deserialize(r));
+  }
+
+  async findPaginated({
+    category,
+    verifiedOnly,
+    search,
+    lat,
+    lng,
+    radiusKm,
+    page = 1,
+    limit = 20,
+    sortBy = 'name',
+    sortOrder = 'ASC'
+  } = {}) {
+    const validSortCols = ['name', 'category', 'price_level', 'created_at', 'verified_by_admin'];
+    const safeSortBy = validSortCols.includes(sortBy) ? sortBy : 'name';
+    const safeOrder = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+    let countSql = 'SELECT COUNT(*) as total FROM places WHERE 1=1';
+    let sql = 'SELECT * FROM places WHERE 1=1';
+    const params = [];
+
+    if (category) {
+      countSql += ' AND category = ?';
+      sql += ' AND category = ?';
+      params.push(category);
+    }
+    if (verifiedOnly) {
+      countSql += ' AND verified_by_admin = 1';
+      sql += ' AND verified_by_admin = 1';
+    }
+    if (search) {
+      const term = `%${search}%`;
+      const searchClause = ' AND (name LIKE ? OR address LIKE ? OR district LIKE ?)';
+      countSql += searchClause;
+      sql += searchClause;
+      params.push(term, term, term);
+    }
+
+    const countRows = await query(countSql, [...params]);
+    const totalRecords = countRows?.[0]?.total || 0;
+
+    sql += ` ORDER BY ${safeSortBy} ${safeOrder}`;
+
+    // Si hay filtro por radio GPS, calculamos distancias en memoria antes de paginar
+    if (lat !== undefined && lng !== undefined && radiusKm) {
+      const allRows = await query(sql, [...params]);
+      const originLat = parseFloat(lat);
+      const originLng = parseFloat(lng);
+      const maxRadius = parseFloat(radiusKm);
+
+      const itemsWithDistance = allRows
+        .map(r => this.deserialize(r))
+        .map(p => ({
+          ...p,
+          distance_km: Number(haversineDistanceKm(originLat, originLng, p.lat, p.lng).toFixed(2))
+        }))
+        .filter(p => p.distance_km <= maxRadius);
+
+      if (sortBy === 'distance_km') {
+        itemsWithDistance.sort((a, b) => safeOrder === 'ASC' ? a.distance_km - b.distance_km : b.distance_km - a.distance_km);
+      }
+
+      const totalGeo = itemsWithDistance.length;
+      const totalPagesGeo = Math.ceil(totalGeo / limit) || 1;
+      const offsetGeo = (page - 1) * limit;
+      const pageItems = itemsWithDistance.slice(offsetGeo, offsetGeo + limit);
+
+      return {
+        items: pageItems,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total_records: totalGeo,
+          total_pages: totalPagesGeo,
+          has_next_page: page < totalPagesGeo,
+          has_prev_page: page > 1,
+        }
+      };
+    }
+
+    const offset = (page - 1) * limit;
+    sql += ' LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const rows = await query(sql, params);
+    const items = rows.map(r => this.deserialize(r));
+    const totalPages = Math.ceil(totalRecords / limit) || 1;
+
+    return {
+      items,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total_records: Number(totalRecords),
+        total_pages: totalPages,
+        has_next_page: page < totalPages,
+        has_prev_page: page > 1,
+      }
+    };
   }
 
   async findById(id) {
@@ -111,4 +211,3 @@ class PlacesRepository {
 }
 
 module.exports = new PlacesRepository();
-

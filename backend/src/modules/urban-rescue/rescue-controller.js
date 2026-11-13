@@ -1,5 +1,5 @@
 const rescueService = require('./rescue-service');
-const { success } = require('../../shared/utils/http-response');
+const { success, created, badRequest } = require('../../shared/utils/http-response');
 
 class UrbanRescueController {
   getRoadside(req, res) {
@@ -13,7 +13,24 @@ class UrbanRescueController {
   getEvChargers(req, res) {
     return success(res, rescueService.getEvChargers());
   }
+
+  getSosReports(req, res) {
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
+    return success(res, rescueService.listSosReports({ limit }));
+  }
+
+  createSosReport(req, res, next) {
+    try {
+      const { title, type } = req.body || {};
+      if (!title) {
+        return badRequest(res, 'El título o descripción breve del auxilio es obligatorio.');
+      }
+      const report = rescueService.createSosReport(req.body);
+      return created(res, report);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new UrbanRescueController();
-

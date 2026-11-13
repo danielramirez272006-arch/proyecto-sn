@@ -3,6 +3,20 @@ const proposeAlternative = require('./propose-alternative');
 const sseBroadcaster = require('../../shared/realtime/sse-broadcaster');
 
 class AffectedPlansJob {
+  async checkAndProposeForAffectedPlans() {
+    // Escaneo periódico de eventos no activos
+    const events = await query(`
+      SELECT id, status FROM events WHERE status IN ('cancelled', 'rescheduled')
+    `);
+    let count = 0;
+    if (events && events.length > 0) {
+      for (const ev of events) {
+        count += await this.processEventChange(ev.id, ev.status);
+      }
+    }
+    return { scanned_events: events ? events.length : 0, proposals_generated: count };
+  }
+
   async processEventChange(eventId, newStatus) {
     if (newStatus !== 'cancelled' && newStatus !== 'rescheduled') {
       return 0;

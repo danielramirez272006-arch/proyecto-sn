@@ -1,4 +1,51 @@
+const crypto = require('node:crypto');
+const sseBroadcaster = require('../../shared/realtime/sse-broadcaster');
+
 class UrbanRescueService {
+  constructor() {
+    this.inMemorySosReports = [
+      {
+        id: 'sos_demo_1',
+        type: 'pet_rescue',
+        title: 'Perro extraviado raza Schnauzer cerca de la plaza',
+        description: 'Visto cruzando la calle principal, collar rojo con plaquita.',
+        lat: 9.9145,
+        lng: -84.2435,
+        status: 'open',
+        contact_phone: '+506 8800-1122',
+        created_at: new Date().toISOString()
+      }
+    ];
+  }
+
+  createSosReport(reportData = {}) {
+    const newReport = {
+      id: `sos_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
+      type: reportData.type || 'roadside_hazard',
+      title: reportData.title || 'Alerta de auxilio ciudadano',
+      description: reportData.description || '',
+      lat: Number(reportData.lat) || 9.9150,
+      lng: Number(reportData.lng) || -84.2430,
+      status: 'open',
+      contact_phone: reportData.contact_phone || '',
+      created_at: new Date().toISOString()
+    };
+
+    this.inMemorySosReports.unshift(newReport);
+
+    // Difundir en tiempo real vía Server-Sent Events (SSE)
+    sseBroadcaster.broadcast('SOS_ALERT', {
+      report: newReport,
+      message: `Nueva alerta ciudadana S.O.S.: ${newReport.title}`
+    });
+
+    return newReport;
+  }
+
+  listSosReports({ limit = 20 } = {}) {
+    return this.inMemorySosReports.slice(0, limit);
+  }
+
   getRoadsideAssistance() {
     return [
       {
@@ -42,4 +89,3 @@ class UrbanRescueService {
 }
 
 module.exports = new UrbanRescueService();
-

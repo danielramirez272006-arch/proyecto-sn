@@ -79,11 +79,12 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
   await runSeeds();
   const adminToken = generateToken({ id: 'usr_admin_1', role: 'admin', name: 'Admin Test' });
 
-  await suite.test('GET /api/health responde con estado healthy', async () => {
+  await suite.test('GET /api/health responde con estado healthy y soporte DeepSeek', async () => {
     const res = await executeMockRequest('GET', '/api/health');
     assert.equal(res.status, 200);
     assert.equal(res.body.ok, true);
     assert.equal(res.body.data.status, 'healthy');
+    assert.equal(res.body.data.ai_copilot, 'DeepSeek AI Active');
   });
 
   await suite.test('GET /api/health/db responde con estado de base conectada', async () => {
@@ -93,11 +94,45 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
     assert.equal(res.body.data.status, 'connected');
   });
 
+  await suite.test('GET /api/health/system devuelve telemetría completa de memoria, IA y agentes', async () => {
+    const res = await executeMockRequest('GET', '/api/health/system');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.ok(res.body.data.system.memory.rss_mb >= 0);
+    assert.equal(res.body.data.ai_copilot.provider, 'DeepSeek');
+    assert.ok(Array.isArray(res.body.data.autonomous_agents.jobs));
+  });
+
+  await suite.test('GET /api/docs/openapi.json devuelve especificación OpenAPI 3.0', async () => {
+    const res = await executeMockRequest('GET', '/api/docs/openapi.json');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.openapi, '3.0.3');
+    assert.ok(res.body.paths['/social/plans']);
+  });
+
   await suite.test('GET /api/places devuelve el catálogo de locales', async () => {
     const res = await executeMockRequest('GET', '/api/places');
     assert.equal(res.status, 200);
     assert.equal(res.body.ok, true);
     assert.ok(Array.isArray(res.body.data));
+  });
+
+  await suite.test('POST /api/auth/guest-session crea sesión temporal para invitados sin cuenta', async () => {
+    const res = await executeMockRequest('POST', '/api/auth/guest-session', {
+      body: { alias: 'Mariana' }
+    });
+    assert.equal(res.status, 201);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.data.guest_name, 'Mariana');
+    assert.ok(res.body.data.guest_token.startsWith('gst_tok_'));
+  });
+
+  await suite.test('GET /api/concierge/status reporta estado de DeepSeek AI', async () => {
+    const res = await executeMockRequest('GET', '/api/concierge/status');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.data.provider, 'DeepSeek');
+    assert.equal(res.body.data.activeModel, 'deepseek-chat');
   });
 
   await suite.test('POST /api/social/midpoint triangula el punto medio de coordenadas', async () => {
@@ -145,7 +180,7 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
     assert.ok(res.body.data.sms_body.includes('PASE 6150 88112233'));
   });
 
-  await suite.test('POST /api/concierge/voice-intent clasifica intenciones de usuario', async () => {
+  await suite.test('POST /api/concierge/voice-intent clasifica intenciones con DeepSeek', async () => {
     const res = await executeMockRequest('POST', '/api/concierge/voice-intent', {
       body: { text: 'Quiero un café con terraza pet friendly' }
     });
@@ -154,16 +189,52 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
     assert.equal(res.body.data.intent, 'SEARCH_FOOD');
   });
 
+  await suite.test('POST /api/rescue/sos crea una alerta ciudadana y la expone en el feed', async () => {
+    const res = await executeMockRequest('POST', '/api/rescue/sos', {
+      body: {
+        title: 'Llanta desinflada frente a la iglesia',
+        type: 'roadside_hazard',
+        lat: 9.9140,
+        lng: -84.2420,
+        contact_phone: '+506 8811-0022'
+      }
+    });
+    assert.equal(res.status, 201);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.data.title, 'Llanta desinflada frente a la iglesia');
+
+    const listRes = await executeMockRequest('GET', '/api/rescue/sos');
+    assert.equal(listRes.status, 200);
+    assert.ok(listRes.body.data.length >= 1);
+  });
+
+  await suite.test('GET /api/client/overview calcula restricción vehicular y resumen', async () => {
+    const res = await executeMockRequest('GET', '/api/client/overview');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(typeof res.body.data.has_vehicular_restriction_today, 'boolean');
+  });
+
   await suite.test('Rutas protegidas de administración rechazan acceso no autorizado', async () => {
     const res = await executeMockRequest('GET', '/api/admin/duplicates');
     assert.equal(res.status, 401);
   });
 
-  await suite.test('Rutas protegidas de administración aceptan token de administrador', async () => {
-    const res = await executeMockRequest('GET', '/api/admin/duplicates', {
+  await suite.test('Rutas protegidas de administración aceptan token y permiten ver agentes', async () => {
+    const res = await executeMockRequest('GET', '/api/admin/agents/status', {
       headers: { 'authorization': `Bearer ${adminToken}` }
     });
     assert.equal(res.status, 200);
     assert.equal(res.body.ok, true);
+    assert.ok(res.body.data.jobs.length >= 5);
+  });
+
+  await suite.test('POST /api/admin/agents/:jobName/run ejecuta tarea de agente manualmente', async () => {
+    const res = await executeMockRequest('POST', '/api/admin/agents/affected-plans-monitor/run', {
+      headers: { 'authorization': `Bearer ${adminToken}` }
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.data.job, 'affected-plans-monitor');
   });
 });

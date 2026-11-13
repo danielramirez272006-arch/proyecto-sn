@@ -25,7 +25,29 @@ class ClientDashboardService {
     this.vaults.set(userId, updated);
     return updated;
   }
+
+  getOverview(userId) {
+    const vault = this.getVault(userId);
+    const today = new Date().getDay(); // 0 domingo, 1 lunes...
+    const plateRestrictions = {
+      1: [1, 2], // Lunes
+      2: [3, 4], // Martes
+      3: [5, 6], // Miércoles
+      4: [7, 8], // Jueves
+      5: [9, 0], // Viernes
+    };
+    const restrictedToday = (plateRestrictions[today] || []).includes(vault.vehicle_plate_digit);
+
+    return {
+      user_id: userId,
+      registered_pets_count: vault.pets?.length || 0,
+      vehicle_plate_digit: vault.vehicle_plate_digit,
+      has_vehicular_restriction_today: restrictedToday,
+      active_badges: vault.badges || [],
+      expenses_total_crc: vault.expenses_total_crc || 0,
+      timestamp: new Date().toISOString()
+    };
+  }
 }
 
 module.exports = new ClientDashboardService();
-

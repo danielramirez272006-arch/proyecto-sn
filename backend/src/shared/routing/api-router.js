@@ -546,6 +546,123 @@ router.get('/merchants/webhooks/deliveries', async (req, res, next) => {
   }
 });
 
+// ============================================================================
+// 6. Motor Financiero BCCR, Multi-divisa y Redondeo en Efectivo Costa Rica
+// ============================================================================
+const financialEngineService = require('../finance/financial-engine-service');
+
+router.get('/finance/exchange-rates', async (req, res, next) => {
+  try {
+    const rates = await financialEngineService.getExchangeRates();
+    return success(res, rates);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/finance/convert', async (req, res, next) => {
+  try {
+    const { amount, from, to } = req.body || {};
+    const result = await financialEngineService.convert({
+      amount,
+      from: from || 'CRC',
+      to: to || 'USD'
+    });
+    return success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/finance/cash-rounding', (req, res) => {
+  const result = financialEngineService.roundCashBccr(req.body?.amount_crc);
+  return success(res, result);
+});
+
+router.post('/finance/split-bill-cr', async (req, res, next) => {
+  try {
+    const { subtotal_crc, people_count, extra_tip_percentage } = req.body || {};
+    const bill = await financialEngineService.calculateDiningBill({
+      subtotalCrc: subtotal_crc,
+      peopleCount: people_count,
+      extraTipPercentage: extra_tip_percentage
+    });
+    return success(res, bill);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 7. Clima: Índice de Confort Urbano, Aguaceros y Calidad del Aire (Open-Meteo)
+// ============================================================================
+const comfortWeatherService = require('../../modules/weather-activities/comfort-weather-service');
+const airQualityService = require('../../modules/weather-activities/air-quality-service');
+
+router.get('/weather/comfort-index', async (req, res, next) => {
+  try {
+    const lat = req.query.lat ? Number(req.query.lat) : 9.9333;
+    const lng = req.query.lng ? Number(req.query.lng) : -84.0833;
+    const comfort = await comfortWeatherService.getUrbanComfortIndex(lat, lng);
+    return success(res, comfort);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/weather/air-quality', async (req, res, next) => {
+  try {
+    const lat = req.query.lat ? Number(req.query.lat) : 9.9333;
+    const lng = req.query.lng ? Number(req.query.lng) : -84.0833;
+    const airQuality = await airQualityService.getAirQuality(lat, lng);
+    return success(res, airQuality);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 8. Geocodificación Inversa Territorial y Enlaces de Navegación Universal
+// ============================================================================
+const reverseGeocodeService = require('../../modules/places/reverse-geocode-service');
+const { generateNavigationLinks } = require('../utils/navigation-links');
+
+router.get('/places/reverse-geocode', async (req, res, next) => {
+  try {
+    const lat = req.query.lat ? Number(req.query.lat) : 9.9333;
+    const lng = req.query.lng ? Number(req.query.lng) : -84.0833;
+    const address = await reverseGeocodeService.resolveCoordinates(lat, lng);
+    return success(res, address);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/places/navigation-links', (req, res) => {
+  const lat = req.query.lat ? Number(req.query.lat) : 9.9333;
+  const lng = req.query.lng ? Number(req.query.lng) : -84.0833;
+  const label = req.query.label || 'Parada Sinergia Urbana';
+  const links = generateNavigationLinks(lat, lng, label);
+  return success(res, links);
+});
+
+// ============================================================================
+// 9. Verificación de Cédula Física / Jurídica (Ministerio de Hacienda CR)
+// ============================================================================
+const idVerifierService = require('../../modules/businesses/id-verifier-service');
+
+router.get('/businesses/verify-id/:id', async (req, res, next) => {
+  try {
+    const verification = await idVerifierService.verifyIdentification(req.params.id);
+    if (!verification.valid) {
+      return res.status(400).json({ ok: false, error: { message: verification.error } });
+    }
+    return success(res, verification);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.use('/auth', require('../../modules/auth').authRoutes);
 router.use('/events', require('../../modules/events').eventsRoutes);
 router.use('/social', require('../../modules/social-dining').socialRoutes);

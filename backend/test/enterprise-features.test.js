@@ -783,4 +783,92 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(deleteRes.status, 200);
     assert.equal(deleteRes.body.ok, true);
   });
+
+  await suite.test('31. Motor Financiero BCCR, Multi-divisa y Redondeo en Efectivo (/api/finance/*)', async () => {
+    // 1. Tipos de cambio BCCR en vivo
+    const ratesRes = await executeMockRequest('GET', '/api/finance/exchange-rates');
+    assert.equal(ratesRes.status, 200);
+    assert.equal(ratesRes.body.ok, true);
+    assert.ok(ratesRes.body.data.usd_to_crc_compra > 400);
+    assert.ok(ratesRes.body.data.usd_to_crc_venta > 400);
+
+    // 2. Conversión dinámica CRC a USD
+    const convertRes = await executeMockRequest('POST', '/api/finance/convert', {
+      body: { amount: 25000, from: 'CRC', to: 'USD' }
+    });
+    assert.equal(convertRes.status, 200);
+    assert.equal(convertRes.body.ok, true);
+    assert.ok(convertRes.body.data.converted_amount > 40);
+
+    // 3. Regla oficial de redondeo de efectivo BCCR
+    const roundRes = await executeMockRequest('POST', '/api/finance/cash-rounding', {
+      body: { amount_crc: 2453 }
+    });
+    assert.equal(roundRes.status, 200);
+    assert.equal(roundRes.body.ok, true);
+    assert.equal(roundRes.body.data.cash_rounded_crc, 2455); // 3 sube a 5
+
+    // 4. División de cuenta de restaurante con IVA 13% y 10% ley de servicio
+    const billRes = await executeMockRequest('POST', '/api/finance/split-bill-cr', {
+      body: { subtotal_crc: 10000, people_count: 2, extra_tip_percentage: 0 }
+    });
+    assert.equal(billRes.status, 200);
+    assert.equal(billRes.body.ok, true);
+    assert.equal(billRes.body.data.iva_13_crc, 1300);
+    assert.equal(billRes.body.data.service_10_crc, 1000);
+    assert.equal(billRes.body.data.total_card_crc, 12300);
+    assert.equal(billRes.body.data.per_person.people_count, 2);
+    assert.equal(billRes.body.data.per_person.amount_crc_card, 6150);
+  });
+
+  await suite.test('32. Confort Urbano, Alerta de Aguacero Tico y Calidad del Aire (/api/weather/*)', async () => {
+    // 1. Índice de confort al aire libre y alerta de lluvia
+    const comfortRes = await executeMockRequest('GET', '/api/weather/comfort-index?lat=9.9333&lng=-84.0833');
+    assert.equal(comfortRes.status, 200);
+    assert.equal(comfortRes.body.ok, true);
+    assert.equal(typeof comfortRes.body.data.outdoor_comfort_score, 'number');
+    assert.ok(comfortRes.body.data.outdoor_comfort_score >= 0 && comfortRes.body.data.outdoor_comfort_score <= 100);
+    assert.ok(typeof comfortRes.body.data.aguacero_alert.detected === 'boolean');
+    assert.ok(comfortRes.body.data.recommendation);
+
+    // 2. Calidad del aire en el GAM
+    const aqiRes = await executeMockRequest('GET', '/api/weather/air-quality?lat=9.9333&lng=-84.0833');
+    assert.equal(aqiRes.status, 200);
+    assert.equal(aqiRes.body.ok, true);
+    assert.ok(aqiRes.body.data.aqi_us >= 0);
+    assert.ok(aqiRes.body.data.health_recommendation);
+  });
+
+  await suite.test('33. Geocodificación Territorial Inversa en Costa Rica (/api/places/reverse-geocode)', async () => {
+    const geoRes = await executeMockRequest('GET', '/api/places/reverse-geocode?lat=9.9148&lng=-84.2421');
+    assert.equal(geoRes.status, 200);
+    assert.equal(geoRes.body.ok, true);
+    assert.ok(geoRes.body.data.territorial_division);
+    assert.equal(geoRes.body.data.territorial_division.country, 'Costa Rica');
+    assert.ok(geoRes.body.data.formatted_tico_address.includes('Costa Rica'));
+  });
+
+  await suite.test('34. Generador Universal de Enlaces de Navegación Waze/Google Maps (/api/places/navigation-links)', async () => {
+    const navRes = await executeMockRequest('GET', '/api/places/navigation-links?lat=9.9148&lng=-84.2421&label=Feria+del+Agricultor+Mora');
+    assert.equal(navRes.status, 200);
+    assert.equal(navRes.body.ok, true);
+    assert.ok(navRes.body.data.links.waze_app.includes('waze://'));
+    assert.ok(navRes.body.data.links.google_maps.includes('google.com/maps'));
+    assert.ok(navRes.body.data.links.apple_maps.includes('maps.apple.com'));
+    assert.ok(navRes.body.data.qr_waze_url);
+  });
+
+  await suite.test('35. Verificación de Cédula Física y Jurídica ante Hacienda CR (/api/businesses/verify-id/:id)', async () => {
+    // 1. Cédula Jurídica (10 dígitos)
+    const jurRes = await executeMockRequest('GET', '/api/businesses/verify-id/3101123456');
+    assert.equal(jurRes.status, 200);
+    assert.equal(jurRes.body.ok, true);
+    assert.equal(jurRes.body.data.classification.type, 'juridica');
+    assert.ok(jurRes.body.data.legal_name);
+
+    // 2. Rechazo de cédula inválida con menos de 9 dígitos
+    const invRes = await executeMockRequest('GET', '/api/businesses/verify-id/1234');
+    assert.equal(invRes.status, 400);
+    assert.equal(invRes.body.ok, false);
+  });
 });

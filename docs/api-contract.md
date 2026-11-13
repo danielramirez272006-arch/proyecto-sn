@@ -1,6 +1,6 @@
 # Contrato de API y Especificación OpenAPI — Sistema de Sinergia Urbana
 
-**Versión:** 1.5.0 (Enterprise Supabase, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
+**Versión:** 1.6.0 (Enterprise Supabase, BCCR Live, Confort Urbano, Calidad de Aire, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
 **Entorno Base:** `http://localhost:4000/api`  
 **Swagger UI Interactivo:** `http://localhost:4000/api/docs`  
 **OpenAPI Spec JSON:** `http://localhost:4000/api/docs/openapi.json`  
@@ -159,3 +159,20 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente c
 - **`DELETE /api/merchants/webhooks/subscriptions/:id`**: Revocación de webhook.
 - **`POST /api/merchants/webhooks/dispatch`**: Despacho de eventos firmados con `X-Sinergia-Signature` (HMAC-SHA256).
 - **`GET /api/merchants/webhooks/deliveries`**: Pista de auditoría con código HTTP de respuesta, duración en ms y estado de entrega.
+
+### 3.15 Motor Financiero BCCR, Multi-divisa y Redondeo en Efectivo
+- **`GET /api/finance/exchange-rates`**: Tipos de cambio compra/venta del Banco Central de Costa Rica en vivo y tasas de paridad global (USD, EUR, GBP, CAD).
+- **`POST /api/finance/convert`**: Conversión dinámica entre divisas en tiempo real.
+- **`POST /api/finance/cash-rounding`**: Redondeo oficial en efectivo del BCCR para eliminación de monedas de ₡1 y ₡2 al múltiplo de ₡5.
+- **`POST /api/finance/split-bill-cr`**: División de cuentas de restaurante con cálculo de 13% IVA, 10% propina legal de mesa y desglose en efectivo vs tarjeta.
+
+### 3.16 Clima Satelital, Confort al Aire Libre y Calidad del Aire (Open-Meteo)
+- **`GET /api/weather/comfort-index`**: Índice de confort para salidas (0 a 100), alerta temprana de aguacero vespertino del Valle Central y radiación UV extrema.
+- **`GET /api/weather/air-quality`**: Calidad del aire en el GAM, material particulado $PM_{2.5}$ / $PM_{10}$, ozono y recomendación deportiva.
+
+### 3.17 Geolocalización Territorial Inversa y Navegación Universal
+- **`GET /api/places/reverse-geocode`**: Resolución territorial de coordenadas GPS en provincia, cantón, distrito y código postal costarricense.
+- **`GET /api/places/navigation-links`**: Enlaces directos de navegación para Waze, Google Maps, Apple Maps y códigos QR de geolocalización.
+
+### 3.18 Verificación Tributaria de Comercios y Cédulas (Hacienda CR)
+- **`GET /api/businesses/verify-id/:id`**: Consulta oficial en el padrón del Ministerio de Hacienda para cédulas físicas (9 dígitos) y jurídicas (10 dígitos). Retorna razón social legal, estado tributario y actividades económicas registradas.

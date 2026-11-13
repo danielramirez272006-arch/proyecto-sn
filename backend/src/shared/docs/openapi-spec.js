@@ -2,8 +2,8 @@ module.exports = {
   openapi: "3.0.3",
   info: {
     title: "Sinergia Urbana Costa Rica - Backend Enterprise API",
-    version: "1.5.0",
-    description: "API REST Enterprise, Copiloto DeepSeek V3/R1 AI, Transacciones ACID, Auditoría Inmutable y Métricas Prometheus para Costa Rica.",
+    version: "1.6.0",
+    description: "API REST Enterprise, Copiloto DeepSeek V3/R1 AI, Transacciones ACID, BCCR, Confort Urbano, Calidad de Aire, Auditoría Inmutable y Métricas Prometheus para Costa Rica.",
     contact: {
       name: "Sinergia Urbana Core Engineering Team",
       url: "https://github.com/danielramirez272006-arch/proyecto-sn"
@@ -29,7 +29,11 @@ module.exports = {
     { name: "Notificaciones Multicanal", description: "Web Push RFC 8292 VAPID, WhatsApp/SMS y cola Outbox resiliente" },
     { name: "Seguridad QR Criptográfico", description: "Generación y validación de tokens QR con HMAC-SHA256 y canje único" },
     { name: "Movilidad Sostenible", description: "Factores oficiales de emisión Costa Rica (MINAE/IMN), huella de CO2 y ahorro CRC" },
-    { name: "Webhooks para Comercios", description: "Webhooks salientes firmados criptográficamente para socios locales" }
+    { name: "Webhooks para Comercios", description: "Webhooks salientes firmados criptográficamente para socios locales" },
+    { name: "Finanzas y BCCR", description: "Tipo de cambio oficial BCCR, multi-divisa y redondeo de efectivo" },
+    { name: "Clima y Confort Urbano", description: "Open-Meteo satelital, alerta de aguaceros y calidad del aire GAM" },
+    { name: "Geolocalización y Navegación", description: "Geocodificación territorial tica y deep-links para Waze/Google Maps" },
+    { name: "Verificación Tributaria", description: "Consulta pública ante el Ministerio de Hacienda para cédulas físicas y jurídicas" }
   ],
   paths: {
     "/metrics": {

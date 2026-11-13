@@ -1,13 +1,13 @@
-const deepSeekClient = require('../../shared/config/deepseek-config');
+const geminiClient = require('../../shared/config/gemini-config');
 const placesRepository = require('../places/places-repository');
 
 class ConciergeService {
   async processVoiceIntent(transcriptText = '') {
-    const aiResult = await deepSeekClient.generateIntentOrDraft({
-      systemInstruction: `Eres el Asistente Copiloto de Sinergia Urbana Costa Rica, potenciado por DeepSeek.
+    const aiResult = await geminiClient.generateIntentOrDraft({
+      systemInstruction: `Eres el Asistente Copiloto de Sinergia Urbana Costa Rica, potenciado por Google Gemini.
 Analiza comandos de voz o texto en lenguaje coloquial tico (ej. "vamos por un yodito", "feria", "veterinaria de guardia", "comida rica", "presupuesto").
 Devuelve exclusivamente un JSON con los campos:
-- provider: "DeepSeek"
+- provider: "Google Gemini"
 - intent: 'SEARCH_FOOD' | 'FIND_VET' | 'CREATE_PLAN' | 'EXPLORE_MAP'
 - category: string
 - suggested_filters: objeto con flags booleanos (pet_friendly, ley_7600, emergency_24h, specialty_coffee, etc.)
@@ -22,14 +22,13 @@ Devuelve exclusivamente un JSON con los campos:
   }
 
   async chat({ sessionId = 'default', message }) {
-    return deepSeekClient.generateChat({ sessionId, message });
+    return geminiClient.generateChat({ sessionId, message });
   }
 
   async deepReason({ contextDescription, objective, constraints = [] }) {
-    return deepSeekClient.generateChat({
+    return geminiClient.generateChat({
       sessionId: `reason_${Date.now()}`,
-      model: 'deepseek-reasoner',
-      systemInstruction: 'Eres el motor de optimización y razonamiento analítico de Sinergia Urbana Costa Rica. Resuelve problemas de coordinación de rutas, mitigación de conflictos climáticos y optimización presupuestaria en colones.',
+      systemInstruction: 'Eres el motor de optimización y razonamiento analítico de Sinergia Urbana Costa Rica, potenciado por Google Gemini. Resuelve problemas de coordinación de rutas, mitigación de conflictos climáticos y optimización presupuestaria en colones.',
       message: `Objetivo: ${objective}\nContexto: ${contextDescription}\nRestricciones: ${constraints.join(', ')}`
     });
   }
@@ -74,7 +73,7 @@ Devuelve exclusivamente un JSON con los campos:
     }
 
     return {
-      provider: 'DeepSeek Multi-Day Itinerary Engine',
+      provider: 'Google Gemini Multi-Day Itinerary Engine',
       total_days: days,
       zone,
       total_budget_crc: budgetCrc,
@@ -88,7 +87,7 @@ Devuelve exclusivamente un JSON con los campos:
   }
 
   getAiStatus() {
-    return deepSeekClient.getMetrics();
+    return geminiClient.getMetrics();
   }
 
   async generatePlanDraft({ promptText, budgetCrc = 12000, attendeesCount = 2, preferences = [] }) {
@@ -96,7 +95,7 @@ Devuelve exclusivamente un JSON con los campos:
     const selected = places.slice(0, 2);
 
     const draft = {
-      provider: 'DeepSeek',
+      provider: 'Google Gemini',
       draft_id: `drf_${Date.now()}`,
       suggested_title: `Salida de ${attendeesCount} personas: Café y Sabores Locales`,
       estimated_budget_crc: budgetCrc,

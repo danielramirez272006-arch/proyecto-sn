@@ -177,6 +177,15 @@ class YouTubeApiClient {
       };
     } catch (err) {
       console.warn(`[YouTubeApiClient] Fallback para detalles de ${youtubeId}:`, err.message);
+      const mock = this.getMockCatalog().find(m => m.youtube_id === youtubeId);
+      if (mock) {
+        return {
+          ...mock,
+          is_live: false,
+          provider: 'mock_fallback_on_error',
+          error: err.message
+        };
+      }
       return {
         youtube_id: youtubeId,
         canonical_url: `https://www.youtube.com/watch?v=${youtubeId}`,

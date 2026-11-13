@@ -14,7 +14,9 @@ function requestTracer(req, res, next) {
   const originalEnd = res.end;
   res.end = function (...args) {
     const duration = Date.now() - start;
-    res.setHeader('x-response-time', `${duration}ms`);
+    if (!res.headersSent) {
+      res.setHeader('x-response-time', `${duration}ms`);
+    }
 
     // Registrar en colector de métricas
     const routePattern = req.baseUrl || req.path || '/';

@@ -1,3 +1,5 @@
+const path = require('node:path');
+const fs = require('node:fs');
 const express = require('express');
 const cors = require('cors');
 const env = require('./shared/config/env-config');
@@ -36,6 +38,13 @@ app.use(rateLimiter(300, 60000));
 
 // 5. Montaje de API Router Central
 app.use('/api', apiRouter);
+
+// 5.1 Frontend de pruebas local (no se sube a git)
+const demoFrontendPath = path.resolve(__dirname, '../../demo-frontend');
+if (fs.existsSync(demoFrontendPath)) {
+  app.use('/demo', express.static(demoFrontendPath));
+  app.get('/demo*', (req, res) => res.sendFile(path.join(demoFrontendPath, 'index.html')));
+}
 
 // 6. Manejador de rutas no encontradas
 app.use((req, res) => {

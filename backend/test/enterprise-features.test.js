@@ -148,7 +148,7 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.ok(refreshRes.body.data.refresh_token, 'Debe emitir nuevo refresh token rotado');
   });
 
-  await suite.test('6. DeepSeek AI: Conversación Multi-Turn con Historial (/api/concierge/chat)', async () => {
+  await suite.test('6. Google Gemini AI (Cliente): Conversación Multi-Turn con Historial (/api/concierge/chat)', async () => {
     const sessionId = `test_chat_${Date.now()}`;
     const res1 = await executeMockRequest('POST', '/api/concierge/chat', {
       body: { session_id: sessionId, message: 'Hola, ¿qué opciones de feria del agricultor hay?' }
@@ -164,7 +164,7 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(res2.body.data.history_length, 4);
   });
 
-  await suite.test('7. DeepSeek AI: Generador de Itinerarios Multi-Día (/api/concierge/multi-day-itinerary)', async () => {
+  await suite.test('7. Google Gemini AI (Cliente): Generador de Itinerarios Multi-Día (/api/concierge/multi-day-itinerary)', async () => {
     const res = await executeMockRequest('POST', '/api/concierge/multi-day-itinerary', {
       body: { days: 2, zone: 'Valle Central', budget_crc: 40000 }
     });

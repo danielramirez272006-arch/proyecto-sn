@@ -1,5 +1,5 @@
 const placesRepository = require('./places-repository');
-const deepSeekClient = require('../../shared/config/deepseek-config');
+const geminiClient = require('../../shared/config/gemini-config');
 const { haversineDistanceKm } = require('../../shared/utils/geo-math');
 
 class PlacesSmartSearchService {
@@ -26,10 +26,10 @@ class PlacesSmartSearchService {
       lng: p.lng
     }));
 
-    // 2. Si DeepSeek está configurado, hacer coincidencia semántica con IA
-    if (deepSeekClient.isConfigured()) {
+    // 2. Si Gemini está configurado, hacer coincidencia semántica con IA (para el cliente)
+    if (geminiClient.isConfigured()) {
       try {
-        const systemInstruction = `Eres un motor de búsqueda semántica y recomendación urbana para Costa Rica.
+        const systemInstruction = `Eres un motor de búsqueda semántica y recomendación urbana para Costa Rica potenciado por Google Gemini.
 Analiza la intención del usuario y clasifica los lugares candidatos según su compatibilidad con la solicitud.
 Devuelve un JSON con:
 - results (array de objetos { id, match_score (0 a 100), reason (explicación breve y amigable en idioma ${language}), matched_tags (array de strings) })`;
@@ -38,7 +38,7 @@ Devuelve un JSON con:
 Lugares disponibles en el catálogo de Costa Rica:
 ${JSON.stringify(placesSummary, null, 2)}`;
 
-        const aiResponse = await deepSeekClient.generateJson({
+        const aiResponse = await geminiClient.generateJson({
           prompt,
           systemInstruction,
           temperature: 0.2
@@ -59,7 +59,7 @@ ${JSON.stringify(placesSummary, null, 2)}`;
                 ai_reason: item.reason || 'Lugar recomendado para tu búsqueda',
                 matched_tags: item.matched_tags || [],
                 distance_km: distanceKm,
-                search_mode: 'deepseek_semantic'
+                search_mode: 'gemini_semantic'
               };
             })
             .filter(Boolean)
@@ -69,7 +69,7 @@ ${JSON.stringify(placesSummary, null, 2)}`;
           if (ranked.length > 0) return ranked;
         }
       } catch (err) {
-        console.warn('[SmartSearch] DeepSeek no disponible, usando motor heurístico:', err.message);
+        console.warn('[SmartSearch] Gemini no disponible, usando motor heurístico:', err.message);
       }
     }
 

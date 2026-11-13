@@ -4,6 +4,7 @@ const router = express.Router();
 const { checkHealth, query } = require('../config/database');
 const { success } = require('../utils/http-response');
 const deepSeekClient = require('../config/deepseek-config');
+const geminiClient = require('../config/gemini-config');
 const supabaseClient = require('../config/supabase-config');
 const metricsCollector = require('../telemetry/metrics-collector');
 const { scheduler } = require('../../autonomous-agents');
@@ -37,6 +38,8 @@ router.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'Sistema de Sinergia Urbana Costa Rica API',
     ai_copilot: 'DeepSeek AI Active',
+    client_ai: 'Google Gemini',
+    admin_ai: 'DeepSeek AI',
     version: '1.0.0',
     mode: process.env.NODE_ENV || 'development'
   });
@@ -81,11 +84,18 @@ router.get('/health/deep', async (req, res) => {
     benchmarks.supabase_cloud = { status: 'error', latency_ms: Date.now() - tSb0 };
   }
 
-  // 3. Benchmark DeepSeek AI
+  // 3. Benchmark DeepSeek AI (Admin) y Gemini AI (Client)
   benchmarks.deepseek_ai = {
     configured: deepSeekClient.isConfigured(),
     status: deepSeekClient.isConfigured() ? 'active' : 'local_heuristic_mode',
-    model: deepSeekClient.model
+    model: deepSeekClient.model,
+    role: 'admin'
+  };
+  benchmarks.gemini_ai = {
+    configured: geminiClient.isConfigured(),
+    status: geminiClient.isConfigured() ? 'active' : 'local_heuristic_mode',
+    model: geminiClient.model,
+    role: 'client'
   };
 
   const totalDurationMs = Date.now() - t0;
@@ -103,7 +113,8 @@ router.get('/health/system', async (req, res, next) => {
     const mem = process.memoryUsage();
     const dbHealth = await checkHealth();
     const supabaseHealth = await supabaseClient.checkHealth();
-    const aiStatus = deepSeekClient.getMetrics();
+    const deepSeekStatus = deepSeekClient.getMetrics();
+    const geminiStatus = geminiClient.getMetrics();
     const agentsStatus = scheduler.getStatus();
     const metricsSummary = metricsCollector.getMetricsSummary();
 
@@ -121,7 +132,15 @@ router.get('/health/system', async (req, res, next) => {
       },
       database: dbHealth,
       supabase: supabaseHealth,
-      ai_copilot: aiStatus,
+      ai_copilot: {
+        ...deepSeekStatus,
+        client_provider: 'Google Gemini',
+        admin_provider: 'DeepSeek',
+        client: geminiStatus,
+        admin: deepSeekStatus
+      },
+      client_ai: geminiStatus,
+      admin_ai: deepSeekStatus,
       autonomous_agents: agentsStatus,
       http_telemetry: metricsSummary.http
     });

@@ -1,4 +1,8 @@
 node_modules/
+# Demo frontend local para pruebas (no subir a git)
+demo-frontend/
+demo/
+playground/
 .env
 backend/.env
 *.env

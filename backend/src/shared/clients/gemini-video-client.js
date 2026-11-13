@@ -4,7 +4,7 @@ const env = require('../config/env-config');
 class GeminiVideoClient {
   constructor() {
     this.apiKey = env.gemini?.apiKey || process.env.GEMINI_API_KEY || '';
-    this.model = env.gemini?.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    this.model = env.gemini?.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash';
   }
 
   isConfigured() {

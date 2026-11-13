@@ -1,6 +1,6 @@
 # Guía de Integración para el Frontend — Sinergia Urbana Costa Rica
 
-Esta guía está diseñada para que el desarrollador frontend pueda conectar de inmediato la interfaz de usuario con el backend de Express, la base de datos **Supabase PostgreSQL** y el motor de IA **DeepSeek**.
+Esta guía está diseñada para que el desarrollador frontend pueda conectar de inmediato la interfaz de usuario con el backend de Express, la base de datos **Supabase PostgreSQL**, el motor de IA para clientes **Google Gemini** y el motor administrativo **DeepSeek AI**.
 
 ---
 
@@ -250,39 +250,51 @@ function subscribeToPlan(shareCode, onUpdate) {
 
 ---
 
-### 5.3 Copiloto DeepSeek AI (`/api/concierge/*`)
+### 5.3 Copiloto Google Gemini AI para Clientes (`/api/concierge/*`) y DeepSeek AI para Administradores (`/api/admin/*`)
 
-El backend expone el modelo **DeepSeek** para asistencia contextual y copiloto inteligente:
+La plataforma utiliza una arquitectura híbrida de inteligencia artificial:
+- **Cliente (Usuarios finales)**: Impulsado por **Google Gemini** (`gemini-1.5-flash`), optimizado para lenguaje natural costarricense, chat conversacional multi-turn, clasificación de intenciones de voz, itinerarios personalizados y búsqueda semántica de comercios (`/api/places/smart-search`).
+- **Administradores y Agentes Autónomos**: Impulsado por **DeepSeek AI** (`deepseek-chat` V3 / `deepseek-reasoner` R1), dedicado a auditorías, razonamiento operacional complejo, extracción de facturas, matcher de mascotas y consola administrativa (`/api/admin/telemetry`, `/api/admin/ai/query`).
 
-#### Chat Multi-Turn con Memoria de Sesión:
+#### Chat Multi-Turn del Cliente con Memoria de Sesión (Google Gemini):
 ```javascript
 // POST /api/concierge/chat
 const aiResponse = await api.post('/concierge/chat', {
   session_id: 'ses_usuario_123',
-  prompt: '¿Qué opciones pet-friendly y con rampa ley 7600 tenemos para ir a tomar café hoy en Ciudad Colón?'
+  message: '¿Qué opciones pet-friendly y con rampa ley 7600 tenemos para ir a tomar café hoy en Ciudad Colón?'
 });
-console.log(aiResponse.message);
+console.log(aiResponse.data.response); // Texto generado por Gemini (o fallback resiliente tico)
+console.log(aiResponse.data.provider); // "Google Gemini Cloud" o "Google Gemini (Resilient Local Mode)"
 ```
 
-#### Generador de Itinerarios Multi-Día:
+#### Generador de Itinerarios Multi-Día para el Cliente (Google Gemini):
 ```javascript
 // POST /api/concierge/multi-day-itinerary
 const itinerary = await api.post('/concierge/multi-day-itinerary', {
   days: 2,
-  budget: 'medio',
-  interests: ['café de especialidad', 'ferias locales', 'naturaleza'],
+  budget_crc: 35000,
+  preferences: ['café de especialidad', 'ferias locales', 'naturaleza'],
   zone: 'Mora y Santa Ana'
 });
-console.log(itinerary.plan);
+console.log(itinerary.data.days);
 ```
 
-#### Clasificación de Intenciones por Voz/Texto (Modismo Tico):
+#### Clasificación de Intenciones por Voz/Texto (Google Gemini):
 ```javascript
 // POST /api/concierge/voice-intent
 const intent = await api.post('/concierge/voice-intent', {
-  voice_transcript: 'Mae, busquemos un chante tuanis pa tomarse un buen café con los compas'
+  text: 'Mae, busquemos un chante tuanis pa tomarse un buen café con los compas'
 });
-// Devuelve: { intent: "search_places", category: "cafe", keywords: ["café", "amigos"] }
+// Devuelve: { provider: "Google Gemini", intent: "SEARCH_FOOD", category: "cafe", ... }
+```
+
+#### Consultas Administrativas y Razonamiento con DeepSeek AI (Solo Administradores):
+```javascript
+// POST /api/admin/ai/query (Requiere cabecera de admin)
+const adminAi = await api.post('/admin/ai/query', {
+  prompt: 'Analizar discrepancias en conciliación de paradas y calcular desviación presupuestaria'
+});
+console.log(adminAi.data.result);
 ```
 
 ---

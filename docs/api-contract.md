@@ -1,12 +1,14 @@
 # Contrato de API y Especificación OpenAPI — Sistema de Sinergia Urbana
 
-**Versión:** 1.8.0 (Enterprise Supabase, Videos de Cuidado Animal, Pregúntale al Video con Gemini, BCCR Live, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
+**Versión:** 1.9.0 (Arquitectura Híbrida de IA: Cliente con Google Gemini & Admins con DeepSeek AI, Enterprise Supabase, Videos de Cuidado Animal, Pregúntale al Video, BCCR Live, Feriados CR, Monitor Sísmico, Rutas Óptimas, SINPE QR, Confort Urbano, Calidad de Aire, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
 **Entorno Base:** `http://localhost:4000/api`  
 **Swagger UI Interactivo:** `http://localhost:4000/api/docs`  
 **OpenAPI Spec JSON:** `http://localhost:4000/api/docs/openapi.json`  
 **Métricas Prometheus:** `http://localhost:4000/api/metrics`  
 **Base de Datos Principal:** Supabase PostgreSQL 17 (`app_private` cerrado con RLS)  
-**Motor de IA Principal:** DeepSeek AI (`deepseek-chat` V3 / `deepseek-reasoner` R1 con fallback heurístico resiliente $0)  
+**Motores de Inteligencia Artificial:**
+- **Cliente (Usuarios Finales):** Google Gemini (`gemini-1.5-flash`) en `/api/concierge/*` y `/api/places/smart-search` (con fallback heurístico $0).
+- **Administración y Agentes Autónomos:** DeepSeek AI (`deepseek-chat` V3 / `deepseek-reasoner` R1) en `/api/admin/*` y tareas en background.  
 **Trazabilidad Distribuida:** Cabecera `x-request-id` (UUIDv4) inyectada en todas las peticiones y respuestas  
 **Zona Horaria Oficial:** `America/Costa_Rica` (Almacenamiento interno en UTC ISO-8601)  
 **Moneda Principal:** Colones Costarricenses (`CRC`), con soporte de conversión oficial BCCR/Hacienda a Dólares (`USD`).  

@@ -296,8 +296,9 @@ test('Suite Módulo «Videos para cuidar a tu mascota» y «Pregúntale al video
     assert.equal(resPublicApproved.status, 200);
     assert.equal(resPublicApproved.body.ok, true);
     assert.ok(resPublicApproved.body.data.length >= 1);
-    assert.equal(resPublicApproved.body.data[0].id, video1Id);
-    assert.equal(resPublicApproved.body.data[0].verified_fragments_count, 2);
+    const foundV1 = resPublicApproved.body.data.find(v => v.id === video1Id);
+    assert.ok(foundV1, 'El video 1 debe estar presente en el catálogo público');
+    assert.equal(foundV1.verified_fragments_count, 2);
 
     // Detalle público accesible
     const resDetailApproved = await executeMockRequest(app, 'GET', `/api/pet-videos/${video1Id}`);
@@ -397,6 +398,28 @@ test('Suite Módulo «Videos para cuidar a tu mascota» y «Pregúntale al video
     // Ahora video 1 no debe aparecer en el catálogo público
     const resPublicAfterRetire = await executeMockRequest(app, 'GET', `/api/pet-videos/${video1Id}`);
     assert.equal(resPublicAfterRetire.status, 404);
+  });
+
+  await suite.test('15. Buscador inteligente de videos con Gemini (Cliente): selección del video más indicado y alertas médicas', async () => {
+    // 15.1 Búsqueda normal con síntomas de emergencia (debe activar alerta médica y devolver video)
+    const resEmergency = await executeMockRequest(app, 'POST', '/api/pet-videos/smart-search', {
+      body: { text: 'Mi perro comió chocolate y está temblando', species: 'perros' }
+    });
+
+    assert.equal(resEmergency.status, 200);
+    assert.equal(resEmergency.body.ok, true);
+    assert.equal(resEmergency.body.data.is_medical_emergency, true);
+    assert.ok(resEmergency.body.data.emergency_alert);
+    assert.equal(resEmergency.body.data.emergency_alert.active, true);
+    assert.ok(resEmergency.body.data.emergency_alert.directory_link.includes('/vet-hub'));
+    assert.ok(resEmergency.body.data.best_match);
+    assert.ok(resEmergency.body.data.best_match.why_recommended);
+
+    // 15.2 Búsqueda vía GET /api/pet-videos/search
+    const resGetSearch = await executeMockRequest(app, 'GET', '/api/pet-videos/search?q=primeros+auxilios+gato');
+    assert.equal(resGetSearch.status, 200);
+    assert.equal(resGetSearch.body.ok, true);
+    assert.ok(resGetSearch.body.data.best_match);
   });
 });
 

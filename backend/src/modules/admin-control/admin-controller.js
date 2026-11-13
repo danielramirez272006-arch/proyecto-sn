@@ -94,6 +94,27 @@ class AdminController {
     });
   }
 
+  async runAdminAiQuery(req, res, next) {
+    try {
+      const { prompt, system_instruction, model } = req.body || {};
+      if (!prompt) return badRequest(res, 'El campo prompt es requerido');
+
+      const result = await deepSeekClient.generateJson({
+        prompt,
+        systemInstruction: system_instruction || 'Eres el asistente administrativo y analista operacional de Sinergia Urbana Costa Rica, potenciado por DeepSeek AI.',
+        model: model || 'deepseek-chat'
+      });
+
+      return success(res, {
+        provider: 'DeepSeek AI (Admin)',
+        model: model || deepSeekClient.model,
+        result
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getAgentsStatus(req, res) {
     return success(res, scheduler.getStatus());
   }

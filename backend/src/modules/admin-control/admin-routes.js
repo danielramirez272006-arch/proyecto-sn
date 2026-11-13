@@ -32,8 +32,9 @@ router.post('/agents/:jobName/run', (req, res, next) => adminController.runAgent
 // Catálogo «Videos para cuidar a tu mascota»
 router.use('/pet-videos', require('../vet-hub').petCareVideosAdminRoutes);
 
-// Telemetría del copiloto IA y auditoría
+// Telemetría del copiloto IA, auditoría y consultas directas con DeepSeek
 router.get('/telemetry', (req, res) => adminController.getCopilotTelemetry(req, res));
+router.post('/ai/query', (req, res, next) => adminController.runAdminAiQuery(req, res, next));
 router.get('/audit-logs', (req, res, next) => adminController.getAuditLogs(req, res, next));
 
 module.exports = router;

@@ -1,6 +1,6 @@
 # Contrato de API y Especificación OpenAPI — Sistema de Sinergia Urbana
 
-**Versión:** 1.4.0 (Enterprise Supabase, i18n 10 Idiomas & DeepSeek Multimodal MVP)  
+**Versión:** 1.5.0 (Enterprise Supabase, i18n 10 Idiomas, Hash Chain, Web Push, QR Criptográfico, Movilidad Verde & Webhooks)  
 **Entorno Base:** `http://localhost:4000/api`  
 **Swagger UI Interactivo:** `http://localhost:4000/api/docs`  
 **OpenAPI Spec JSON:** `http://localhost:4000/api/docs/openapi.json`  
@@ -130,3 +130,32 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente c
 - **`POST /api/rescue/match-pet`**: Coincidencia visual y morfológica de mascotas extraviadas con filtrado de distancia geográfica.
 - **`POST /api/storage/upload`**: Subida de archivos e imágenes a Supabase Storage con verificación MIME y fallback.
 - **`POST /api/webhooks/supabase`**: Receptor de webhooks de Supabase con firma HMAC-SHA256 y difusión en vivo vía SSE.
+
+### 3.10 Auditoría Inmutable Criptográfica (Hash Chain Ledger)
+- **`GET /api/audit/verify-chain`**: Verificación matemática de la cadena inmutable de hashes SHA-256 (`genesis_hash` a `latest_hash`).
+- **`POST /api/audit/chain`**: Registro de un nuevo bloque encadenado con hash canónico de datos.
+- **`GET /api/audit/chain/:entityType/:recordId`**: Historial completo de bloques auditados para una entidad específica.
+
+### 3.11 Notificaciones Multicanal y Patrón Outbox
+- **`GET /api/notifications/vapid-public-key`**: Retorna la clave pública VAPID (RFC 8292) para Web Push en navegadores.
+- **`POST /api/notifications/subscribe`**: Registro o actualización de una suscripción Push del navegador.
+- **`POST /api/notifications/queue`**: Encolamiento resiliente en la tabla Outbox (`email`, `webpush`, `whatsapp`).
+- **`POST /api/notifications/outbox/process`**: Despacho de lotes pendientes con idempotencia y reintentos automáticos.
+- **`GET /api/notifications/outbox/status`**: Estado, suscriptores activos y métricas de entrega.
+
+### 3.12 Seguridad QR Criptográfico y Canje Único
+- **`POST /api/security/qr/generate`**: Generación de token QR firmado con HMAC-SHA256, expiración (TTL) y previsualización SVG.
+- **`GET /api/security/qr/inspect/:token`**: Inspección y validación de firma sin consumir el código QR.
+- **`POST /api/security/qr/redeem`**: Canje de un solo uso con protección contra doble gasto (idempotente).
+
+### 3.13 Movilidad Sostenible y Huella de Carbono (Costa Rica MINAE / IMN)
+- **`GET /api/mobility/gam-transit-factors`**: Factores oficiales de emisión (MINAE/IMN), matriz 99% renovable y costo de gasolina RECOPE.
+- **`POST /api/mobility/carbon-footprint`**: Cálculo comparativo de emisiones ahorradas ($\text{CO}_2$ en gramos/kg) y colones (CRC) por compartir vehículo (*carpool*), usar autobús o tren urbano Incofer.
+- **`GET /api/mobility/badges/:userId`**: Resumen de impacto ecológico acumulado y condecoraciones verdes ganadas.
+
+### 3.14 Motor de Webhooks Salientes para Comercios Locales (*Outbound Webhooks*)
+- **`POST /api/merchants/webhooks/subscriptions`**: Registro de URL de callback y generación de secreto de firma `sec_...`.
+- **`GET /api/merchants/webhooks/subscriptions`**: Listado de webhooks activos para un comercio.
+- **`DELETE /api/merchants/webhooks/subscriptions/:id`**: Revocación de webhook.
+- **`POST /api/merchants/webhooks/dispatch`**: Despacho de eventos firmados con `X-Sinergia-Signature` (HMAC-SHA256).
+- **`GET /api/merchants/webhooks/deliveries`**: Pista de auditoría con código HTTP de respuesta, duración en ms y estado de entrega.

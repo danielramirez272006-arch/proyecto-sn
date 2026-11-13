@@ -131,3 +131,4 @@ ${JSON.stringify(placesSummary, null, 2)}`;
 }
 
 module.exports = new PlacesSmartSearchService();
+

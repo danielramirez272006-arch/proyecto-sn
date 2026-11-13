@@ -280,6 +280,272 @@ router.post('/rescue/match-pet', async (req, res, next) => {
   }
 });
 
+// ============================================================================
+// 1. Auditoría Inmutable Criptográfica (Hash Chain Ledger)
+// ============================================================================
+const hashChainService = require('../audit/hash-chain-service');
+
+router.get('/audit/verify-chain', async (req, res, next) => {
+  try {
+    const verification = await hashChainService.verifyChain();
+    return success(res, verification);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/audit/chain', async (req, res, next) => {
+  try {
+    const { record_id, entity_type, action, actor_id, data } = req.body || {};
+    if (!record_id || !entity_type || !action) {
+      return res.status(400).json({ ok: false, error: { message: 'record_id, entity_type y action son obligatorios' } });
+    }
+    const block = await hashChainService.recordBlock({
+      recordId: record_id,
+      entityType: entity_type,
+      action,
+      actorId: actor_id,
+      data
+    });
+    return success(res, block, {}, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/audit/chain/:entityType/:recordId', async (req, res, next) => {
+  try {
+    const trail = await hashChainService.getTrail(req.params.entityType, req.params.recordId);
+    return success(res, trail, { total: trail.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 2. Notificaciones Multicanal & Patrón Outbox
+// ============================================================================
+const multichannelService = require('../../modules/notifications/multichannel-notification-service');
+
+router.get('/notifications/vapid-public-key', (req, res) => {
+  return success(res, { public_key: multichannelService.getVapidPublicKey() });
+});
+
+router.post('/notifications/subscribe', async (req, res, next) => {
+  try {
+    const { user_id, endpoint, keys } = req.body || {};
+    const sub = await multichannelService.subscribePush({
+      userId: user_id,
+      endpoint,
+      keys,
+      userAgent: req.headers['user-agent']
+    });
+    return success(res, sub, {}, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/notifications/queue', async (req, res, next) => {
+  try {
+    const { channel, recipient, type, payload, title, priority } = req.body || {};
+    if (!recipient || !type) {
+      return res.status(400).json({ ok: false, error: { message: 'recipient y type son obligatorios' } });
+    }
+    const result = await multichannelService.queueNotification({
+      channel: channel || 'email',
+      recipient,
+      type,
+      payload,
+      title,
+      priority
+    });
+    return success(res, result, {}, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/notifications/outbox/process', async (req, res, next) => {
+  try {
+    const results = await multichannelService.processOutboxBatch(req.body?.batch_size || 10);
+    return success(res, results, { processed: results.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/notifications/outbox/status', async (req, res, next) => {
+  try {
+    const stats = await multichannelService.getQueueStats();
+    return success(res, stats);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 3. Generador y Verificador Criptográfico de Códigos QR
+// ============================================================================
+const cryptoQrService = require('../security/crypto-qr-service');
+
+router.post('/security/qr/generate', async (req, res, next) => {
+  try {
+    const { type, ref_id, ttl_seconds, metadata } = req.body || {};
+    if (!ref_id) {
+      return res.status(400).json({ ok: false, error: { message: 'ref_id es requerido para generar QR' } });
+    }
+    const qr = await cryptoQrService.generateQr({
+      type: type || 'event_checkin',
+      refId: ref_id,
+      ttlSeconds: ttl_seconds !== undefined ? Number(ttl_seconds) : 86400,
+      metadata: metadata || {}
+    });
+    return success(res, qr, {}, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/security/qr/inspect/:token', (req, res) => {
+  const inspection = cryptoQrService.inspectQr(req.params.token);
+  if (!inspection.valid) {
+    return res.status(400).json({ ok: false, error: { message: inspection.error, expired: inspection.expired } });
+  }
+  return success(res, inspection);
+});
+
+router.post('/security/qr/redeem', async (req, res, next) => {
+  try {
+    const { token, redeemed_by } = req.body || {};
+    if (!token) {
+      return res.status(400).json({ ok: false, error: { message: 'token es requerido' } });
+    }
+    const result = await cryptoQrService.redeemQr(token, redeemed_by || 'system');
+    if (!result.valid) {
+      return res.status(400).json({ ok: false, error: { message: result.error, already_redeemed: result.already_redeemed } });
+    }
+    return success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 4. Movilidad Sostenible y Huella de Carbono (Costa Rica MINAE / IMN)
+// ============================================================================
+const carbonFootprintService = require('../../modules/mobility/carbon-footprint-service');
+
+router.get('/mobility/gam-transit-factors', (req, res) => {
+  const factors = carbonFootprintService.getGamTransitFactors();
+  return success(res, factors);
+});
+
+router.post('/mobility/carbon-footprint', async (req, res, next) => {
+  try {
+    const {
+      origin_lat,
+      origin_lng,
+      dest_lat,
+      dest_lng,
+      distance_km,
+      transport_mode,
+      passengers_count,
+      user_id
+    } = req.body || {};
+
+    const calculation = await carbonFootprintService.calculateFootprint({
+      originLat: origin_lat ? Number(origin_lat) : null,
+      originLng: origin_lng ? Number(origin_lng) : null,
+      destLat: dest_lat ? Number(dest_lat) : null,
+      destLng: dest_lng ? Number(dest_lng) : null,
+      distanceKm: distance_km ? Number(distance_km) : null,
+      transportMode: transport_mode || 'carpool',
+      passengersCount: passengers_count ? Number(passengers_count) : 2,
+      userId: user_id || null
+    });
+
+    return success(res, calculation);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/mobility/badges/:userId', async (req, res, next) => {
+  try {
+    const stats = await carbonFootprintService.getUserMobilityStats(req.params.userId);
+    return success(res, stats);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================================
+// 5. Motor de Webhooks Salientes para Comercios Aliados
+// ============================================================================
+const merchantWebhooksService = require('../../modules/merchants/merchant-webhooks-service');
+
+router.post('/merchants/webhooks/subscriptions', async (req, res, next) => {
+  try {
+    const { merchant_id, target_url, events } = req.body || {};
+    const sub = await merchantWebhooksService.registerSubscription({
+      merchantId: merchant_id,
+      targetUrl: target_url,
+      events: events || ['*']
+    });
+    return success(res, sub, {}, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/merchants/webhooks/subscriptions', async (req, res, next) => {
+  try {
+    const merchantId = req.query.merchant_id;
+    if (!merchantId) {
+      return res.status(400).json({ ok: false, error: { message: 'merchant_id es requerido en query param' } });
+    }
+    const list = await merchantWebhooksService.listSubscriptions(merchantId);
+    return success(res, list, { total: list.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/merchants/webhooks/subscriptions/:id', async (req, res, next) => {
+  try {
+    const del = await merchantWebhooksService.deleteSubscription(req.params.id, req.query.merchant_id);
+    return success(res, del);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/merchants/webhooks/dispatch', async (req, res, next) => {
+  try {
+    const { event_type, payload } = req.body || {};
+    if (!event_type) {
+      return res.status(400).json({ ok: false, error: { message: 'event_type es requerido' } });
+    }
+    const dispatchResult = await merchantWebhooksService.dispatch(event_type, payload || {});
+    return success(res, dispatchResult);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/merchants/webhooks/deliveries', async (req, res, next) => {
+  try {
+    const deliveries = await merchantWebhooksService.getDeliveries({
+      merchantId: req.query.merchant_id || null,
+      limit: req.query.limit ? Number(req.query.limit) : 50
+    });
+    return success(res, deliveries, { total: deliveries.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.use('/auth', require('../../modules/auth').authRoutes);
 router.use('/events', require('../../modules/events').eventsRoutes);
 router.use('/social', require('../../modules/social-dining').socialRoutes);

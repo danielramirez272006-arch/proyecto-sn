@@ -425,6 +425,90 @@ console.log(health.checks.database.latency_ms); // ej: 14ms
 console.log(health.checks.deepseek_ai.latency_ms); // ej: 45ms
 ```
 
+### 6.7. Códigos QR Criptográficos Firmados y Canje Único (`/api/security/qr/*`)
+Genera y canjea vales de descuento, check-in en eventos o placas inteligentes de mascotas con firma `HMAC-SHA256`:
+```javascript
+// 1. Generar código QR con expiración y preview SVG
+const qr = await api.post('/security/qr/generate', {
+  type: 'merchant_voucher',
+  ref_id: 'plc_cafe_1',
+  ttl_seconds: 7200,
+  metadata: { discount_percent: 15, item: 'Café Chorreado' }
+});
+// qr.token -> token criptográfico firmado
+// qr.svg_preview -> string SVG listo para inyectar directo en un <div>
+
+// 2. Canjear QR en caja (idempotente: rechaza con 400 si ya fue canjeado)
+const redeem = await api.post('/security/qr/redeem', {
+  token: qr.token,
+  redeemed_by: 'cajero_1'
+});
+console.log(redeem.redeemed); // true
+```
+
+### 6.8. Notificaciones Web Push y Mensajería Multicanal (`/api/notifications/*`)
+Soporte para notificaciones nativas en el navegador vía estándar RFC 8292 VAPID:
+```javascript
+// 1. Obtener clave pública VAPID
+const { public_key } = await api.get('/notifications/vapid-public-key');
+
+// 2. Registrar la suscripción del navegador
+const pushSub = await registration.pushManager.subscribe({
+  userVisibleOnly: true,
+  applicationServerKey: public_key
+});
+await api.post('/notifications/subscribe', {
+  endpoint: pushSub.endpoint,
+  keys: {
+    p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(pushSub.getKey('p256dh')))),
+    auth: btoa(String.fromCharCode.apply(null, new Uint8Array(pushSub.getKey('auth'))))
+  }
+});
+```
+
+### 6.9. Calculador de Movilidad Sostenible y Huella de Carbono (`/api/mobility/*`)
+Calcula en tiempo real el ahorro de emisiones de $\text{CO}_2$ y colones según factores oficiales MINAE/IMN de Costa Rica:
+```javascript
+// POST /api/mobility/carbon-footprint
+const eco = await api.post('/mobility/carbon-footprint', {
+  origin_lat: 9.9322,
+  origin_lng: -84.0795,
+  dest_lat: 9.9148,
+  dest_lng: -84.2421,
+  transport_mode: 'carpool', // 'carpool', 'bus', 'train', 'bike', 'walk'
+  passengers_count: 3,
+  user_id: 'usr_actual'
+});
+console.log(eco.co2_saved_kg); // ej: 1.85 kg de CO2 evitados
+console.log(eco.colones_saved); // ej: ₡1,200 CRC ahorrados en gasolina
+console.log(eco.eco_summary); // Resumen legible listo para mostrar en la interfaz
+
+// Obtener medallas ecológicas del usuario
+const { badges } = await api.get('/mobility/badges/usr_actual');
+// badges -> [{ code: 'tico_verde', name: 'Tico Verde 🌱' }, ...]
+```
+
+### 6.10. Auditoría Inmutable Criptográfica (Hash Chain Ledger) (`/api/audit/*`)
+Verifica matemáticamente que la bitácora de auditoría no ha sufrido adulteraciones:
+```javascript
+// GET /api/audit/verify-chain
+const audit = await api.get('/audit/verify-chain');
+console.log(audit.valid); // true
+console.log(audit.total_blocks); // N bloques encadenados por SHA-256
+```
+
+### 6.11. Webhooks Salientes para Comercios Aliados (`/api/merchants/webhooks/*`)
+Permite a negocios locales registrar URLs de callback para enterarse al momento cuando un grupo vota o confirma visita a su local:
+```javascript
+// Registrar webhook para una cafetería
+const webhook = await api.post('/merchants/webhooks/subscriptions', {
+  merchant_id: 'plc_cafe_1',
+  target_url: 'https://mi-cafeteria.cr/api/webhook',
+  events: ['plan.confirmed', 'voucher.redeemed']
+});
+console.log(webhook.secret); // Secreto para validar firma HMAC-SHA256 en cabecera X-Sinergia-Signature
+```
+
 ---
 
 ## 7. Manejo de Errores y Códigos de Estado

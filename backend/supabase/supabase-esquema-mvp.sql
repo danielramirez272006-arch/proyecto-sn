@@ -189,6 +189,83 @@ ALTER TABLE app_private.audit_trail ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_private.refresh_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_private.notification_outbox ENABLE ROW LEVEL SECURITY;
 
+-- ============================================================================
+-- 8. Extensiones Enterprise: Hash Chain, Push, Webhooks, QR y Movilidad
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS app_private.audit_chain_ledger (
+    id VARCHAR(64) PRIMARY KEY,
+    record_id VARCHAR(64) NOT NULL,
+    sequence_number INTEGER NOT NULL,
+    entity_type VARCHAR(64) NOT NULL,
+    action VARCHAR(64) NOT NULL,
+    actor_id VARCHAR(64) NULL,
+    data_hash VARCHAR(64) NOT NULL,
+    previous_hash VARCHAR(64) NOT NULL,
+    block_hash VARCHAR(64) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.push_subscriptions (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NULL,
+    endpoint TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    user_agent TEXT NULL,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.merchant_webhooks (
+    id VARCHAR(64) PRIMARY KEY,
+    merchant_id VARCHAR(64) NOT NULL,
+    target_url TEXT NOT NULL,
+    secret VARCHAR(128) NOT NULL,
+    events_json TEXT NOT NULL,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.merchant_webhook_deliveries (
+    id VARCHAR(64) PRIMARY KEY,
+    subscription_id VARCHAR(64) NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    payload_json TEXT NOT NULL,
+    response_status INTEGER NULL,
+    response_body TEXT NULL,
+    duration_ms INTEGER NULL,
+    success BOOLEAN NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.qr_redemptions (
+    id VARCHAR(64) PRIMARY KEY,
+    qr_id VARCHAR(128) NOT NULL UNIQUE,
+    qr_type VARCHAR(64) NOT NULL,
+    redeemed_by VARCHAR(64) NULL,
+    redeemed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    metadata_json TEXT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_private.user_mobility_logs (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    distance_km NUMERIC(10, 4) NOT NULL,
+    transport_mode VARCHAR(32) NOT NULL,
+    co2_saved_grams NUMERIC(10, 2) NOT NULL,
+    colones_saved NUMERIC(12, 2) NOT NULL,
+    passengers_count INTEGER DEFAULT 1,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE app_private.audit_chain_ledger ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.merchant_webhooks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.merchant_webhook_deliveries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.qr_redemptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.user_mobility_logs ENABLE ROW LEVEL SECURITY;
+
 -- Conceder uso del esquema a los roles de Supabase
 GRANT USAGE ON SCHEMA app_private TO postgres, service_role, authenticated, anon;
 

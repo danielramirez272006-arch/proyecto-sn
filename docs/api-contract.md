@@ -1,10 +1,11 @@
 # Contrato de API y Especificación OpenAPI — Sistema de Sinergia Urbana
 
-**Versión:** 1.2.0 (Enterprise MVP)  
+**Versión:** 1.3.0 (Enterprise Supabase & DeepSeek MVP)  
 **Entorno Base:** `http://localhost:4000/api`  
 **Swagger UI Interactivo:** `http://localhost:4000/api/docs`  
 **OpenAPI Spec JSON:** `http://localhost:4000/api/docs/openapi.json`  
 **Métricas Prometheus:** `http://localhost:4000/api/metrics`  
+**Base de Datos Principal:** Supabase PostgreSQL 17 (`app_private` cerrado con RLS)  
 **Motor de IA Principal:** DeepSeek AI (`deepseek-chat` V3 / `deepseek-reasoner` R1 con fallback heurístico resiliente $0)  
 **Trazabilidad Distribuida:** Cabecera `x-request-id` (UUIDv4) inyectada en todas las peticiones y respuestas  
 **Zona Horaria Oficial:** `America/Costa_Rica` (Almacenamiento interno en UTC ISO-8601)  
@@ -68,7 +69,8 @@ Todas las respuestas del backend siguen estrictamente la estructura envolvente c
 - **`GET /api/docs/openapi.json`**: Especificación OpenAPI 3.0.3 en formato JSON.
 - **`GET /api/metrics`**: Métricas de rendimiento en formato estándar Prometheus (OpenMetrics).
 - **`GET /api/health`**: Estado del servidor y modelo DeepSeek activo.
-- **`GET /api/health/db`**: Estado de conexión a la base de datos relacional.
+- **`GET /api/health/supabase`**: Estado en vivo de la conexión con Supabase Cloud (Auth & Storage).
+- **`GET /api/health/db`**: Estado de conexión a la base de datos relacional (Supabase PostgreSQL con fallback a SQLite).
 - **`GET /api/health/system`**: Telemetría completa (memoria RSS/Heap, CPU, estado de la base y tareas de agentes).
 
 ### 3.2 Autenticación, Hashing PBKDF2 y Sesiones

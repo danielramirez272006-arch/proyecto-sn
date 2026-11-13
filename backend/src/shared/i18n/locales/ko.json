@@ -1,0 +1,29 @@
+{
+  "app_name": "코스타리카 도시 시너지 시스템",
+  "system": {
+    "healthy": "시스템이 정상적으로 작동 중입니다",
+    "unauthorized": "인증되지 않았거나 세션이 만료되었습니다",
+    "forbidden": "접근이 거부되었습니다",
+    "not_found": "리소스를 찾을 수 없습니다",
+    "rate_limit": "요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.",
+    "conflict": "동시성 충돌: 다른 주최자에 의해 일정이 변경되었습니다."
+  },
+  "places": {
+    "verified": "검증된 매장",
+    "pet_friendly": "반려동물 동반 가능",
+    "ramp_7600": "법률 7600호 장애인 편의시설 인증",
+    "sinpe_movil": "SINPE Móvil 간편결제 지원"
+  },
+  "plans": {
+    "created": "그룹 일정이 성공적으로 생성되었습니다",
+    "confirmed": "주최자가 일정을 확정했습니다",
+    "vote_recorded": "투표가 중복 없이 성공적으로 기록되었습니다"
+  },
+  "concierge": {
+    "greeting": "Pura vida! DeepSeek AI 기반 코스타리카 도시 AI 코파일럿입니다. 오늘 어떤 일정을 도와드릴까요?"
+  },
+  "storage": {
+    "uploaded": "파일이 성공적으로 업로드되었습니다",
+    "too_large": "파일이 최대 허용 크기(5MB)를 초과했습니다"
+  }
+}

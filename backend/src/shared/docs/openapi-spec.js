@@ -23,7 +23,8 @@ module.exports = {
     { name: "DeepSeek AI Copiloto", description: "Chat multi-turn, razonador R1 e itinerarios multi-día" },
     { name: "Agentes Autónomos", description: "Scheduler y monitoreo de tareas periódicas en background" },
     { name: "Rescate Urbano", description: "Alertas ciudadanas SOS en tiempo real y auxilio vial" },
-    { name: "Auditoría y Administración", description: "Pista inmutable de auditoría y operaciones de control" }
+    { name: "Auditoría y Administración", description: "Pista inmutable de auditoría y operaciones de control" },
+    { name: "Internacionalización (i18n)", description: "Soporte multilingüe para 10 idiomas, diccionarios y traducción automática" }
   ],
   paths: {
     "/metrics": {
@@ -53,6 +54,15 @@ module.exports = {
         summary: "Chequeo de conectividad a la base de datos (MySQL / SQLite)",
         responses: {
           "200": { description: "Base de datos relacional conectada y operativa" }
+        }
+      }
+    },
+    "/health/supabase": {
+      get: {
+        tags: ["Salud, Métricas y Diagnóstico"],
+        summary: "Chequeo de conexión y autenticación con Supabase Cloud (Auth & Storage)",
+        responses: {
+          "200": { description: "Estado y proveedor de Supabase" }
         }
       }
     },
@@ -360,6 +370,115 @@ module.exports = {
         summary: "Consultar la pista de auditoría inmutable de eventos del sistema (Admin)",
         responses: {
           "200": { description: "Historial de mutaciones, IPs y usuarios" }
+        }
+      }
+    },
+    "/storage/upload": {
+      post: {
+        tags: ["Almacenamiento y Archivos"],
+        summary: "Subir archivo a Supabase Storage con fallback local",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["file_name", "content_base64"],
+                properties: {
+                  bucket: { type: "string", default: "receipts" },
+                  file_name: { type: "string", example: "comprobante_sinpe.jpg" },
+                  content_base64: { type: "string" },
+                  content_type: { type: "string", default: "image/jpeg" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "201": { description: "Archivo subido exitosamente con URL pública" },
+          "400": { description: "Parámetros o tipo MIME inválido" },
+          "413": { description: "Archivo excede el límite de 5MB" }
+        }
+      }
+    },
+    "/storage/status": {
+      get: {
+        tags: ["Almacenamiento y Archivos"],
+        summary: "Estado del proveedor de almacenamiento y límites",
+        responses: {
+          "200": { description: "Proveedor activo y buckets permitidos" }
+        }
+      }
+    },
+    "/webhooks/supabase": {
+      post: {
+        tags: ["Webhooks y Sincronización"],
+        summary: "Receptor de eventos de base de datos de Supabase",
+        responses: {
+          "200": { description: "Webhook procesado y retransmitido a SSE" }
+        }
+      }
+    },
+    "/cache/stats": {
+      get: {
+        tags: ["Salud, Métricas y Diagnóstico"],
+        summary: "Estadísticas de aciertos y memoria de la caché TTL",
+        responses: {
+          "200": { description: "Hits, misses y ratio de acierto de caché" }
+        }
+      }
+    },
+    "/i18n/languages": {
+      get: {
+        tags: ["Internacionalización (i18n)"],
+        summary: "Obtener la lista de los 10 idiomas oficiales soportados con metadatos y banderas",
+        responses: {
+          "200": { description: "Lista de idiomas disponibles y el idioma detectado para el cliente" }
+        }
+      }
+    },
+    "/i18n/translations/{lang}": {
+      get: {
+        tags: ["Internacionalización (i18n)"],
+        summary: "Descargar el diccionario completo de traducciones para un idioma específico",
+        parameters: [
+          { name: "lang", in: "path", required: true, schema: { type: "string" }, example: "en" }
+        ],
+        responses: {
+          "200": { description: "Diccionario JSON con todas las cadenas traducidas" }
+        }
+      }
+    },
+    "/i18n/detect": {
+      get: {
+        tags: ["Internacionalización (i18n)"],
+        summary: "Detectar el idioma preferido del cliente según sus cabeceras Accept-Language",
+        responses: {
+          "200": { description: "Código de idioma detectado" }
+        }
+      }
+    },
+    "/i18n/translate": {
+      post: {
+        tags: ["Internacionalización (i18n)"],
+        summary: "Traducir una clave a un idioma destino",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["key"],
+                properties: {
+                  key: { type: "string", example: "concierge.greeting" },
+                  target_lang: { type: "string", example: "fr" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          "200": { description: "Texto traducido" }
         }
       }
     }

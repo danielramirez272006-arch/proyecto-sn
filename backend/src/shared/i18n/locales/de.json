@@ -1,0 +1,29 @@
+{
+  "app_name": "Urbane Synergie Costa Rica",
+  "system": {
+    "healthy": "System gesund und betriebsbereit",
+    "unauthorized": "Nicht autorisiert oder Sitzung abgelaufen",
+    "forbidden": "Zugriff verweigert",
+    "not_found": "Ressource nicht gefunden",
+    "rate_limit": "Anfragelimit überschritten. Bitte versuchen Sie es später erneut.",
+    "conflict": "Parallelitätskonflikt: Der Plan wurde von einem anderen Organisator aktualisiert."
+  },
+  "places": {
+    "verified": "Verifiziertes Geschäft",
+    "pet_friendly": "Haustierfreundlich",
+    "ramp_7600": "Barrierefreiheit nach Gesetz 7600 verifiziert",
+    "sinpe_movil": "Akzeptiert SINPE Móvil-Zahlungen"
+  },
+  "plans": {
+    "created": "Gruppenplan erfolgreich erstellt",
+    "confirmed": "Plan vom Organisator mit unveränderlichen Stopps bestätigt",
+    "vote_recorded": "Stimme erfolgreich ohne Duplikate erfasst"
+  },
+  "concierge": {
+    "greeting": "Pura vida! Ich bin Ihr urbaner KI-Kopilot für Costa Rica mit DeepSeek. Was planen wir heute?"
+  },
+  "storage": {
+    "uploaded": "Datei erfolgreich hochgeladen",
+    "too_large": "Die Datei überschreitet die maximal zulässige Größe von 5 MB"
+  }
+}

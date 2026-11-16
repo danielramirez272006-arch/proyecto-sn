@@ -22,6 +22,8 @@ import {
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { BotonTema } from '../components/BotonTema';
+import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
+import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
 
@@ -30,9 +32,41 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
   const { tema, setTema } = useTema();
   const navigate = useNavigate();
   const [sidebarMovilAbierto, setSidebarMovilAbierto] = useState(false);
+  const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
+  const [animandoSalida, setAnimandoSalida] = useState(false);
+
+  const handleSolicitarCierre = () => {
+    setSidebarMovilAbierto(false);
+    setModalConfirmacionAbierto(true);
+  };
+
+  const handleConfirmarSalida = () => {
+    setModalConfirmacionAbierto(false);
+    setAnimandoSalida(true);
+  };
+
+  const handleCompletarSalida = () => {
+    cerrarSesion();
+    setAnimandoSalida(false);
+    navigate('/acceso');
+  };
 
   return (
     <div className="panel-admin min-h-screen flex flex-col md:flex-row bg-[#FAF9FE] text-[#111827] transition-colors duration-200">
+      {/* Modal de confirmación y advertencia */}
+      <ModalConfirmarCierre
+        isOpen={modalConfirmacionAbierto}
+        onClose={() => setModalConfirmacionAbierto(false)}
+        onConfirmar={handleConfirmarSalida}
+        nombreUsuario={usuario?.nombre}
+      />
+
+      {/* Animación de cierre de sesión hacia /acceso */}
+      <AnimacionCierreSesion
+        visible={animandoSalida}
+        nombreUsuario={usuario?.nombre}
+        onCompletado={handleCompletarSalida}
+      />
       {/* ============================================================
           SIDEBAR DESKTOP & TABLET (Lateral Izquierdo)
           ============================================================ */}
@@ -130,7 +164,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
         </div>
 
         {/* Sección Inferior del Sidebar: Selector de 3 Temas y Perfil */}
-        <div className="p-4 border-t border-slate-100 space-y-3 bg-slate-50/50">
+        <div className="panel-sidebar-pie p-4 border-t border-slate-100 space-y-3 bg-slate-50/50">
           {/* Selector Segmentado de los 3 Temas */}
           <div className="space-y-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">
@@ -179,26 +213,50 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
             </div>
           </div>
 
-          {/* Tarjeta del Operador */}
-          <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/70">
-            <Link to="/perfil" className="flex items-center gap-2 min-w-0 group">
-              <div className="w-7 h-7 rounded-lg bg-[#501228]/10 text-[#501228] flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-[#501228] group-hover:text-white transition-colors">
-                <User className="w-4 h-4" />
-              </div>
-              <div className="truncate text-left">
-                <p className="text-xs font-semibold text-[#111827] truncate group-hover:text-[#501228] transition-colors">
-                  {usuario?.nombre || 'Mariana Rojas'}
-                </p>
-                <p className="text-[10px] text-slate-400 truncate">Operador Nivel 1</p>
-              </div>
-            </Link>
-            <Link
-              to="/perfil"
-              title="Ir a Bóveda Pet"
-              className="p-1 rounded-lg text-slate-400 hover:text-[#501228] hover:bg-slate-100 transition-colors"
+          {/* Tarjeta del Operador y Cerrar Sesión */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/70 shadow-2xs">
+              <Link to="/perfil" className="flex items-center gap-2.5 min-w-0 group flex-1">
+                <div className="relative">
+                  <div className="w-8 h-8 rounded-lg bg-[#501228] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs group-hover:bg-[#6E1E3A] transition-colors">
+                    {usuario?.nombre?.charAt(0) || 'U'}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
+                </div>
+                <div className="truncate text-left">
+                  <p className="text-xs font-bold text-[#111827] truncate group-hover:text-[#501228] transition-colors">
+                    {usuario?.nombre || 'Mariana Rojas'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
+                    <Shield className="w-2.5 h-2.5 text-emerald-600" />
+                    <span>Operador Nivel 1</span>
+                  </p>
+                </div>
+              </Link>
+              <Link
+                to="/perfil"
+                title="Ir a Bóveda Pet"
+                className="p-1 rounded-lg text-slate-400 hover:text-[#501228] hover:bg-slate-100 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* Botón Cerrar Sesión en Sidebar */}
+            <button
+              type="button"
+              onClick={handleSolicitarCierre}
+              className="btn-cerrar-sesion w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50/80 hover:bg-rose-100/90 border border-rose-200/70 transition-all shadow-2xs group active:scale-[0.98]"
+              title="Cerrar sesión activa y volver al acceso"
             >
-              <ChevronRight className="w-4 h-4" />
-            </Link>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-rose-100 text-rose-700 flex items-center justify-center group-hover:bg-rose-200 transition-colors">
+                  <LogOut className="w-3 h-3 text-rose-600 group-hover:-translate-x-0.5 transition-transform" />
+                </div>
+                <span>Cerrar Sesión</span>
+              </div>
+              <span className="text-[10px] text-rose-500 font-medium">Salir</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -283,11 +341,11 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                   })}
               </div>
 
-              <div className="pt-3 border-t border-slate-100">
+              <div className="pt-3 border-t border-slate-100 space-y-2">
                 <Link
                   to="/"
                   onClick={() => setSidebarMovilAbierto(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:text-[#501228]"
+                  className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:text-[#501228] rounded-xl hover:bg-slate-50"
                 >
                   <Globe className="w-4 h-4" />
                   <span>Volver a Web Pública</span>
@@ -295,11 +353,19 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                 <Link
                   to="/perfil"
                   onClick={() => setSidebarMovilAbierto(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:text-[#501228]"
+                  className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:text-[#501228] rounded-xl hover:bg-slate-50"
                 >
                   <User className="w-4 h-4" />
                   <span>Bóveda Pet</span>
                 </Link>
+                <button
+                  type="button"
+                  onClick={handleSolicitarCierre}
+                  className="btn-cerrar-sesion w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Cerrar Sesión</span>
+                </button>
               </div>
             </div>
 

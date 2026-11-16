@@ -4,7 +4,7 @@ import { MASCOTA_ACTIVA_DEFECTO } from '../data/mascota';
 import { authService } from '../shared/services/auth-service';
 
 const SESION_DEFECTO = {
-  isLoggedIn: true,
+  isLoggedIn: false,
   usuario: {
     nombre: "Mariana Rojas",
     correo: "mariana.rojas@gotox.cr",
@@ -113,8 +113,33 @@ export function useSesion() {
   const cerrarSesion = () => {
     setSesion(prev => ({
       ...prev,
-      isLoggedIn: false
+      isLoggedIn: false,
+      usuario: {
+        ...prev.usuario,
+        id: null
+      }
     }));
+
+    try {
+      if (typeof window !== 'undefined') {
+        const guardado = window.localStorage.getItem('gotox_sesion_activa');
+        if (guardado) {
+          const parseado = JSON.parse(guardado);
+          parseado.isLoggedIn = false;
+          window.localStorage.setItem('gotox_sesion_activa', JSON.stringify(parseado));
+        } else {
+          window.localStorage.setItem(
+            'gotox_sesion_activa',
+            JSON.stringify({ ...SESION_DEFECTO, isLoggedIn: false })
+          );
+        }
+        window.localStorage.removeItem('token');
+        window.localStorage.removeItem('auth_user');
+      }
+    } catch (err) {
+      console.warn('[useSesion] Error limpiando almacenamiento de sesión:', err);
+    }
+
     authService.logout().catch(() => {});
   };
 

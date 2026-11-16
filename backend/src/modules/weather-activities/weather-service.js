@@ -25,15 +25,16 @@ class WeatherActivitiesService {
 
   async getEnvironmentalIndices(lat = 9.9333, lng = -84.0833) {
     const data = await openMeteoClient.getForecast(lat, lng);
-    const temp = data.current?.temperature_2m || 24;
+    const temp = data.current?.temperature_2m ?? 22.0;
     const rain = data.current?.precipitation || 0;
     const soilMoisture = data.current?.soil_moisture_0_to_1cm || 0.2;
 
-    const asphaltTemp = Math.round(temp * 1.45);
+    const asphaltTemp = parseFloat((Number(temp) + 1.4).toFixed(1));
     const mudRisk = soilMoisture > 0.4 ? 'high' : (soilMoisture > 0.25 ? 'moderate' : 'low');
-    const dogPawBurnAlert = asphaltTemp >= 45;
+    const dogPawBurnAlert = asphaltTemp >= 28;
 
     return {
+      ambient_temperature_c: parseFloat(Number(temp).toFixed(1)),
       asphalt_temperature_c: asphaltTemp,
       dog_paw_burn_alert: dogPawBurnAlert,
       mud_in_parks_risk: mudRisk,

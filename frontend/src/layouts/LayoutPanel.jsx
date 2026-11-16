@@ -164,7 +164,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
         </div>
 
         {/* Sección Inferior del Sidebar: Selector de 3 Temas y Perfil */}
-        <div className="p-4 border-t border-slate-100 space-y-3 bg-slate-50/50">
+        <div className="panel-sidebar-pie p-4 border-t border-slate-100 space-y-3 bg-slate-50/50">
           {/* Selector Segmentado de los 3 Temas */}
           <div className="space-y-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">

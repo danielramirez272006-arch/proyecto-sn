@@ -97,34 +97,34 @@ export function Nosotros() {
             {MIEMBROS_EQUIPO.map((miembro) => (
               <Card
                 key={miembro.id}
-                className="p-6 border-slate-200/80 flex flex-col items-center text-center space-y-4 bg-gradient-to-b from-white to-[#FAF9FE] gotox-card-hover"
+                className="p-6 border-slate-200/80 dark:border-white/10 flex flex-col items-center text-center space-y-4 bg-gradient-to-b from-white to-[#FAF9FE] dark:from-[#111827] dark:to-[#0d131f] gotox-card-hover"
               >
                 {/* Ilustración de Avatar de Gato SVG */}
-                <div className="relative p-2 rounded-3xl bg-slate-50 border border-slate-200/60 shadow-inner">
+                <div className="relative p-2 rounded-3xl bg-slate-50 dark:bg-[#162032] border border-slate-200/60 dark:border-white/10 shadow-inner">
                   {renderAvatar(miembro.tipoAvatar)}
                 </div>
 
                 <div className="space-y-1">
-                  <h3 className="font-serif font-bold text-xl text-[#111827]">
+                  <h3 className="font-serif font-bold text-xl text-[#111827] dark:text-[#E8EDF5]">
                     {miembro.nombre}
                   </h3>
-                  <p className="text-xs font-semibold text-[#501228] uppercase tracking-wide">
+                  <p className="text-xs font-semibold text-[#501228] dark:text-[#F27B91] uppercase tracking-wide">
                     {miembro.rol}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     {miembro.subtitulo}
                   </p>
                 </div>
 
-                <p className="text-xs text-slate-600 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-[#94A3B8] leading-relaxed">
                   {miembro.bio}
                 </p>
 
-                <div className="pt-3 border-t border-slate-100 w-full text-left">
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">
+                <div className="pt-3 border-t border-slate-100 dark:border-white/10 w-full text-left">
+                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-400 uppercase block mb-1">
                     Enfoque Operativo
                   </span>
-                  <p className="text-[11px] text-slate-700 leading-tight">
+                  <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">
                     {miembro.enfoque}
                   </p>
                 </div>
@@ -134,12 +134,12 @@ export function Nosotros() {
         </div>
 
         {/* Alianza con el Gran Área Metropolitana */}
-        <div className="p-8 rounded-3xl bg-[#FAF9FE] border border-slate-200/80 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="p-8 rounded-3xl bg-[#FAF9FE] dark:bg-[#111827] border border-slate-200/80 dark:border-white/10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
-            <h3 className="font-serif text-2xl font-bold text-[#111827]">
+            <h3 className="font-serif text-2xl font-bold text-[#111827] dark:text-[#E8EDF5]">
               ¿Gestionas un espacio gastronómico en el GAM?
             </h3>
-            <p className="text-xs sm:text-sm text-slate-600">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-[#94A3B8]">
               Solicita la inspección acústica y térmica oficial de GoToX Pet OS para obtener la certificación física e integrarte a nuestro radar satelital.
             </p>
           </div>

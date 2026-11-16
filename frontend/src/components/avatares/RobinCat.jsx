@@ -86,3 +86,6 @@ export function RobinCat({ className = 'w-24 h-24', size = 96 }) {
   );
 }
 
+export default RobinCat;
+
+

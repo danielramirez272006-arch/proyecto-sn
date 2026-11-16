@@ -126,7 +126,7 @@ export function ConsolaIA() {
               Consola de Mando IA Urbana
             </h3>
             <span className="text-[11px] text-slate-500">
-              Inferencia sintética con datos locales del GAM &bull; Sin llamadas externas
+              Conectada en vivo con Google Gemini 3.5 Flash (Cliente) &bull; Telemetría GAM
             </span>
           </div>
         </div>

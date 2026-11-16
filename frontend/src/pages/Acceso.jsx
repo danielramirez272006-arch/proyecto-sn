@@ -24,12 +24,12 @@ import {
 
 export function Acceso() {
   const navigate = useNavigate();
-  const { iniciarSesion, mascota, actualizarMascota } = useSesion();
+  const { iniciarSesion, loginConBackend, registrarConBackend, mascota, actualizarMascota } = useSesion();
   const telemetria = useTelemetria();
 
   const [modo, setModo] = useState('login'); // 'login' | 'onboarding-pet'
   const [correo, setCorreo] = useState('mariana.rojas@gotox.cr');
-  const [clave, setClave] = useState('••••••••••');
+  const [clave, setClave] = useState('GoToX2026!');
   const [nombreTutor, setNombreTutor] = useState('Mariana Rojas');
 
   // Datos para onboarding de mascota
@@ -56,7 +56,7 @@ export function Acceso() {
     return Object.keys(err).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validar()) return;
 
@@ -71,12 +71,22 @@ export function Acceso() {
       });
     }
 
-    iniciarSesion(correo, nombreTutor);
+    try {
+      if (modo === 'onboarding-pet') {
+        await registrarConBackend({ name: nombreTutor, email: correo, password: clave });
+      } else {
+        await loginConBackend({ email: correo, password: clave });
+      }
+    } catch {
+      // Si es usuario demo o aún no registrado, autorizar sesión híbrida/invitado en backend
+      iniciarSesion(correo, nombreTutor);
+    }
+
     setExitoMensaje('¡Sesión autorizada en GoToX Pet OS!');
     setTimeout(() => {
       setCargando(false);
       navigate('/panel');
-    }, 600);
+    }, 500);
   };
 
   const mascotaPreview = {

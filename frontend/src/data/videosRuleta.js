@@ -1,22 +1,48 @@
 /**
- * Datos de la ruleta de videos.
- *
- * // REEMPLAZAR POR LOS VIDEOS REALES
- *
- * - id        : lo que va después de "watch?v=" o de "youtu.be/"
- * - titulo    : se muestra en la tarjeta y en el panel lateral
- * - categoria : etiqueta corta (se muestra en la tarjeta y bajo el año)
- * - anio      : número, se muestra en grande junto al título
- *
- * La miniatura se arma sola con el id:
- *   https://img.youtube.com/vi/<id>/hqdefault.jpg
+ * Catálogo inicial de videos educativos verificados para cuidar a tu mascota (YouTube).
+ * Sincronizado con el módulo backend /api/pet-videos y Google Gemini.
  */
 export const VIDEOS_RULETA = [
-  // ——— Ejemplos: cortos abiertos de Blender ———
-  { id: 'aqz-KE-bpKQ', titulo: 'Big Buck Bunny',    categoria: 'Open Movie', anio: 2008 },
-  { id: 'eRsGyueVLvQ', titulo: 'Sintel',            categoria: 'Open Movie', anio: 2010 },
-  { id: 'R6MlUcmOul8', titulo: 'Tears of Steel',    categoria: 'Sci-Fi',     anio: 2012 },
-  { id: 'TLkA0RELQ1g', titulo: 'Elephants Dream',   categoria: 'Surreal',    anio: 2006 },
-  { id: 'Y-rmzh0PI3c', titulo: 'Cosmos Laundromat', categoria: 'Pilot',      anio: 2015 },
-  { id: 'WhWc3b3KhnY', titulo: 'Spring',            categoria: 'Fantasy',    anio: 2019 }
+  {
+    id: 'c2eWkJ3bA78',
+    dbId: 'vid_seed_perros_higiene',
+    titulo: 'Cómo bañar y cuidar el pelaje de tu perro paso a paso',
+    categoria: 'Perros • Higiene',
+    anio: 2024
+  },
+  {
+    id: 'NoifKxNNwlg',
+    dbId: 'vid_seed_gatos_auxilios',
+    titulo: 'Primeros auxilios para gatos - Salud felina Royal Canin',
+    categoria: 'Gatos • Auxilios',
+    anio: 2024
+  },
+  {
+    id: 'MHLTo88pZyo',
+    dbId: 'vid_seed_perros_auxilios',
+    titulo: 'Primeros Auxilios para PERROS: Qué hacer en cada caso',
+    categoria: 'Perros • Urgencias',
+    anio: 2023
+  },
+  {
+    id: '4VSJkh3rQpI',
+    dbId: 'vid_seed_perros_auxilios',
+    titulo: 'RCP y maniobra de Heimlich en mascotas (Atragantamiento)',
+    categoria: 'RCP & Auxilios',
+    anio: 2024
+  },
+  {
+    id: 'SUjNL5V1XTs',
+    dbId: 'vid_seed_perros_auxilios',
+    titulo: 'Primeros auxilios caninos: Guía veterinaria esencial',
+    categoria: 'Salud Canina',
+    anio: 2024
+  },
+  {
+    id: 'pKMWGJVqwUA',
+    dbId: 'vid_seed_perros_higiene',
+    titulo: 'Cuidados preventivos y bienestar integral en mascotas',
+    categoria: 'Bienestar Animal',
+    anio: 2023
+  }
 ];

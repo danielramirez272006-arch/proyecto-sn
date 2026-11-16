@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { VIDEOS_RULETA } from '../data/videosRuleta';
+import { api } from '../shared/services/api-client';
 import '../estilos/ruleta-videos.css';
 
 /**
@@ -74,6 +75,34 @@ export function RuletaVideos() {
   const [videoCaido, setVideoCaido] = useState({});
   const [videoActivo, setVideoActivo] = useState(null);
   const [frameListo, setFrameListo] = useState(null);
+
+  // Estado para el Buscador Inteligente con Gemini y «Pregúntale al Video»
+  const [consultaGemini, setConsultaGemini] = useState('');
+  const [buscandoGemini, setBuscandoGemini] = useState(false);
+  const [resultadoGemini, setResultadoGemini] = useState(null);
+  const [videoReproductorDirecto, setVideoReproductorDirecto] = useState(null);
+
+  const buscarVideoConGemini = async (textoManual) => {
+    const q = (textoManual ?? consultaGemini).trim();
+    if (!q) return;
+    if (textoManual) setConsultaGemini(textoManual);
+    setBuscandoGemini(true);
+    try {
+      const data = await api.post('/pet-videos/smart-search', { text: q });
+      if (data && data.best_match) {
+        setResultadoGemini(data);
+        setVideoReproductorDirecto({
+          youtube_id: data.best_match.youtube_id,
+          title: data.best_match.title,
+          start_seconds: data.best_match.start_seconds || 0
+        });
+      }
+    } catch (err) {
+      console.warn('Error consultando buscador Gemini:', err);
+    } finally {
+      setBuscandoGemini(false);
+    }
+  };
 
   const seccionRef = useRef(null);
   const wheelRef = useRef(null);
@@ -620,6 +649,124 @@ export function RuletaVideos() {
           ))}
         </div>
       </section>
+
+      {/* ---------------- Buscador Inteligente con Gemini y «Pregúntale al Video» ---------------- */}
+      <div className="max-w-[1160px] mx-auto px-4 sm:px-6 py-8 relative z-20">
+        <div className="rounded-2xl bg-[#140A10]/95 border border-white/15 p-5 sm:p-6 text-white shadow-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="font-serif text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                <span>🔍 «Pregúntale al Video» & Buscador con Google Gemini</span>
+              </h3>
+              <p className="text-xs text-pink-100/75 mt-0.5">
+                Escribe lo que le pasa o necesita tu mascota. Gemini analizará tu consulta y cargará el video y segundo más indicado.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 w-fit">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Gemini 3.5 Flash + YouTube API
+            </span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={consultaGemini}
+              onChange={(e) => setConsultaGemini(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && buscarVideoConGemini()}
+              placeholder="Ej: Mi perro comió chocolate y tiembla / ¿A qué temperatura debe estar el agua de baño?"
+              className="flex-1 rounded-xl bg-black/50 border border-white/20 px-4 py-2.5 text-xs sm:text-sm text-white placeholder-white/40 outline-none focus:border-pink-400"
+            />
+            <button
+              type="button"
+              disabled={buscandoGemini}
+              onClick={() => buscarVideoConGemini()}
+              className="px-5 py-2.5 rounded-xl bg-[#501228] hover:bg-[#6E1E3A] text-white font-semibold text-xs sm:text-sm transition cursor-pointer whitespace-nowrap"
+            >
+              {buscandoGemini ? '⏳ Buscando con Gemini...' : '✨ Buscar Video con Gemini'}
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-white/70">
+            <span className="text-white/50">Ejemplos rápidos:</span>
+            <button
+              type="button"
+              onClick={() => buscarVideoConGemini('Mi perro comió chocolate y tiene vómitos')}
+              className="px-2.5 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700/60 transition cursor-pointer"
+            >
+              🚨 Mi perro comió chocolate
+            </button>
+            <button
+              type="button"
+              onClick={() => buscarVideoConGemini('¿A qué temperatura debe estar el agua para bañar a mi perro?')}
+              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+            >
+              💧 Temperatura del agua de baño
+            </button>
+            <button
+              type="button"
+              onClick={() => buscarVideoConGemini('Primeros auxilios para gatos en casa')}
+              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+            >
+              🐱 Primeros auxilios en gatos
+            </button>
+          </div>
+
+          {resultadoGemini && resultadoGemini.best_match && (
+            <div className="pt-3 border-t border-white/15 space-y-3">
+              {resultadoGemini.is_medical_emergency && resultadoGemini.emergency_alert && (
+                <div className="p-3.5 rounded-xl bg-rose-950/90 border border-rose-500 text-rose-100 text-xs space-y-1">
+                  <div className="font-bold text-rose-300 flex items-center gap-1.5">
+                    <span>🚨 {resultadoGemini.emergency_alert.title}</span>
+                  </div>
+                  <p>{resultadoGemini.emergency_alert.message}</p>
+                  <p className="text-[11px] text-rose-300 font-semibold pt-1">
+                    📞 Emergencias Veterinarias CR: 9-1-1 • Hospital Veterinario UNA: 2277-3600 • Cruz Roja: 1322
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-black/40 p-4 rounded-xl border border-white/10">
+                <div className="md:col-span-5 aspect-video rounded-lg overflow-hidden bg-black border border-white/15">
+                  {videoReproductorDirecto && (
+                    <iframe
+                      key={`${videoReproductorDirecto.youtube_id}_${videoReproductorDirecto.start_seconds}`}
+                      className="w-full h-full"
+                      src={`https://www.youtube.com/embed/${encodeURIComponent(videoReproductorDirecto.youtube_id)}?start=${videoReproductorDirecto.start_seconds || 0}&autoplay=1`}
+                      title={videoReproductorDirecto.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  )}
+                </div>
+                <div className="md:col-span-7 space-y-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold">
+                      ✨ Video más indicado según Gemini
+                    </span>
+                    <span className="text-white/60">
+                      Canal: {resultadoGemini.best_match.channel_title}
+                    </span>
+                  </div>
+                  <h4 className="text-sm sm:text-base font-bold text-white">
+                    {resultadoGemini.best_match.title}
+                  </h4>
+                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 text-pink-100">
+                    <strong className="text-pink-300">🧠 Por qué te lo recomienda Gemini: </strong>
+                    {resultadoGemini.best_match.why_recommended}
+                  </div>
+                  {resultadoGemini.best_match.direct_answer && (
+                    <p className="text-white/90 leading-relaxed">
+                      <strong className="text-emerald-300">💡 Respuesta directa: </strong>
+                      {resultadoGemini.best_match.direct_answer}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

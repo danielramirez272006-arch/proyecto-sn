@@ -1,7 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap');
 
 :root,
 .gotox-root {
+  --font-heading: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
   --burdeos-900: #501228;
   --burdeos-800: #5F1831;
   --burdeos-700: #6E1E3A;
@@ -38,7 +41,7 @@
 }
 
 .gotox-root {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-body);
   color: var(--tinta-900);
   background-color: var(--marfil-50);
   min-height: 100vh;
@@ -47,17 +50,27 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Tipografía de títulos */
+/* Tipografía de títulos y encabezados principales */
 .gotox-root h1,
 .gotox-root h2,
 .gotox-root h3,
+.gotox-root h4,
 .gotox-root .font-serif-editorial {
-  font-family: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+  font-family: var(--font-heading);
   letter-spacing: -0.02em;
+  font-weight: 700;
 }
 
-.gotox-root .font-sans-ui {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+.gotox-root .font-sans-ui,
+.gotox-root p,
+.gotox-root span,
+.gotox-root button,
+.gotox-root input,
+.gotox-root select,
+.gotox-root textarea,
+.gotox-root table,
+.gotox-root nav {
+  font-family: var(--font-body);
 }
 
 .gotox-root .tabular-nums {

@@ -1,312 +1,328 @@
 /* ============================================================
-   TEMA OSCURO — páginas públicas
-   Se activa con <html data-tema="oscuro"> y solo afecta al
-   contenedor .tema-publico (Navbar + páginas + Footer).
-   El panel de administración conserva su aspecto original.
+   SISTEMA DE 3 TEMAS VISUALES — GoToX Pet OS
+   1. data-tema="claro"  : Paleta luminosa marfil / vino suave
+   2. data-tema="morado" : Tono insignia vino profundo / burgundy / rosa
+   3. data-tema="oscuro" : Tono oscuro puro neutro (negro carbón, blanco, slate)
+   Aplica a toda la aplicación: Web Pública y Panel de Mando (Admin).
    ============================================================ */
 
-:root[data-tema='oscuro'] {
+/* ------------------------------------------------------------
+   1. TEMA MORADO (Vino Profundo / Burgundy de Marca)
+   ------------------------------------------------------------ */
+:root[data-tema='morado'] {
   color-scheme: dark;
 }
 
-:root[data-tema='oscuro'] body {
-  background-color: #0e070c;
-}
-
-:root[data-tema='oscuro'] .gotox-root {
+:root[data-tema='morado'] body,
+:root[data-tema='morado'] .gotox-root {
   background-color: #0e070c;
   color: #d8c3cc;
 }
 
-/* Paleta oscura derivada de la marca (vino profundo + rosa) */
-:root[data-tema='oscuro'] .tema-publico {
-  --dk-bg: #0e070c;
-  --dk-surface: #1a1017;
-  --dk-surface-2: #21131b;
-  --dk-surface-3: #2a1822;
-  --dk-surface-4: #35202b;
-  --dk-border: rgba(247, 222, 232, 0.12);
-  --dk-border-strong: rgba(247, 222, 232, 0.22);
-  --dk-ink: #f7ebf0;
-  --dk-body: #d8c3cc;
-  --dk-muted: #a98e99;
-  --dk-faint: #9c8290;
-  --dk-accent: #f0a6be;
-  --dk-accent-strong: #e38ca9;
-  --dk-burgundy: #7c2949;
-
-  background-color: var(--dk-bg);
-  color: var(--dk-body);
+:root[data-tema='morado'] {
+  --th-bg: #0e070c;
+  --th-surface: #1a1017;
+  --th-surface-2: #21131b;
+  --th-surface-3: #2a1822;
+  --th-surface-4: #35202b;
+  --th-border: rgba(247, 222, 232, 0.12);
+  --th-border-strong: rgba(247, 222, 232, 0.24);
+  --th-ink: #fdf2f6;
+  --th-body: #d8c3cc;
+  --th-muted: #a98e99;
+  --th-faint: #9c8290;
+  --th-accent: #f0a6be;
+  --th-accent-strong: #e38ca9;
+  --th-burgundy: #7c2949;
+  --th-sidebar-bg: #140b12;
+  --th-sidebar-border: rgba(247, 222, 232, 0.14);
 }
 
 /* ------------------------------------------------------------
-   Superficies
+   2. TEMA OSCURO (Dark Puro / Neutro con Blanco & Slate)
    ------------------------------------------------------------ */
-:root[data-tema='oscuro'] .tema-publico .bg-white {
-  background-color: var(--dk-surface);
+:root[data-tema='oscuro'] {
+  color-scheme: dark;
 }
 
-:root[data-tema='oscuro'] .tema-publico .bg-white\/85 {
-  background-color: rgba(26, 16, 23, 0.85);
+:root[data-tema='oscuro'] body,
+:root[data-tema='oscuro'] .gotox-root {
+  background-color: #090d14;
+  color: #e2e8f0;
 }
 
-:root[data-tema='oscuro'] .tema-publico .bg-white\/95 {
-  background-color: rgba(26, 16, 23, 0.95);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-white\/80 {
-  background-color: rgba(26, 16, 23, 0.8);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-white\/70 {
-  background-color: rgba(26, 16, 23, 0.7);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-white\/60 {
-  background-color: rgba(26, 16, 23, 0.6);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-\[\#FBF8FF\] {
-  background-color: var(--dk-bg);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-\[\#FAF9FE\] {
-  background-color: #170d14;
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-\[\#FDF2F4\] {
-  background-color: rgba(124, 41, 73, 0.24);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-\[\#FDF2F4\]\/40 {
-  background-color: rgba(124, 41, 73, 0.16);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-\[\#501228\] {
-  background-color: var(--dk-burgundy);
-}
-
-/* Las tarjetas con degradado claro se vuelven superficie plana oscura */
-:root[data-tema='oscuro'] .tema-publico .from-white {
-  background-image: none;
-  background-color: var(--dk-surface);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-slate-50,
-:root[data-tema='oscuro'] .tema-publico .bg-slate-50\/90 {
-  background-color: var(--dk-surface-2);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-slate-50\/70 {
-  background-color: rgba(33, 19, 27, 0.7);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-slate-100,
-:root[data-tema='oscuro'] .tema-publico .bg-slate-100\/80 {
-  background-color: var(--dk-surface-3);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-slate-100\/60 {
-  background-color: rgba(42, 24, 34, 0.6);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-slate-200 {
-  background-color: var(--dk-surface-4);
+:root[data-tema='oscuro'] {
+  --th-bg: #090d14;
+  --th-surface: #111827;
+  --th-surface-2: #162032;
+  --th-surface-3: #1e293b;
+  --th-surface-4: #273549;
+  --th-border: rgba(255, 255, 255, 0.1);
+  --th-border-strong: rgba(255, 255, 255, 0.22);
+  --th-ink: #ffffff;
+  --th-body: #e2e8f0;
+  --th-muted: #94a3b8;
+  --th-faint: #64748b;
+  --th-accent: #f8fafc;
+  --th-accent-strong: #ffffff;
+  --th-burgundy: #501228;
+  --th-sidebar-bg: #0d131f;
+  --th-sidebar-border: rgba(255, 255, 255, 0.12);
 }
 
 /* ------------------------------------------------------------
-   Texto
+   REGLAS COMPARTIDAS PARA MODOS OSCUROS (Morado y Oscuro Neutro)
    ------------------------------------------------------------ */
-:root[data-tema='oscuro'] .tema-publico .text-\[\#111827\] {
-  color: var(--dk-ink);
+:root[data-tema='morado'] .tema-publico,
+:root[data-tema='oscuro'] .tema-publico,
+:root[data-tema='morado'] .panel-admin,
+:root[data-tema='oscuro'] .panel-admin {
+  background-color: var(--th-bg);
+  color: var(--th-body);
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-\[\#501228\],
-:root[data-tema='oscuro'] .tema-publico .text-\[\#6E1E3A\] {
-  color: var(--dk-accent);
+/* Superficies y Fondos */
+:root[data-tema='morado'] .bg-white,
+:root[data-tema='oscuro'] .bg-white {
+  background-color: var(--th-surface) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-\[\#374151\] {
-  color: #e2cfd7;
+:root[data-tema='morado'] .bg-white\/90,
+:root[data-tema='oscuro'] .bg-white\/90,
+:root[data-tema='morado'] .bg-white\/85,
+:root[data-tema='oscuro'] .bg-white\/85,
+:root[data-tema='morado'] .bg-white\/95,
+:root[data-tema='oscuro'] .bg-white\/95,
+:root[data-tema='morado'] .bg-white\/80,
+:root[data-tema='oscuro'] .bg-white\/80,
+:root[data-tema='morado'] .bg-white\/70,
+:root[data-tema='oscuro'] .bg-white\/70,
+:root[data-tema='morado'] .bg-white\/60,
+:root[data-tema='oscuro'] .bg-white\/60 {
+  background-color: var(--th-surface) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-\[\#4B5563\] {
-  color: var(--dk-body);
+:root[data-tema='morado'] .bg-\[\#FBF8FF\],
+:root[data-tema='oscuro'] .bg-\[\#FBF8FF\],
+:root[data-tema='morado'] .bg-\[\#FAF9FE\],
+:root[data-tema='oscuro'] .bg-\[\#FAF9FE\] {
+  background-color: var(--th-bg) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-\[\#6B7280\] {
-  color: var(--dk-muted);
+:root[data-tema='morado'] .bg-slate-50,
+:root[data-tema='oscuro'] .bg-slate-50,
+:root[data-tema='morado'] .bg-slate-50\/90,
+:root[data-tema='oscuro'] .bg-slate-50\/90,
+:root[data-tema='morado'] .bg-slate-50\/70,
+:root[data-tema='oscuro'] .bg-slate-50\/70 {
+  background-color: var(--th-surface-2) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-slate-900,
-:root[data-tema='oscuro'] .tema-publico .text-slate-800 {
-  color: var(--dk-ink);
+:root[data-tema='morado'] .bg-slate-100,
+:root[data-tema='oscuro'] .bg-slate-100,
+:root[data-tema='morado'] .bg-slate-100\/80,
+:root[data-tema='oscuro'] .bg-slate-100\/80,
+:root[data-tema='morado'] .bg-slate-100\/60,
+:root[data-tema='oscuro'] .bg-slate-100\/60 {
+  background-color: var(--th-surface-3) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-slate-700 {
-  color: #e2cfd7;
+:root[data-tema='morado'] .bg-slate-200,
+:root[data-tema='oscuro'] .bg-slate-200 {
+  background-color: var(--th-surface-4) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-slate-600 {
-  color: var(--dk-body);
+/* Modos de tarjetas con degradado */
+:root[data-tema='morado'] .from-white,
+:root[data-tema='oscuro'] .from-white {
+  background-image: none !important;
+  background-color: var(--th-surface) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-slate-500 {
-  color: var(--dk-muted);
+/* Fondos específicos de marca en modo oscuro */
+:root[data-tema='morado'] .bg-\[\#FDF2F4\],
+:root[data-tema='morado'] .bg-\[\#FDF2F4\]\/40 {
+  background-color: rgba(124, 41, 73, 0.22) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-slate-400 {
-  color: var(--dk-faint);
+:root[data-tema='oscuro'] .bg-\[\#FDF2F4\],
+:root[data-tema='oscuro'] .bg-\[\#FDF2F4\]\/40 {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ------------------------------------------------------------
+   Textos en Modos Oscuros
+   ------------------------------------------------------------ */
+:root[data-tema='morado'] .text-\[\#111827\],
+:root[data-tema='oscuro'] .text-\[\#111827\],
+:root[data-tema='morado'] .text-slate-900,
+:root[data-tema='oscuro'] .text-slate-900,
+:root[data-tema='morado'] .text-slate-800,
+:root[data-tema='oscuro'] .text-slate-800 {
+  color: var(--th-ink) !important;
+}
+
+:root[data-tema='morado'] .text-slate-700,
+:root[data-tema='oscuro'] .text-slate-700,
+:root[data-tema='morado'] .text-slate-600,
+:root[data-tema='oscuro'] .text-slate-600,
+:root[data-tema='morado'] .text-\[\#374151\],
+:root[data-tema='oscuro'] .text-\[\#374151\],
+:root[data-tema='morado'] .text-\[\#4B5563\],
+:root[data-tema='oscuro'] .text-\[\#4B5563\] {
+  color: var(--th-body) !important;
+}
+
+:root[data-tema='morado'] .text-slate-500,
+:root[data-tema='oscuro'] .text-slate-500,
+:root[data-tema='morado'] .text-slate-400,
+:root[data-tema='oscuro'] .text-slate-400,
+:root[data-tema='morado'] .text-\[\#6B7280\],
+:root[data-tema='oscuro'] .text-\[\#6B7280\] {
+  color: var(--th-muted) !important;
+}
+
+:root[data-tema='morado'] .text-\[\#501228\],
+:root[data-tema='morado'] .text-\[\#6E1E3A\] {
+  color: var(--th-accent) !important;
+}
+
+:root[data-tema='oscuro'] .text-\[\#501228\],
+:root[data-tema='oscuro'] .text-\[\#6E1E3A\] {
+  color: #fda4af !important;
 }
 
 /* ------------------------------------------------------------
    Bordes
    ------------------------------------------------------------ */
-:root[data-tema='oscuro'] .tema-publico .border-slate-100 {
-  border-color: rgba(247, 222, 232, 0.08);
+:root[data-tema='morado'] .border-slate-100,
+:root[data-tema='oscuro'] .border-slate-100 {
+  border-color: rgba(255, 255, 255, 0.06) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .border-slate-200,
-:root[data-tema='oscuro'] .tema-publico .border-slate-200\/60,
-:root[data-tema='oscuro'] .tema-publico .border-slate-200\/70,
-:root[data-tema='oscuro'] .tema-publico .border-slate-200\/80,
-:root[data-tema='oscuro'] .tema-publico .border-slate-200\/90 {
-  border-color: var(--dk-border);
+:root[data-tema='morado'] .border-slate-200,
+:root[data-tema='oscuro'] .border-slate-200,
+:root[data-tema='morado'] .border-slate-200\/60,
+:root[data-tema='oscuro'] .border-slate-200\/60,
+:root[data-tema='morado'] .border-slate-200\/70,
+:root[data-tema='oscuro'] .border-slate-200\/70,
+:root[data-tema='morado'] .border-slate-200\/80,
+:root[data-tema='oscuro'] .border-slate-200\/80,
+:root[data-tema='morado'] .border-slate-200\/90,
+:root[data-tema='oscuro'] .border-slate-200\/90 {
+  border-color: var(--th-border) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .border-\[\#F9E2E8\] {
-  border-color: rgba(240, 166, 190, 0.24);
+:root[data-tema='morado'] .border-\[\#F9E2E8\],
+:root[data-tema='oscuro'] .border-\[\#F9E2E8\] {
+  border-color: var(--th-border-strong) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .border-\[\#501228\],
-:root[data-tema='oscuro'] .tema-publico .border-\[\#501228\]\/30 {
-  border-color: rgba(240, 166, 190, 0.45);
+:root[data-tema='morado'] .border-\[\#501228\],
+:root[data-tema='morado'] .border-\[\#501228\]\/30 {
+  border-color: rgba(240, 166, 190, 0.45) !important;
 }
 
-/* ------------------------------------------------------------
-   Hover / focus
-   ------------------------------------------------------------ */
-:root[data-tema='oscuro'] .tema-publico .hover\:text-\[\#111827\]:hover,
-:root[data-tema='oscuro'] .tema-publico .hover\:text-slate-900:hover,
-:root[data-tema='oscuro'] .tema-publico .hover\:text-slate-800:hover {
-  color: var(--dk-ink);
-}
-
-:root[data-tema='oscuro'] .tema-publico .hover\:text-\[\#501228\]:hover {
-  color: var(--dk-accent);
-}
-
-:root[data-tema='oscuro'] .tema-publico .hover\:bg-slate-100:hover,
-:root[data-tema='oscuro'] .tema-publico .hover\:bg-slate-100\/60:hover {
-  background-color: var(--dk-surface-3);
-}
-
-:root[data-tema='oscuro'] .tema-publico .hover\:bg-slate-50:hover {
-  background-color: var(--dk-surface-2);
-}
-
-:root[data-tema='oscuro'] .tema-publico .hover\:bg-\[\#FDF2F4\]:hover {
-  background-color: rgba(124, 41, 73, 0.28);
-}
-
-:root[data-tema='oscuro'] .tema-publico .hover\:bg-white\/60:hover {
-  background-color: rgba(42, 24, 34, 0.6);
+:root[data-tema='oscuro'] .border-\[\#501228\],
+:root[data-tema='oscuro'] .border-\[\#501228\]\/30 {
+  border-color: rgba(253, 164, 175, 0.35) !important;
 }
 
 /* ------------------------------------------------------------
-   Estados / badges (pasteles a versiones tenues)
+   Hover & Interacciones
    ------------------------------------------------------------ */
-:root[data-tema='oscuro'] .tema-publico .bg-emerald-50,
-:root[data-tema='oscuro'] .tema-publico .bg-emerald-100 {
-  background-color: rgba(16, 185, 129, 0.14);
+:root[data-tema='morado'] .hover\:bg-slate-100:hover,
+:root[data-tema='oscuro'] .hover\:bg-slate-100:hover,
+:root[data-tema='morado'] .hover\:bg-slate-100\/60:hover,
+:root[data-tema='oscuro'] .hover\:bg-slate-100\/60:hover {
+  background-color: var(--th-surface-3) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-emerald-700,
-:root[data-tema='oscuro'] .tema-publico .text-emerald-800 {
-  color: #6ee7b7;
+:root[data-tema='morado'] .hover\:bg-slate-50:hover,
+:root[data-tema='oscuro'] .hover\:bg-slate-50:hover {
+  background-color: var(--th-surface-2) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .border-emerald-200\/60,
-:root[data-tema='oscuro'] .tema-publico .border-emerald-300 {
-  border-color: rgba(110, 231, 183, 0.3);
+:root[data-tema='morado'] .hover\:text-\[\#111827\]:hover,
+:root[data-tema='oscuro'] .hover\:text-\[\#111827\]:hover,
+:root[data-tema='morado'] .hover\:text-slate-900:hover,
+:root[data-tema='oscuro'] .hover\:text-slate-900:hover {
+  color: var(--th-ink) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .bg-amber-50,
-:root[data-tema='oscuro'] .tema-publico .bg-amber-50\/70 {
-  background-color: rgba(245, 158, 11, 0.14);
+:root[data-tema='morado'] .hover\:text-\[\#501228\]:hover {
+  color: var(--th-accent) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .text-amber-800,
-:root[data-tema='oscuro'] .tema-publico .text-amber-900 {
-  color: #fcd34d;
+:root[data-tema='oscuro'] .hover\:text-\[\#501228\]:hover {
+  color: #fda4af !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .border-amber-200\/60,
-:root[data-tema='oscuro'] .tema-publico .border-amber-200\/50 {
-  border-color: rgba(252, 211, 77, 0.3);
+:root[data-tema='morado'] .hover\:bg-\[\#FDF2F4\]:hover {
+  background-color: rgba(124, 41, 73, 0.3) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .bg-rose-50,
-:root[data-tema='oscuro'] .tema-publico .bg-rose-100 {
-  background-color: rgba(244, 63, 94, 0.14);
-}
-
-:root[data-tema='oscuro'] .tema-publico .text-rose-800 {
-  color: #fda4af;
-}
-
-:root[data-tema='oscuro'] .tema-publico .border-rose-200\/60 {
-  border-color: rgba(253, 164, 175, 0.3);
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-blue-50 {
-  background-color: rgba(59, 130, 246, 0.16);
-}
-
-:root[data-tema='oscuro'] .tema-publico .text-blue-700,
-:root[data-tema='oscuro'] .tema-publico .text-blue-600 {
-  color: #93c5fd;
-}
-
-:root[data-tema='oscuro'] .tema-publico .bg-purple-50 {
-  background-color: rgba(168, 85, 247, 0.16);
-}
-
-:root[data-tema='oscuro'] .tema-publico .text-purple-700 {
-  color: #d8b4fe;
-}
-
-/* Inputs y selector de rango */
-:root[data-tema='oscuro'] .tema-publico input::placeholder,
-:root[data-tema='oscuro'] .tema-publico .placeholder\:text-slate-400::placeholder {
-  color: var(--dk-faint);
-}
-
-:root[data-tema='oscuro'] .tema-publico .accent-\[\#501228\] {
-  accent-color: var(--dk-accent);
+:root[data-tema='oscuro'] .hover\:bg-\[\#FDF2F4\]:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 /* ------------------------------------------------------------
-   Excepción: la medalla QR debe seguir siendo clara
-   (un QR oscuro no se escanea bien)
+   Inputs y Formularios en Modo Oscuro
    ------------------------------------------------------------ */
-:root[data-tema='oscuro'] .tema-publico .qr-claro,
-:root[data-tema='oscuro'] .tema-publico .qr-claro .bg-white {
-  background-color: #ffffff;
+:root[data-tema='morado'] input,
+:root[data-tema='oscuro'] input,
+:root[data-tema='morado'] select,
+:root[data-tema='oscuro'] select,
+:root[data-tema='morado'] textarea,
+:root[data-tema='oscuro'] textarea {
+  background-color: var(--th-surface-2) !important;
+  color: var(--th-ink) !important;
+  border-color: var(--th-border) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .qr-claro .text-\[\#501228\] {
-  color: #501228;
+:root[data-tema='morado'] input::placeholder,
+:root[data-tema='oscuro'] input::placeholder {
+  color: var(--th-muted) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .qr-claro .text-\[\#111827\] {
-  color: #111827;
+/* ------------------------------------------------------------
+   Badges y Estados
+   ------------------------------------------------------------ */
+:root[data-tema='morado'] .bg-emerald-50,
+:root[data-tema='oscuro'] .bg-emerald-50,
+:root[data-tema='morado'] .bg-emerald-100,
+:root[data-tema='oscuro'] .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.16) !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .qr-claro .border-slate-100 {
-  border-color: #f1f5f9;
+:root[data-tema='morado'] .text-emerald-700,
+:root[data-tema='oscuro'] .text-emerald-700,
+:root[data-tema='morado'] .text-emerald-800,
+:root[data-tema='oscuro'] .text-emerald-800 {
+  color: #6ee7b7 !important;
 }
 
-:root[data-tema='oscuro'] .tema-publico .qr-claro .border-white {
-  border-color: #ffffff;
+:root[data-tema='morado'] .border-emerald-200\/60,
+:root[data-tema='oscuro'] .border-emerald-200\/60 {
+  border-color: rgba(110, 231, 183, 0.3) !important;
+}
+
+/* ------------------------------------------------------------
+   Excepción: Medalla QR (debe ser legible con cámara)
+   ------------------------------------------------------------ */
+:root[data-tema='morado'] .qr-claro,
+:root[data-tema='oscuro'] .qr-claro,
+:root[data-tema='morado'] .qr-claro .bg-white,
+:root[data-tema='oscuro'] .qr-claro .bg-white {
+  background-color: #ffffff !important;
+}
+
+:root[data-tema='morado'] .qr-claro .text-\[\#501228\],
+:root[data-tema='oscuro'] .qr-claro .text-\[\#501228\] {
+  color: #501228 !important;
+}
+
+:root[data-tema='morado'] .qr-claro .text-\[\#111827\],
+:root[data-tema='oscuro'] .qr-claro .text-\[\#111827\] {
+  color: #111827 !important;
 }

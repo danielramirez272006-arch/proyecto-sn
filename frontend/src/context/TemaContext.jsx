@@ -1,23 +1,25 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 /**
- * Tema claro / oscuro del sitio público.
+ * Temas visuales de GoToX Pet OS:
+ * 1. 'claro'  - Tono luminoso diurno en marfil y detalles vino.
+ * 2. 'oscuro' - Modo oscuro neutro / puro (carbón, negros profundos, textos blancos y contrastes limpios).
+ * 3. 'morado' - Tono vino/burgundy profundo característico de la identidad GoToX.
  *
- * - El valor vive en <html data-tema="claro|oscuro">, así el CSS puede
- *   reaccionar sin pasar props por todo el árbol.
- * - Se recuerda en localStorage (misma convención que useLocalStorage).
- * - El tema claro es el valor por defecto para no cambiar el aspecto
- *   actual de quien nunca ha tocado el interruptor.
+ * El valor vive en <html data-tema="claro|oscuro|morado"> para que todo el CSS y Tailwind
+ * reaccionen dinámicamente tanto en páginas públicas como en el Centro de Mando.
  */
 
 const CLAVE = 'gotox_tema';
 const TemaContext = createContext(null);
 
+export const TEMAS = ['claro', 'oscuro', 'morado'];
+
 function leerTemaInicial() {
   if (typeof window === 'undefined') return 'claro';
   try {
     const guardado = window.localStorage.getItem(CLAVE);
-    if (guardado === 'claro' || guardado === 'oscuro') return guardado;
+    if (guardado && TEMAS.includes(guardado)) return guardado;
   } catch (_) {
     /* localStorage bloqueado: seguimos con el valor por defecto */
   }
@@ -30,7 +32,7 @@ export function TemaProvider({ children }) {
   useEffect(() => {
     const raiz = document.documentElement;
     raiz.dataset.tema = tema;
-    raiz.style.colorScheme = tema === 'oscuro' ? 'dark' : 'light';
+    raiz.style.colorScheme = tema === 'claro' ? 'light' : 'dark';
     try {
       window.localStorage.setItem(CLAVE, tema);
     } catch (_) {
@@ -39,12 +41,30 @@ export function TemaProvider({ children }) {
   }, [tema]);
 
   const alternarTema = useCallback(() => {
-    setTema((actual) => (actual === 'oscuro' ? 'claro' : 'oscuro'));
+    setTema((actual) => {
+      if (actual === 'claro') return 'oscuro';
+      if (actual === 'oscuro') return 'morado';
+      return 'claro';
+    });
+  }, []);
+
+  const cambiarTema = useCallback((nuevoTema) => {
+    if (TEMAS.includes(nuevoTema)) {
+      setTema(nuevoTema);
+    }
   }, []);
 
   const valor = useMemo(
-    () => ({ tema, setTema, alternarTema, esOscuro: tema === 'oscuro' }),
-    [tema, alternarTema]
+    () => ({
+      tema,
+      setTema: cambiarTema,
+      alternarTema,
+      esClaro: tema === 'claro',
+      esOscuro: tema === 'oscuro',
+      esMorado: tema === 'morado',
+      esModoOscuro: tema === 'oscuro' || tema === 'morado'
+    }),
+    [tema, cambiarTema, alternarTema]
   );
 
   return <TemaContext.Provider value={valor}>{children}</TemaContext.Provider>;

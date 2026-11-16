@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Shield, Activity, Sparkles, User, Dog } from 'lucide-react';
+import { Menu, X, Shield, Activity, Sparkles, User, Dog, LogIn } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { BotonTema } from './BotonTema';
@@ -66,9 +66,9 @@ export function Navbar() {
 
         {/* Acciones de la barra */}
         <div className="hidden lg:flex items-center gap-2.5">
-          <BotonTema />
+          <BotonTema conMenu={true} />
           <Link to="/acceso">
-            <Button variant="secondary" size="sm" icon={User}>
+            <Button variant="secondary" size="sm" icon={isLoggedIn ? User : LogIn}>
               {isLoggedIn ? usuario.nombre.split(' ')[0] : 'Iniciar Sesión'}
             </Button>
           </Link>
@@ -81,7 +81,7 @@ export function Navbar() {
 
         {/* Botón Móvil */}
         <div className="flex lg:hidden items-center gap-2">
-          <BotonTema className="w-8 h-8" />
+          <BotonTema conMenu={true} className="w-8 h-8" />
           <Link to="/panel">
             <Button variant="primary" size="sm" className="px-2.5 py-1 text-xs">
               Panel

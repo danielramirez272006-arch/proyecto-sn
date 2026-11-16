@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   Thermometer,
   CloudRain,
@@ -97,7 +98,7 @@ export function TelemetriaHero() {
 
             {/* Botones de Acción */}
             <div className="pt-2 flex flex-wrap items-center gap-3.5">
-              <a href="#terrazas" className="w-full sm:w-auto">
+              <Link to="/terrazas" className="w-full sm:w-auto">
                 <Button
                   variant="primary"
                   size="lg"
@@ -106,8 +107,8 @@ export function TelemetriaHero() {
                 >
                   Explorar Terrazas
                 </Button>
-              </a>
-              <a href="#copiloto" className="w-full sm:w-auto">
+              </Link>
+              <Link to="/copiloto" className="w-full sm:w-auto">
                 <Button
                   variant="secondary"
                   size="lg"
@@ -116,7 +117,7 @@ export function TelemetriaHero() {
                 >
                   Consultar con Bruno
                 </Button>
-              </a>
+              </Link>
             </div>
 
             {/* Indicador Ambiental Rápido si hay datos */}
@@ -158,11 +159,11 @@ export function TelemetriaHero() {
                       Aceras sombreadas, hidratación y pavimento fresco
                     </p>
                   </div>
-                  <a href="#terrazas" className="shrink-0">
+                  <Link to="/terrazas" className="shrink-0">
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#E8EDF5] transition-colors border border-white/15">
                       Ver Locales
                     </span>
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>

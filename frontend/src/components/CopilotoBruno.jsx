@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -624,6 +625,18 @@ export function CopilotoBruno() {
             </div>
           </div>
         )}
+        {/* Enlace a la Página Dedicada del Copiloto */}
+        <div className="pt-4 flex justify-center">
+          <Link to="/copiloto">
+            <Button
+              variant="secondary"
+              size="lg"
+              className="bg-[#111827] text-[#E8EDF5] hover:text-[#F27B91] border-white/10 hover:border-[#F27B91]/30 shadow-md font-semibold"
+            >
+              Abrir Copiloto Bruno en Pantalla Completa &rarr;
+            </Button>
+          </Link>
+        </div>
       </div>
     </section>
   );

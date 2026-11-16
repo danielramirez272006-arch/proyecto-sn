@@ -31,6 +31,9 @@
   --gxw-edge: rgba(80, 18, 40, .06);
   --gxw-fallback-1: #2a1420;
   --gxw-fallback-2: #0c060a;
+  --gxw-ambient-opacity: .68;
+  --gxw-scrim: rgba(250, 246, 251, .46);
+  --gxw-halo-filter: blur(42px) saturate(1.25) opacity(.48);
 
   position: relative;
   isolation: isolate;
@@ -70,6 +73,48 @@
   z-index: 1;
   pointer-events: none;
   background: radial-gradient(ellipse at 50% 46%, transparent 45%, var(--gxw-vignette) 100%);
+}
+
+/* Fondo ambiental dinámico que cambia junto al video activo */
+.gxw__ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.gxw__ambient-layer {
+  position: absolute;
+  inset: -14%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(64px) saturate(1.75);
+  transform: scale(1.18);
+  opacity: 0;
+  transition: opacity .65s var(--gxw-ease);
+  will-change: opacity, transform;
+}
+
+.gxw__ambient-layer.is-on {
+  opacity: var(--gxw-ambient-opacity);
+}
+
+.gxw__ambient-layer--player.is-on {
+  opacity: min(1, calc(var(--gxw-ambient-opacity) + .16));
+  animation: gxwAmbientDrift 14s ease-in-out infinite alternate;
+}
+
+@keyframes gxwAmbientDrift {
+  0% { transform: scale(1.18) translate3d(-1.5%, -1%, 0); }
+  100% { transform: scale(1.24) translate3d(1.5%, 1%, 0); }
+}
+
+.gxw__ambient-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--gxw-scrim);
+  transition: background .45s var(--gxw-ease);
 }
 
 .gxw img {
@@ -245,6 +290,268 @@
 }
 
 /* ============================================================
+   CHAT DE BÚSQUEDA (PetSearch, arriba del carrusel)
+   ============================================================ */
+.gxw-chat-wrap {
+  position: relative;
+  z-index: 35;
+  padding: 76px clamp(20px, 3.4vw, 56px) 0;
+}
+
+.gxw-chat {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: var(--gxw-mat);
+  border: 1px solid var(--gxw-line);
+  box-shadow: 0 20px 44px -28px rgba(80, 18, 40, .28);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gxw-chat__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gxw .gxw-chat__title {
+  margin: 0;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: 700;
+  color: var(--gxw-ink);
+  letter-spacing: -.015em;
+}
+
+.gxw-chat__badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gxw-chat__badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(110, 30, 58, .12);
+  color: var(--gxw-accent);
+  border: 1px solid var(--gxw-line);
+}
+
+.gxw .gxw-chat__reset {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gxw-line);
+  background: transparent;
+  color: var(--gxw-dim);
+  cursor: pointer;
+}
+
+.gxw .gxw-chat__reset:hover {
+  color: var(--gxw-ink);
+  border-color: var(--gxw-accent);
+}
+
+.gxw-chat__form {
+  display: flex;
+  gap: 8px;
+}
+
+.gxw-chat__input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--gxw-line);
+  background: var(--gxw-bg);
+  color: var(--gxw-ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color .2s;
+}
+
+.gxw-chat__input::placeholder {
+  color: var(--gxw-faint);
+}
+
+.gxw-chat__input:focus {
+  border-color: var(--gxw-accent);
+}
+
+.gxw .gxw-chat__btn {
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--gxw-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s;
+}
+
+.gxw .gxw-chat__btn:hover:not(:disabled) {
+  background: var(--gxw-accent-soft);
+}
+
+.gxw .gxw-chat__btn:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+
+.gxw-chat__sugerencias {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.gxw-chat__sug-label {
+  font-size: 11px;
+  color: var(--gxw-dim);
+}
+
+.gxw .gxw-chat__chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--gxw-line);
+  background: var(--gxw-bg);
+  color: var(--gxw-ink);
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+
+.gxw .gxw-chat__chip:hover {
+  border-color: var(--gxw-accent);
+}
+
+.gxw-chat__log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 210px;
+  overflow-y: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--gxw-line);
+}
+
+.gxw-chat__msg {
+  padding: 10px 13px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.45;
+  max-width: 92%;
+}
+
+.gxw-chat__msg.is-user {
+  align-self: flex-end;
+  background: var(--gxw-accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.gxw-chat__msg.is-bot {
+  align-self: flex-start;
+  background: var(--gxw-bg);
+  color: var(--gxw-ink);
+  border: 1px solid var(--gxw-line);
+  border-bottom-left-radius: 4px;
+}
+
+.gxw-chat__text {
+  margin: 0;
+}
+
+.gxw-chat__alerta {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #be123c;
+}
+
+:root[data-tema="oscuro"] .gxw-chat__alerta,
+:root[data-tema="morado"] .gxw-chat__alerta {
+  color: #fda4af;
+}
+
+.gxw-chat__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.gxw .gxw-chat__ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gxw-accent);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gxw .gxw-chat__ver:hover {
+  background: var(--gxw-accent-soft);
+}
+
+.gxw-chat__vidname {
+  font-size: 11px;
+  color: var(--gxw-dim);
+}
+
+.gxw-chat__temas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.gxw-chat__input:focus-visible,
+.gxw-chat__btn:focus-visible,
+.gxw-chat__chip:focus-visible,
+.gxw-chat__ver:focus-visible,
+.gxw-chat__reset:focus-visible {
+  outline: 2px solid var(--gxw-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+  .gxw-chat-wrap {
+    padding-top: 72px;
+  }
+
+  .gxw-chat {
+    padding: 14px;
+  }
+
+  .gxw-chat__form {
+    flex-direction: column;
+  }
+}
+
+/* ============================================================
    ESCENARIO: ruleta a la izquierda, texto a la derecha
    ============================================================ */
 .gxw__stage {
@@ -254,8 +561,8 @@
   grid-template-columns: minmax(0, 1fr) minmax(280px, 400px);
   align-items: center;
   gap: clamp(20px, 3vw, 56px);
-  min-height: clamp(600px, 84vh, 800px);
-  padding: 92px clamp(20px, 3.4vw, 56px) 84px;
+  min-height: clamp(500px, 68vh, 680px);
+  padding: 26px clamp(20px, 3.4vw, 56px) 84px;
   transition: opacity .4s var(--gxw-ease);
 }
 
@@ -448,6 +755,8 @@
 .gxw-info {
   position: relative;
   z-index: 30;
+  min-width: 0;
+  width: 100%;
   max-width: 440px;
   padding-bottom: 6px;
 }
@@ -456,7 +765,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  margin: 0 0 26px;
+  margin: 0 0 18px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: .2em;
@@ -498,8 +807,8 @@
 /* dos capas que se cruzan: cambio de título sin repintar el layout */
 .gxw-info__swap {
   position: relative;
-  min-height: clamp(148px, 20vh, 220px);
-  margin: 16px 0 18px;
+  min-height: clamp(168px, 24vh, 240px);
+  margin: 14px 0 18px;
 }
 
 .gxw-info__layer {
@@ -520,16 +829,26 @@
   transform: none;
 }
 
+.gxw-info.is-playing .gxw-info__swap {
+  min-height: 0;
+}
+
+.gxw-info.is-playing .gxw-info__layer {
+  position: relative;
+  inset: auto;
+}
+
 /* Especificidad > 0,1,1 para ganarle a la regla global de títulos */
 .gxw .gxw-info__title {
   margin: 0;
   font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: clamp(30px, 4.2vw, 58px);
-  line-height: .92;
-  letter-spacing: -.045em;
+  font-size: clamp(22px, 2.8vw, 40px);
+  line-height: 1.04;
+  letter-spacing: -.035em;
   font-weight: 800;
   color: var(--gxw-ink);
   text-wrap: balance;
+  overflow-wrap: break-word;
 }
 
 .gxw-info__year {
@@ -667,6 +986,263 @@
 }
 
 /* ============================================================
+   REPRODUCTOR (apertura desde la miniatura, mismo módulo)
+   ============================================================ */
+.gxw .gxw-card__play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px 8px 12px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(12, 6, 10, .78);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(.92);
+  transition: opacity .25s var(--gxw-ease), transform .25s var(--gxw-ease), background .2s;
+}
+
+.gxw-card.is-center .gxw-card__play {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.gxw .gxw-card__play:hover {
+  background: rgba(12, 6, 10, .92);
+}
+
+.gxw-card__play:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.gxw__wheel.is-dragging .gxw-card__play {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Mientras hay reproductor: el escenario pasa por encima de la Lista
+   y el abanico/contador se ocultan sin desmontarse (el bucle sigue). */
+.gxw__stage.has-player {
+  z-index: 55;
+  transition: none;
+}
+
+.gxw__stage.has-player .gxw__wheel {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gxw.has-player .gxw__hud--bottom {
+  visibility: hidden;
+}
+
+.gxw__stage.is-playing .gxw__wheelwrap {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+
+.gxw__stage.is-retorno-lista .gxw-info {
+  opacity: 0;
+}
+
+.gxw-player {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  transform-origin: 0 0;
+}
+
+/* Al cerrar se fija en su posición visual mientras vuelve a la miniatura */
+.gxw-player.is-fijo {
+  position: fixed;
+  z-index: 70;
+  aspect-ratio: auto;
+}
+
+/* Halo: nace detrás de la miniatura con sus propios colores difuminados */
+.gxw-player__halo {
+  position: absolute;
+  inset: -10%;
+  z-index: -1;
+  border-radius: 44px;
+  background-size: cover;
+  background-position: center;
+  filter: var(--gxw-halo-filter);
+  pointer-events: none;
+}
+
+.gxw-player__halo.is-neutro {
+  background: radial-gradient(closest-side, rgba(128, 122, 128, .55), rgba(128, 122, 128, 0));
+  filter: blur(28px);
+}
+
+.gxw-player__media {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #000;
+  box-shadow: var(--gxw-card-shadow);
+}
+
+.gxw-player__poster,
+.gxw-player__frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+}
+
+.gxw-player__poster {
+  object-fit: cover;
+}
+
+.gxw-player__frame {
+  background: #000;
+  opacity: 0;
+  transition: opacity .3s var(--gxw-ease);
+}
+
+.gxw-player__frame.is-ready {
+  opacity: 1;
+}
+
+.gxw-player__error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  background: rgba(8, 4, 6, .86);
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+}
+
+.gxw-player__error p {
+  margin: 0;
+}
+
+.gxw-player__error a {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.gxw-player__bar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  opacity: 0;
+  transition: opacity .2s var(--gxw-ease);
+}
+
+.gxw-player__bar.is-on {
+  opacity: 1;
+}
+
+.gxw .gxw-player__yt {
+  font-size: 12px;
+  color: var(--gxw-dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.gxw .gxw-player__close {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  background: #16090f;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .6);
+}
+
+.gxw .gxw-player__close:hover {
+  background: #2b111d;
+}
+
+.gxw-player__close:focus-visible,
+.gxw-info__ver:focus-visible,
+.gxw-list__item:focus-visible .gxw-list__thumb {
+  outline: 2px solid var(--gxw-accent);
+  outline-offset: 3px;
+}
+
+.gxw-info.is-playing .gxw-info__ghost {
+  visibility: hidden;
+}
+
+.gxw .gxw-info__ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 10px 18px;
+  border: 1px solid var(--gxw-line);
+  border-radius: 999px;
+  background: var(--gxw-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gxw-list__ver {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(12, 6, 10, .8);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity .25s var(--gxw-ease);
+  pointer-events: none;
+}
+
+.gxw-list__item:hover .gxw-list__ver,
+.gxw-list__item:focus-visible .gxw-list__ver {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .gxw-list__ver {
+    opacity: 1;
+  }
+}
+
+/* ============================================================
    RESPONSIVE — los breakpoints deben coincidir con pickCfg() en JS
    1100px: se apila (texto debajo) · 1400px: arco grande
    ============================================================ */
@@ -679,8 +1255,8 @@
     grid-template-columns: 1fr;
     align-content: center;
     gap: 10px;
-    min-height: clamp(560px, 78vh, 720px);
-    padding: 88px clamp(18px, 5vw, 40px) 92px;
+    min-height: clamp(500px, 68vh, 660px);
+    padding: 20px clamp(18px, 5vw, 40px) 92px;
   }
 
   .gxw__wheelwrap {
@@ -724,7 +1300,7 @@
   }
 
   .gxw__stage {
-    padding-top: 82px;
+    padding-top: 18px;
     padding-bottom: 92px;
   }
 
@@ -734,7 +1310,7 @@
   }
 
   .gxw .gxw-info__title {
-    font-size: clamp(26px, 7.4vw, 40px);
+    font-size: clamp(20px, 5.8vw, 30px);
   }
 
   .gxw-info__year {
@@ -767,14 +1343,15 @@
 }
 
 /* ============================================================
-   TEMA OSCURO — la misma rueda en vino profundo
+   TEMAS OSCURO Y MORADO — la misma rueda en oscuro / vino profundo
    ============================================================ */
-:root[data-tema="oscuro"] .gxw {
+:root[data-tema="oscuro"] .gxw,
+:root[data-tema="morado"] .gxw {
   --gxw-bg: #140a10;
   --gxw-ink: #f7ebf0;
-  --gxw-dim: rgba(247, 235, 240, .60);
-  --gxw-faint: rgba(247, 235, 240, .46);
-  --gxw-line: rgba(247, 235, 240, .12);
+  --gxw-dim: rgba(247, 235, 240, .66);
+  --gxw-faint: rgba(247, 235, 240, .48);
+  --gxw-line: rgba(247, 235, 240, .14);
   --gxw-accent: #f0a6be;
   --gxw-accent-soft: #e38ca9;
   --gxw-mat: #22121c;
@@ -788,4 +1365,12 @@
   --gxw-edge: rgba(240, 166, 190, .08);
   --gxw-fallback-1: #2a1420;
   --gxw-fallback-2: #0c060a;
+  --gxw-ambient-opacity: .72;
+  --gxw-scrim: rgba(14, 7, 12, .48);
+  --gxw-halo-filter: blur(46px) saturate(1.45) opacity(.66);
+}
+
+:root[data-tema="oscuro"] .gxw {
+  --gxw-bg: #090D14;
+  --gxw-scrim: rgba(9, 13, 20, .52);
 }

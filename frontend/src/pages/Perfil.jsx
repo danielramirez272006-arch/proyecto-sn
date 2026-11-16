@@ -5,6 +5,7 @@ import { QrCollar } from '../components/QrCollar';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { PageWrapper } from '../components/PageWrapper';
 import { Tabla, Tr, Td } from '../components/ui/Tabla';
 import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
 import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
@@ -49,7 +50,7 @@ export function Perfil() {
   };
 
   return (
-    <div className="w-full py-8 md:py-16">
+    <PageWrapper className="py-8 md:py-16">
       {/* Modal de confirmación y advertencia */}
       <ModalConfirmarCierre
         isOpen={modalConfirmacionAbierto}
@@ -364,7 +365,7 @@ export function Perfil() {
           </div>
         )}
       </div>
-    </div>
+    </PageWrapper>
   );
 }
 

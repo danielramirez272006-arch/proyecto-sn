@@ -13,8 +13,6 @@ import '../estilos/ruleta-videos.css';
  * - Únicamente la tarjeta central monta el <iframe> de YouTube.
  */
 
-const N = VIDEOS_RULETA.length;
-
 /* Aquí se ajusta la VELOCIDAD y el tacto del arrastre. */
 const CONFIG = {
   autoplayMs: 6000, // cada cuánto avanza solo
@@ -28,10 +26,11 @@ const CONFIG = {
 const pad = (n) => String(n).padStart(2, '0');
 const mod = (n, m) => ((n % m) + m) % m;
 
-/* Diferencia circular más corta: valor en (-N/2, N/2] */
-function shortest(v) {
-  let d = mod(v, N);
-  if (d > N / 2) d -= N;
+/* Diferencia circular más corta: valor en (-n/2, n/2] */
+function shortest(v, n) {
+  if (!n || n <= 1) return 0;
+  let d = mod(v, n);
+  if (d > n / 2) d -= n;
   return d;
 }
 
@@ -55,18 +54,137 @@ function elegirConfig() {
   return { radius: 280, stepDeg: 18, fadeStart: 1.1, maxDelta: 2.5 };
 }
 
-function PanelInfo({ video, indice }) {
+function PanelInfo({ video, indice, total }) {
   if (!video) return null;
   return (
     <>
       <h2 className="gxw-info__title">{video.titulo}</h2>
       <div className="gxw-info__year">{video.anio}</div>
       <p className="gxw-info__cat">
-        {video.categoria} — {pad(indice + 1)}/{pad(N)}
+        {video.categoria}
+        {indice !== null && indice !== undefined && total ? <> — {pad(indice + 1)}/{pad(total)}</> : null}
       </p>
     </>
   );
 }
+
+/* ---------------- PetSearch: búsqueda sobre catálogo aprobado ---------------- */
+const STOPWORDS_ES = new Set([
+  'para', 'como', 'cómo', 'con', 'los', 'las', 'una', 'uno', 'unos', 'unas',
+  'del', 'sobre', 'que', 'qué', 'cual', 'cuál', 'donde', 'dónde', 'tiene', 'tener',
+  'hacer', 'hago', 'puedo', 'debo', 'esta', 'este', 'esto', 'pero', 'mas', 'más',
+  'por', 'casa', 'perro', 'perros', 'gato', 'gatos', 'mascota', 'mascotas'
+]);
+
+const TEMAS_CATALOGO = [
+  'Baño e higiene de perros',
+  'Cepillado dental canino',
+  'Primeros auxilios en gatos',
+  'Intoxicación y emergencias en perros',
+  'Atragantamiento y maniobra de Heimlich'
+];
+
+const normalizarTexto = (txt = '') =>
+  String(txt || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ');
+
+const esRefinamientoCorto = (q = '') =>
+  /\b(m[aá]s\s+corto|menos\s+largo|menor\s+duraci[oó]n|algo\s+corto|m[aá]s\s+r[aá]pido|cortito)\b/i.test(q);
+
+function buscarEnCatalogo(consulta, catalogo) {
+  const normQuery = normalizarTexto(consulta);
+  const todasPalabras = normQuery.split(/\s+/).filter((t) => t.length > 2);
+  const palabrasTema = todasPalabras.filter((t) => !STOPWORDS_ES.has(t));
+  const tokens = palabrasTema.length > 0 ? palabrasTema : todasPalabras;
+  if (tokens.length === 0) return [];
+
+  const resultados = [];
+  for (const video of catalogo) {
+    const titulo = normalizarTexto(video.titulo);
+    const categoria = normalizarTexto(video.categoria);
+    const tema = normalizarTexto(video.tema);
+    const resumen = normalizarTexto(video.resumen);
+    const especie = normalizarTexto(video.especie);
+
+    let score = 0;
+    let topicHit = false;
+
+    for (const tk of tokens) {
+      if (titulo.includes(tk)) { score += 5; topicHit = true; }
+      if (tema.includes(tk) || categoria.includes(tk)) { score += 4; topicHit = true; }
+      if (resumen.includes(tk)) { score += 3; topicHit = true; }
+    }
+
+    // Bono por coincidencia de especie si ya hubo coincidencia de tema
+    if (topicHit) {
+      if (normQuery.includes('perro') && especie.includes('perro')) score += 3;
+      if (normQuery.includes('gato') && especie.includes('gato')) score += 3;
+    }
+
+    let mejorFrag = null;
+    let mejorFragScore = 0;
+    for (const f of video.fragmentos || []) {
+      const fq = normalizarTexto(f.pregunta);
+      const fa = normalizarTexto(f.respuesta);
+      let fScore = 0;
+      for (const tk of tokens) {
+        if (fq.includes(tk)) { fScore += 8; topicHit = true; }
+        if (fa.includes(tk)) { fScore += 4; topicHit = true; }
+      }
+      if (fScore > mejorFragScore) {
+        mejorFragScore = fScore;
+        mejorFrag = f;
+      }
+    }
+
+    score += mejorFragScore;
+    if (topicHit && score > 0) {
+      resultados.push({
+        video,
+        score,
+        fragmento: mejorFrag || (video.fragmentos && video.fragmentos[0]) || null
+      });
+    }
+  }
+
+  return resultados.sort((a, b) => b.score - a.score);
+}
+
+/* ---------------- Reproductor: utilidades ---------------- */
+const EASE_PLAYER = 'cubic-bezier(.22,.68,.24,1)';
+const DURACION_PLAYER = 300;
+
+const prefiereMenosMovimiento = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Rect del elemento solo si está completamente dentro de la ventana. */
+function rectVisible(el) {
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  if (r.top < 0 || r.left < 0 || r.bottom > window.innerHeight || r.right > window.innerWidth) return null;
+  return r;
+}
+
+const transformEntre = (desde, hacia) =>
+  `translate(${desde.left - hacia.left}px, ${desde.top - hacia.top}px) ` +
+  `scale(${desde.width / hacia.width}, ${desde.height / hacia.height})`;
+
+const urlReproductor = (id, inicio) =>
+  'https://www.youtube-nocookie.com/embed/' +
+  encodeURIComponent(id) +
+  '?autoplay=1&rel=0&playsinline=1&modestbranding=1' +
+  (inicio > 0 ? '&start=' + inicio : '');
+
+const urlYouTube = (id, inicio) =>
+  'https://www.youtube.com/watch?v=' + encodeURIComponent(id) + (inicio > 0 ? '&t=' + inicio + 's' : '');
+
+const formatoTiempo = (s) => `${Math.floor(s / 60)}:${pad(Math.floor(s % 60))}`;
 
 export function RuletaVideos() {
   const [vista, setVista] = useState('wheel');
@@ -76,29 +194,215 @@ export function RuletaVideos() {
   const [videoActivo, setVideoActivo] = useState(null);
   const [frameListo, setFrameListo] = useState(null);
 
-  // Estado para el Buscador Inteligente con Gemini y «Pregúntale al Video»
+  // Catálogo aprobado (carga inicial + resultados de búsqueda compartidos entre carrusel y Lista)
+  const [catalogoBase, setCatalogoBase] = useState(VIDEOS_RULETA);
+  const [videosLista, setVideosLista] = useState(VIDEOS_RULETA);
+  const totalVideos = videosLista.length;
+
+  // Estado del chat de búsqueda (PetSearch)
   const [consultaGemini, setConsultaGemini] = useState('');
   const [buscandoGemini, setBuscandoGemini] = useState(false);
-  const [resultadoGemini, setResultadoGemini] = useState(null);
-  const [videoReproductorDirecto, setVideoReproductorDirecto] = useState(null);
+  const [modoDemo, setModoDemo] = useState(true);
+  const [mensajesChat, setMensajesChat] = useState([]);
+  const [ultimoTema, setUltimoTema] = useState(null);
+  const [busquedaActiva, setBusquedaActiva] = useState(false);
+
+  /* Reproductor único (carrusel, Lista y chat comparten este estado).
+     fase: 'abriendo' → 'abierto' → 'cerrando' → null */
+  const [reproductor, setReproductorEstado] = useState(null);
+  const [frameEstado, setFrameEstado] = useState('cargando');
+  const reproductorRef = useRef(null);
+  const shellRef = useRef(null);
+  const haloRef = useRef(null);
+  const cerrarBtnRef = useRef(null);
+  const openerRef = useRef(null);
+  const animRef = useRef(null);
+  const listThumbsRef = useRef([]);
+  const tokenRef = useRef(0);
+
+  const setReproductor = useCallback((upd) => {
+    setReproductorEstado((prev) => {
+      const next = typeof upd === 'function' ? upd(prev) : upd;
+      reproductorRef.current = next;
+      return next;
+    });
+  }, []);
+
+  // Sincroniza el catálogo aprobado desde el backend si está disponible
+  useEffect(() => {
+    let activo = true;
+    api.get('/pet-videos?limit=20')
+      .then((videos) => {
+        if (!activo || !Array.isArray(videos) || videos.length === 0) return;
+        setCatalogoBase((prev) => {
+          const mapa = new Map(prev.map((v) => [v.id, v]));
+          for (const v of videos) {
+            if (!v.youtube_id) continue;
+            const existente = mapa.get(v.youtube_id) || {};
+            mapa.set(v.youtube_id, {
+              ...existente,
+              id: v.youtube_id,
+              dbId: v.id || existente.dbId,
+              titulo: v.title || existente.titulo,
+              categoria: existente.categoria || `${v.species || 'general'} • ${v.topic || 'cuidado'}`,
+              anio: existente.anio || (v.approved_at ? new Date(v.approved_at).getFullYear() : 2026),
+              especie: v.species || existente.especie,
+              tema: v.topic || existente.tema,
+              duracion: Number(v.duration_seconds) || existente.duracion || 240,
+              resumen: v.summary || existente.resumen,
+              poster: v.thumbnail_url || existente.poster,
+              fragmentos: existente.fragmentos || []
+            });
+          }
+          const combinado = Array.from(mapa.values());
+          setVideosLista((curr) => (curr === prev ? combinado : curr));
+          return combinado;
+        });
+      })
+      .catch(() => {
+        // Permanece en modo Demostración con los datos locales verificados
+      });
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  const aplicarResultadosAlCarrusel = (nuevaLista) => {
+    posRef.current = 0;
+    targetRef.current = 0;
+    activoRef.current = null;
+    setVideoActivo(null);
+    setFrameListo(null);
+    setInfo({ cur: 0, prev: null, front: 0 });
+    setVideosLista(nuevaLista);
+    setBusquedaActiva(true);
+  };
+
+  const restablecerCatalogo = () => {
+    posRef.current = 0;
+    targetRef.current = 0;
+    activoRef.current = null;
+    setVideoActivo(null);
+    setFrameListo(null);
+    setInfo({ cur: 0, prev: null, front: 0 });
+    setVideosLista(catalogoBase);
+    setBusquedaActiva(false);
+    setUltimoTema(null);
+  };
 
   const buscarVideoConGemini = async (textoManual) => {
     const q = (textoManual ?? consultaGemini).trim();
-    if (!q) return;
-    if (textoManual) setConsultaGemini(textoManual);
+    if (!q || buscandoGemini) return;
+    setConsultaGemini('');
     setBuscandoGemini(true);
+
+    const msgUsuario = { id: `u_${Date.now()}`, rol: 'usuario', texto: q };
+    setMensajesChat((prev) => [...prev, msgUsuario]);
+
     try {
-      const data = await api.post('/pet-videos/smart-search', { text: q });
-      if (data && data.best_match) {
-        setResultadoGemini(data);
-        setVideoReproductorDirecto({
-          youtube_id: data.best_match.youtube_id,
-          title: data.best_match.title,
-          start_seconds: data.best_match.start_seconds || 0
-        });
+      // 1. Caso de refinamiento: «uno más corto»
+      if (esRefinamientoCorto(q)) {
+        if (!ultimoTema || !ultimoTema.videos || ultimoTema.videos.length === 0) {
+          setMensajesChat((prev) => [
+            ...prev,
+            {
+              id: `a_${Date.now()}`,
+              rol: 'asistente',
+              texto: 'Dime primero qué tema buscas (por ejemplo, baño de perros o primeros auxilios) y luego puedo buscar una versión más corta.',
+              sinCoincidencias: true,
+              temasSugeridos: TEMAS_CATALOGO.slice(0, 4)
+            }
+          ]);
+          return;
+        }
+
+        const videoActual = videosLista[0];
+        const duracionActual = Number(videoActual?.duracion) || 9999;
+        const candidatos = [...ultimoTema.videos].sort((a, b) => (a.video.duracion || 9999) - (b.video.duracion || 9999));
+        const masCorto = candidatos.find((c) => (c.video.duracion || 9999) < duracionActual && c.video.id !== videoActual?.id)
+          || candidatos.find((c) => c.video.id !== videoActual?.id && (c.video.duracion || 9999) <= duracionActual);
+
+        if (masCorto) {
+          const ordenados = [masCorto.video, ...candidatos.filter((c) => c.video.id !== masCorto.video.id).map((c) => c.video)].slice(0, 3);
+          aplicarResultadosAlCarrusel(ordenados);
+          const frag = masCorto.fragmento;
+          setMensajesChat((prev) => [
+            ...prev,
+            {
+              id: `a_${Date.now()}`,
+              rol: 'asistente',
+              texto: `Aquí tienes una opción más corta sobre «${ultimoTema.query}»: «${masCorto.video.titulo}» (${formatoTiempo(masCorto.video.duracion || 0)}). ${frag ? frag.respuesta : masCorto.video.resumen || ''}`,
+              videoPrincipal: masCorto.video,
+              fragmento: frag
+            }
+          ]);
+        } else {
+          setMensajesChat((prev) => [
+            ...prev,
+            {
+              id: `a_${Date.now()}`,
+              rol: 'asistente',
+              texto: `«${videoActual?.titulo || 'Este video'}» (${formatoTiempo(duracionActual)}) ya es el video más corto que tenemos en el catálogo aprobado sobre «${ultimoTema.query}».`,
+              videoPrincipal: videoActual,
+              fragmento: ultimoTema.videos[0]?.fragmento || null
+            }
+          ]);
+        }
+        return;
       }
-    } catch (err) {
-      console.warn('Error consultando buscador Gemini:', err);
+
+      // 2. Consulta al flujo de búsqueda existente (/api/pet-videos/smart-search sin inventar externos)
+      let respBackend = null;
+      try {
+        respBackend = await api.post('/pet-videos/smart-search', { text: q, allow_youtube: false });
+      } catch {
+        respBackend = null;
+      }
+
+      const usaGeminiReal = Boolean(respBackend && respBackend.search_mode === 'gemini_ai');
+      setModoDemo(!usaGeminiReal);
+
+      // Cruzar coincidencias verificadas del catálogo aprobado
+      const coincidencias = buscarEnCatalogo(q, catalogoBase);
+
+      if (coincidencias.length > 0) {
+        const top3 = coincidencias.slice(0, 3).map((c) => c.video);
+        const principal = coincidencias[0];
+        const frag = principal.fragmento;
+
+        // Si el backend dio una respuesta directa de Gemini y corresponde al mismo video, enriquecer el texto
+        let textoRespuesta = frag ? frag.respuesta : (principal.video.resumen || `Encontré ${top3.length} video(s) del catálogo aprobado sobre tu consulta.`);
+        if (usaGeminiReal && respBackend?.best_match?.youtube_id === principal.video.id && respBackend.best_match.direct_answer) {
+          textoRespuesta = respBackend.best_match.direct_answer;
+        }
+
+        aplicarResultadosAlCarrusel(top3);
+        setUltimoTema({ query: q, videos: coincidencias });
+
+        setMensajesChat((prev) => [
+          ...prev,
+          {
+            id: `a_${Date.now()}`,
+            rol: 'asistente',
+            texto: textoRespuesta,
+            videoPrincipal: principal.video,
+            fragmento: frag,
+            esEmergencia: Boolean(respBackend?.is_medical_emergency)
+          }
+        ]);
+      } else {
+        // Sin coincidencias: informarlo con honestidad y sugerir temas que sí están en el catálogo
+        setMensajesChat((prev) => [
+          ...prev,
+          {
+            id: `a_${Date.now()}`,
+            rol: 'asistente',
+            texto: `Todavía no tenemos un video aprobado sobre «${q}» en el catálogo. Puedes probar con alguno de los temas disponibles:`,
+            sinCoincidencias: true,
+            temasSugeridos: TEMAS_CATALOGO
+          }
+        ]);
+      }
     } finally {
       setBuscandoGemini(false);
     }
@@ -185,7 +489,7 @@ export function RuletaVideos() {
       const pedido = pendienteRef.current;
       pendienteRef.current = null;
       const base = Math.round(posRef.current);
-      targetRef.current = base + shortest(pedido - base);
+      targetRef.current = base + shortest(pedido - base, totalVideos);
     }
 
     const mqReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -202,11 +506,11 @@ export function RuletaVideos() {
     const render = () => {
       const stepRad = (cfg.stepDeg * Math.PI) / 180;
 
-      for (let i = 0; i < N; i++) {
+      for (let i = 0; i < totalVideos; i++) {
         const card = cardsRef.current[i];
         if (!card) continue;
 
-        const d = shortest(i - posRef.current); // distancia circular al centro
+        const d = shortest(i - posRef.current, totalVideos); // distancia circular al centro
         const ad = Math.abs(d);
 
         // opacidad: 1 en el centro, se desvanece hacia los extremos
@@ -250,9 +554,14 @@ export function RuletaVideos() {
 
     /* ---------------- Iframe: solo la central ---------------- */
     const sincronizarVideo = (now, centrado, near) => {
+      // Con el reproductor abierto no se monta la vista previa: un solo iframe.
+      if (reproductorRef.current) {
+        if (activoRef.current !== null) marcarActivo(null);
+        return;
+      }
       const actual = activoRef.current;
       if (actual !== null) {
-        const off = Math.abs(shortest(actual - posRef.current));
+        const off = Math.abs(shortest(actual - posRef.current, totalVideos));
         if (!centrado || off > 0.001 || near !== actual) marcarActivo(null);
       }
       if (
@@ -270,7 +579,10 @@ export function RuletaVideos() {
       const dt = lastTime ? Math.min((now - lastTime) / 1000, 0.05) : 0.016;
       lastTime = now;
 
-      if (!reduced && now > pausedUntil && now > nextAdvanceAt) {
+      if (reproductorRef.current || totalVideos <= 1) {
+        // Selección congelada mientras se reproduce; al cerrar espera un ciclo completo.
+        nextAdvanceAt = now + CONFIG.autoplayMs;
+      } else if (!reduced && now > pausedUntil && now > nextAdvanceAt) {
         targetRef.current = Math.round(targetRef.current) + 1;
         nextAdvanceAt = now + CONFIG.autoplayMs;
       }
@@ -279,10 +591,10 @@ export function RuletaVideos() {
       if (Math.abs(dist) < 0.0008) {
         posRef.current = targetRef.current;
         // normaliza los contadores para que no crezcan sin fin
-        if (Math.abs(posRef.current) > N * 50) {
-          const k = Math.floor(posRef.current / N);
-          posRef.current -= k * N;
-          targetRef.current -= k * N;
+        if (Math.abs(posRef.current) > totalVideos * 50) {
+          const k = Math.floor(posRef.current / totalVideos);
+          posRef.current -= k * totalVideos;
+          targetRef.current -= k * totalVideos;
         }
       } else {
         const stiff = reduced ? 30 : dragging ? CONFIG.dragStiffness : CONFIG.stiffness;
@@ -293,7 +605,7 @@ export function RuletaVideos() {
 
       const base = Math.round(posRef.current);
       const centrado = Math.abs(posRef.current - base) < CONFIG.settleEps;
-      const near = mod(base, N);
+      const near = mod(base, totalVideos);
 
       if (near !== pendingIdx) {
         pendingIdx = near;
@@ -309,9 +621,9 @@ export function RuletaVideos() {
 
     /* ---------------- Acciones ---------------- */
     const irA = (i) => {
-      if (!Number.isInteger(i) || i < 0 || i >= N) return;
+      if (!Number.isInteger(i) || i < 0 || i >= totalVideos) return;
       const base = Math.round(posRef.current);
-      targetRef.current = base + shortest(i - base);
+      targetRef.current = base + shortest(i - base, totalVideos);
       pauseAuto();
     };
 
@@ -334,6 +646,8 @@ export function RuletaVideos() {
 
     const onPointerDown = (e) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+      // El botón «Reproducir» recibe su clic normal (sin arrastre ni pointer capture)
+      if (e.target.closest && e.target.closest('[data-gxw-play]')) return;
       dragState = {
         id: e.pointerId,
         x: e.clientX,
@@ -373,7 +687,7 @@ export function RuletaVideos() {
 
       if (moved <= 6 && card) {
         const i = Number(card.dataset.index);
-        if (i !== mod(Math.round(posRef.current), N)) irA(i);
+        if (i !== mod(Math.round(posRef.current), totalVideos)) irA(i);
       }
     };
 
@@ -387,6 +701,7 @@ export function RuletaVideos() {
     };
 
     const onKeyDown = (e) => {
+      if (reproductorRef.current) return;
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable) {
         return;
@@ -407,10 +722,11 @@ export function RuletaVideos() {
     // Respaldo por si el navegador no aplica pointer capture
     const onClick = (e) => {
       if (e.target === wheel) return;
+      if (e.target.closest && e.target.closest('[data-gxw-play]')) return;
       const card = e.target.closest ? e.target.closest('.gxw-card') : null;
       if (!card) return;
       const i = Number(card.dataset.index);
-      if (i === mod(Math.round(posRef.current), N)) return;
+      if (i === mod(Math.round(posRef.current), totalVideos)) return;
       irA(i);
     };
 
@@ -474,20 +790,294 @@ export function RuletaVideos() {
       if (mqReduced.removeEventListener) mqReduced.removeEventListener('change', onReduced);
       marcarActivo(null);
     };
-  }, [vista, marcarActivo]);
+  }, [vista, marcarActivo, totalVideos]);
+
+  /* ==================================================================
+     REPRODUCTOR: apertura y cierre
+     ================================================================== */
+  const indiceCentral = () => mod(Math.round(posRef.current), totalVideos);
+  const mediaDeTarjeta = (i) => {
+    const card = cardsRef.current[i];
+    if (!card || card.style.visibility !== 'visible') return null;
+    return card.querySelector('.gxw-card__media');
+  };
+
+  const abrirReproductor = useCallback(
+    ({ video, indice = null, inicio = 0, origen, opener = null, origenEl = null }) => {
+      const actual = reproductorRef.current;
+      if (actual && actual.fase === 'cerrando') return;
+      const seg = Math.max(0, Math.floor(Number(inicio) || 0));
+      openerRef.current = opener;
+
+      // Ya hay uno abierto: se reutiliza el mismo reproductor (un solo iframe)
+      if (actual) {
+        setReproductor((prev) =>
+          prev && { ...prev, video, indice, inicio: seg, origen, frameN: prev.frameN + 1, haloNeutro: false }
+        );
+        return;
+      }
+
+      const volverALista = origen === 'lista' || vista === 'list';
+      if (origen === 'lista' && indice !== null) {
+        // La Lista fija la selección del carrusel en el video elegido (comportamiento previo)
+        const base = Math.round(posRef.current);
+        const t = base + shortest(indice - base, totalVideos);
+        posRef.current = t;
+        targetRef.current = t;
+        setInfo((prev) => (prev.cur === indice ? prev : { cur: indice, prev: prev.cur, front: 1 - prev.front }));
+      }
+      if (vista === 'list') setVista('wheel');
+
+      tokenRef.current += 1;
+      const nuevo = {
+        video,
+        indice,
+        inicio: seg,
+        origen,
+        volverALista,
+        fase: 'abriendo',
+        desde: prefiereMenosMovimiento() ? null : rectVisible(origenEl),
+        fijo: null,
+        token: tokenRef.current,
+        frameN: 0,
+        haloNeutro: indice !== null && Boolean(fallidos[indice])
+      };
+      reproductorRef.current = nuevo; // el motor se congela en el mismo frame
+      setReproductor(nuevo);
+    },
+    [vista, fallidos, setReproductor]
+  );
+
+  const cerrarReproductor = useCallback(() => {
+    const actual = reproductorRef.current;
+    if (!actual || actual.fase === 'cerrando') return;
+    // Rect visual actual (incluye una apertura a medias) antes de cancelarla
+    const fijo = shellRef.current ? shellRef.current.getBoundingClientRect() : null;
+    if (animRef.current) {
+      animRef.current.cancel();
+      animRef.current = null;
+    }
+    if (actual.volverALista) setVista('list');
+    setReproductor((prev) => prev && { ...prev, fase: 'cerrando', fijo });
+  }, [setReproductor]);
+
+  const cerrarInmediato = useCallback(() => {
+    if (animRef.current) {
+      animRef.current.cancel();
+      animRef.current = null;
+    }
+    openerRef.current = null;
+    reproductorRef.current = null;
+    setReproductor(null);
+  }, [setReproductor]);
+
+  const faseReproductor = reproductor ? reproductor.fase : null;
+  const claveFase = reproductor ? `${reproductor.token}:${reproductor.fase}` : '';
+
+  useLayoutEffect(() => {
+    const r = reproductorRef.current;
+    const shell = shellRef.current;
+    if (!r || !shell) return undefined;
+    const halo = haloRef.current;
+    const reducido = prefiereMenosMovimiento();
+    let anim = null;
+
+    if (r.fase === 'abriendo') {
+      const fin = shell.getBoundingClientRect();
+      if (r.desde && !reducido && fin.width) {
+        anim = shell.animate(
+          [{ transform: transformEntre(r.desde, fin) }, { transform: 'none' }],
+          { duration: DURACION_PLAYER, easing: EASE_PLAYER }
+        );
+        if (halo) {
+          halo.animate(
+            [{ opacity: 0, transform: 'scale(.7)' }, { opacity: 1, transform: 'scale(1)' }],
+            { duration: DURACION_PLAYER, easing: EASE_PLAYER }
+          );
+        }
+      } else {
+        // Miniatura no visible o movimiento reducido: fundido breve
+        if (r.origen === 'chat' && !rectVisible(shell)) {
+          shell.scrollIntoView({ block: 'center', behavior: 'auto' });
+        }
+        anim = shell.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
+      }
+      anim.onfinish = () => {
+        animRef.current = null;
+        setReproductor((prev) =>
+          prev && prev.token === r.token && prev.fase === 'abriendo' ? { ...prev, fase: 'abierto' } : prev
+        );
+      };
+    } else if (r.fase === 'cerrando') {
+      let destino = null;
+      if (!reducido && r.indice !== null) {
+        if (r.origen === 'lista') {
+          destino = rectVisible(listThumbsRef.current[r.indice]);
+        } else if (r.indice === indiceCentral()) {
+          destino = rectVisible(mediaDeTarjeta(r.indice));
+        }
+      }
+      const desde = r.fijo;
+      if (destino && desde && desde.width) {
+        anim = shell.animate(
+          [{ transform: 'none' }, { transform: transformEntre(destino, desde) }],
+          { duration: DURACION_PLAYER, easing: EASE_PLAYER, fill: 'forwards' }
+        );
+        if (halo) {
+          halo.animate(
+            [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.7)' }],
+            { duration: DURACION_PLAYER, easing: EASE_PLAYER, fill: 'forwards' }
+          );
+        }
+      } else {
+        anim = shell.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-in', fill: 'forwards' });
+      }
+      anim.onfinish = () => {
+        animRef.current = null;
+        reproductorRef.current = null;
+        setReproductor(null);
+        const opener = openerRef.current;
+        openerRef.current = null;
+        requestAnimationFrame(() => {
+          if (opener && opener.isConnected) opener.focus();
+        });
+      };
+    }
+
+    animRef.current = anim;
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveFase, setReproductor]);
+
+  /* Escape cierra; el foco pasa a «Cerrar video» al terminar de abrir */
+  useEffect(() => {
+    if (!faseReproductor || faseReproductor === 'cerrando') return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cerrarReproductor();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [faseReproductor, cerrarReproductor]);
+
+  useEffect(() => {
+    if (faseReproductor === 'abierto' && cerrarBtnRef.current) {
+      cerrarBtnRef.current.focus({ preventScroll: true });
+    }
+  }, [faseReproductor]);
+
+  /* Si el embed no carga en 12 s se ofrece el enlace a YouTube */
+  const claveFrame = reproductor && reproductor.fase === 'abierto' ? `${reproductor.token}:${reproductor.frameN}` : '';
+  useEffect(() => {
+    if (!claveFrame) return undefined;
+    setFrameEstado('cargando');
+    const t = setTimeout(() => setFrameEstado((s) => (s === 'listo' ? s : 'error')), 12000);
+    return () => clearTimeout(t);
+  }, [claveFrame]);
+
+  const abrirDesdeCarrusel = (i, opener) => {
+    const vid = videosLista[i];
+    if (!vid) return;
+    abrirReproductor({
+      video: vid,
+      indice: i,
+      origen: 'carrusel',
+      opener,
+      origenEl: i === indiceCentral() ? mediaDeTarjeta(i) : null
+    });
+  };
+
+  const abrirDesdeLista = (i, opener) => {
+    const vid = videosLista[i];
+    if (!vid) return;
+    abrirReproductor({
+      video: vid,
+      indice: i,
+      origen: 'lista',
+      opener,
+      origenEl: listThumbsRef.current[i]
+    });
+  };
+
+  const abrirDesdeChat = (videoObj, inicioSeg = 0, opener = null) => {
+    if (!videoObj || !videoObj.id) return;
+    const i = videosLista.findIndex((v) => v.id === videoObj.id);
+    const indice = i >= 0 ? i : null;
+    const visible = indice !== null && vista === 'wheel' && indice === indiceCentral();
+    abrirReproductor({
+      video: indice !== null ? videosLista[indice] : videoObj,
+      indice,
+      inicio: inicioSeg || 0,
+      origen: 'chat',
+      opener,
+      origenEl: visible ? mediaDeTarjeta(indice) : null
+    });
+  };
 
   /* ---------------- Derivados para el render ---------------- */
-  const vActual = VIDEOS_RULETA[info.cur];
-  const vAnterior = info.prev === null ? null : VIDEOS_RULETA[info.prev];
+  const indiceSeg = Math.min(info.cur, Math.max(0, totalVideos - 1));
+  const vActual = videosLista[indiceSeg];
+  const vAnterior = info.prev === null || info.prev >= totalVideos ? null : videosLista[info.prev];
   const capa0 = info.front === 0 ? vActual : vAnterior;
   const capa1 = info.front === 1 ? vActual : vAnterior;
-  const idx0 = info.front === 0 ? info.cur : info.prev;
-  const idx1 = info.front === 1 ? info.cur : info.prev;
-  const ghostPrev = VIDEOS_RULETA[mod(info.cur - 1, N)].titulo;
-  const ghostNext = VIDEOS_RULETA[mod(info.cur + 1, N)].titulo;
+  const idx0 = info.front === 0 ? indiceSeg : info.prev;
+  const idx1 = info.front === 1 ? indiceSeg : info.prev;
+  const ghostPrev = totalVideos > 1 ? videosLista[mod(indiceSeg - 1, totalVideos)].titulo : '';
+  const ghostNext = totalVideos > 1 ? videosLista[mod(indiceSeg + 1, totalVideos)].titulo : '';
+
+  const hayReproductor = Boolean(reproductor);
+  const posterReproductor = reproductor
+    ? reproductor.video.poster || miniatura(reproductor.video.id)
+    : null;
+
+  const poster0 = capa0 ? capa0.poster || miniatura(capa0.id) : null;
+  const poster1 = capa1 ? capa1.poster || miniatura(capa1.id) : null;
+  const neutro0 = idx0 !== null && idx0 !== undefined && Boolean(fallidos[idx0]);
+  const neutro1 = idx1 !== null && idx1 !== undefined && Boolean(fallidos[idx1]);
+  const ambientReproductorActivo = hayReproductor && reproductor.fase !== 'cerrando';
+
+  const claseStage = [
+    'gxw__stage',
+    vista === 'list' && !hayReproductor ? 'is-hidden' : '',
+    hayReproductor ? 'has-player' : '',
+    hayReproductor && reproductor.fase !== 'cerrando' ? 'is-playing' : '',
+    reproductor && reproductor.fase === 'cerrando' && reproductor.volverALista ? 'is-retorno-lista' : ''
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const cambiarVista = (v) => {
+    if (reproductorRef.current) cerrarInmediato();
+    setVista(v);
+  };
 
   return (
-    <section className="gxw" ref={seccionRef} aria-labelledby="gxw-titulo">
+    <section className={`gxw ${hayReproductor ? 'has-player' : ''}`} ref={seccionRef} aria-labelledby="gxw-titulo">
+      {/* ---------------- Fondo ambiental dinámico (cambia junto al video) ---------------- */}
+      <div className="gxw__ambient" aria-hidden="true">
+        {poster0 && !neutro0 && (
+          <div
+            className={`gxw__ambient-layer ${info.front === 0 && !ambientReproductorActivo ? 'is-on' : ''}`}
+            style={{ backgroundImage: `url("${poster0}")` }}
+          />
+        )}
+        {poster1 && !neutro1 && (
+          <div
+            className={`gxw__ambient-layer ${info.front === 1 && !ambientReproductorActivo ? 'is-on' : ''}`}
+            style={{ backgroundImage: `url("${poster1}")` }}
+          />
+        )}
+        {posterReproductor && !reproductor.haloNeutro && (
+          <div
+            className={`gxw__ambient-layer gxw__ambient-layer--player ${ambientReproductorActivo ? 'is-on' : ''}`}
+            style={{ backgroundImage: `url("${posterReproductor}")` }}
+          />
+        )}
+        <div className="gxw__ambient-scrim" />
+      </div>
+
       {/* ---------------- HUD superior ---------------- */}
       <header className="gxw__hud gxw__hud--top">
         <div className="gxw__hud-group">
@@ -496,7 +1086,7 @@ export function RuletaVideos() {
               type="button"
               className={`gxw__switch-btn ${vista === 'wheel' ? 'is-active' : ''}`}
               aria-pressed={vista === 'wheel'}
-              onClick={() => setVista('wheel')}
+              onClick={() => cambiarVista('wheel')}
             >
               Wheel
             </button>
@@ -507,7 +1097,7 @@ export function RuletaVideos() {
               type="button"
               className={`gxw__switch-btn ${vista === 'list' ? 'is-active' : ''}`}
               aria-pressed={vista === 'list'}
-              onClick={() => setVista('list')}
+              onClick={() => cambiarVista('list')}
             >
               List
             </button>
@@ -520,19 +1110,134 @@ export function RuletaVideos() {
         </h2>
       </header>
 
+      {/* ---------------- Chat de búsqueda arriba del carrusel (PetSearch) ---------------- */}
+      <div className="gxw-chat-wrap">
+        <div className="gxw-chat" role="search" aria-label="Buscar videos sobre tu mascota">
+          <div className="gxw-chat__head">
+            <h3 className="gxw-chat__title">¿Qué quieres aprender sobre tu mascota?</h3>
+            <div className="gxw-chat__badges">
+              {busquedaActiva && (
+                <button type="button" className="gxw-chat__reset" onClick={restablecerCatalogo}>
+                  Ver selección inicial ({catalogoBase.length})
+                </button>
+              )}
+              <span className="gxw-chat__badge">
+                {modoDemo ? 'Demostración' : 'Gemini IA'}
+              </span>
+            </div>
+          </div>
+
+          <form
+            className="gxw-chat__form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              buscarVideoConGemini();
+            }}
+          >
+            <input
+              type="text"
+              className="gxw-chat__input"
+              value={consultaGemini}
+              onChange={(e) => setConsultaGemini(e.target.value)}
+              placeholder="Escribe tu pregunta…"
+              aria-label="Escribe tu pregunta sobre tu mascota"
+            />
+            <button type="submit" className="gxw-chat__btn" disabled={buscandoGemini}>
+              {buscandoGemini ? 'Buscando…' : 'Buscar'}
+            </button>
+          </form>
+
+          <div className="gxw-chat__sugerencias" aria-label="Sugerencias para empezar">
+            <span className="gxw-chat__sug-label">Sugerencias:</span>
+            <button
+              type="button"
+              className="gxw-chat__chip"
+              onClick={() => buscarVideoConGemini('Juegos para mi perro en casa')}
+            >
+              Juegos para mi perro en casa
+            </button>
+            <button
+              type="button"
+              className="gxw-chat__chip"
+              onClick={() => buscarVideoConGemini('Cómo acostumbrar a mi gato a la transportadora')}
+            >
+              Cómo acostumbrar a mi gato a la transportadora
+            </button>
+          </div>
+
+          {mensajesChat.length > 0 && (
+            <div className="gxw-chat__log" aria-live="polite">
+              {mensajesChat.map((m) => (
+                <div
+                  key={m.id}
+                  className={`gxw-chat__msg ${m.rol === 'usuario' ? 'is-user' : 'is-bot'}`}
+                >
+                  <p className="gxw-chat__text">{m.texto}</p>
+
+                  {m.esEmergencia && (
+                    <p className="gxw-chat__alerta">
+                      Atención veterinaria recomendada: 9-1-1 &bull; Hospital UNA: 2277-3600
+                    </p>
+                  )}
+
+                  {m.videoPrincipal && (
+                    <div className="gxw-chat__actions">
+                      <button
+                        type="button"
+                        className="gxw-chat__ver"
+                        onClick={(e) =>
+                          abrirDesdeChat(
+                            m.videoPrincipal,
+                            m.fragmento ? m.fragmento.inicio : 0,
+                            e.currentTarget
+                          )
+                        }
+                      >
+                        <span aria-hidden="true">▶</span>{' '}
+                        {m.fragmento && m.fragmento.inicio > 0
+                          ? `Ver desde ${formatoTiempo(m.fragmento.inicio)}`
+                          : 'Ver video'}
+                      </button>
+                      <span className="gxw-chat__vidname">{m.videoPrincipal.titulo}</span>
+                    </div>
+                  )}
+
+                  {m.sinCoincidencias && m.temasSugeridos && (
+                    <div className="gxw-chat__temas">
+                      {m.temasSugeridos.map((tema) => (
+                        <button
+                          key={tema}
+                          type="button"
+                          className="gxw-chat__chip"
+                          onClick={() => buscarVideoConGemini(tema)}
+                        >
+                          {tema}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ---------------- Escenario ---------------- */}
-      <div className={`gxw__stage ${vista === 'list' ? 'is-hidden' : ''}`} aria-hidden={vista === 'list'}>
+      <div className={claseStage} aria-hidden={vista === 'list' && !hayReproductor}>
         <div className="gxw__wheelwrap">
           <div
             className="gxw__wheel"
             ref={wheelRef}
-            tabIndex={0}
+            tabIndex={hayReproductor ? -1 : 0}
             role="group"
+            aria-hidden={hayReproductor}
             aria-label="Ruleta infinita de videos. Arrastra, usa la rueda del ratón o las flechas del teclado."
           >
-            {VIDEOS_RULETA.map((video, i) => {
+            {videosLista.map((video, i) => {
               const caido = Boolean(fallidos[i] || videoCaido[i]);
               const vivo = videoActivo === i && frameListo === i;
+              const central = i === indiceSeg;
 
               return (
                 <article
@@ -540,7 +1245,7 @@ export function RuletaVideos() {
                   ref={(el) => {
                     cardsRef.current[i] = el;
                   }}
-                  className={`gxw-card ${caido ? 'is-failed' : ''} ${vivo ? 'is-live' : ''}`}
+                  className={`gxw-card ${caido ? 'is-failed' : ''} ${vivo ? 'is-live' : ''} ${central ? 'is-center' : ''}`}
                   data-index={i}
                   aria-label={`${video.titulo}, ${video.anio}`}
                 >
@@ -579,37 +1284,148 @@ export function RuletaVideos() {
                         onError={() => marcarVideoCaido(i)}
                       />
                     )}
+                    <button
+                      type="button"
+                      data-gxw-play
+                      className="gxw-card__play"
+                      tabIndex={central && !hayReproductor ? 0 : -1}
+                      aria-hidden={!central}
+                      aria-label={`Reproducir ${video.titulo}`}
+                      onClick={(e) => abrirDesdeCarrusel(i, e.currentTarget)}
+                    >
+                      <span aria-hidden="true">▶</span> Reproducir
+                    </button>
                   </div>
                 </article>
               );
             })}
           </div>
+
+          {/* ---------------- Reproductor único ---------------- */}
+          {reproductor && (
+            <>
+              <div
+                ref={shellRef}
+                className={`gxw-player ${reproductor.fase === 'cerrando' ? 'is-fijo' : ''}`}
+                style={
+                  reproductor.fase === 'cerrando' && reproductor.fijo
+                    ? {
+                        left: reproductor.fijo.left,
+                        top: reproductor.fijo.top,
+                        width: reproductor.fijo.width,
+                        height: reproductor.fijo.height
+                      }
+                    : undefined
+                }
+                role="region"
+                aria-label={`Reproductor: ${reproductor.video.titulo}`}
+              >
+                <div
+                  ref={haloRef}
+                  className={`gxw-player__halo ${reproductor.haloNeutro ? 'is-neutro' : ''}`}
+                  style={reproductor.haloNeutro ? undefined : { backgroundImage: `url("${posterReproductor}")` }}
+                  aria-hidden="true"
+                />
+                <div className="gxw-player__media">
+                  <img
+                    className="gxw-player__poster"
+                    src={posterReproductor}
+                    alt=""
+                    draggable={false}
+                    onError={() => setReproductor((p) => p && { ...p, haloNeutro: true })}
+                  />
+                  {reproductor.fase === 'abierto' && (
+                    <iframe
+                      key={`${reproductor.video.id}:${reproductor.inicio}:${reproductor.frameN}`}
+                      className={`gxw-player__frame ${frameEstado === 'listo' ? 'is-ready' : ''}`}
+                      src={urlReproductor(reproductor.video.id, reproductor.inicio)}
+                      title={reproductor.video.titulo}
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                      allowFullScreen
+                      onLoad={() => setFrameEstado('listo')}
+                      onError={() => setFrameEstado('error')}
+                    />
+                  )}
+                  {reproductor.fase === 'abierto' && frameEstado === 'error' && (
+                    <div className="gxw-player__error" role="alert">
+                      <p>No se pudo reproducir el video aquí.</p>
+                      <a
+                        href={urlYouTube(reproductor.video.id, reproductor.inicio)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Ver en YouTube ↗
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {reproductor.fase !== 'cerrando' && (
+                <div className={`gxw-player__bar ${reproductor.fase === 'abierto' ? 'is-on' : ''}`}>
+                  <a
+                    className="gxw-player__yt"
+                    href={urlYouTube(reproductor.video.id, reproductor.inicio)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Abrir en YouTube ↗
+                  </a>
+                  <button
+                    ref={cerrarBtnRef}
+                    type="button"
+                    className="gxw-player__close"
+                    onClick={cerrarReproductor}
+                  >
+                    <span aria-hidden="true">✕</span> Cerrar video
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* ---------------- Panel de texto ---------------- */}
-        <aside className="gxw-info">
+        <aside className={`gxw-info ${hayReproductor ? 'is-playing' : ''}`}>
           <p className="gxw-info__label">
             <span className="gxw-info__dot" aria-hidden="true" /> Now showing
           </p>
           <p className="gxw-info__ghost">{ghostPrev}</p>
           <div className="gxw-info__swap">
-            <div className={`gxw-info__layer ${info.front === 0 ? 'is-on' : ''}`} aria-hidden={info.front !== 0}>
-              <PanelInfo video={capa0} indice={idx0} />
-            </div>
-            <div className={`gxw-info__layer ${info.front === 1 ? 'is-on' : ''}`} aria-hidden={info.front !== 1}>
-              <PanelInfo video={capa1} indice={idx1} />
-            </div>
+            {reproductor ? (
+              <div className="gxw-info__layer is-on">
+                <PanelInfo video={reproductor.video} indice={reproductor.indice} total={totalVideos} />
+              </div>
+            ) : (
+              <>
+                <div className={`gxw-info__layer ${info.front === 0 ? 'is-on' : ''}`} aria-hidden={info.front !== 0}>
+                  <PanelInfo video={capa0} indice={idx0} total={totalVideos} />
+                </div>
+                <div className={`gxw-info__layer ${info.front === 1 ? 'is-on' : ''}`} aria-hidden={info.front !== 1}>
+                  <PanelInfo video={capa1} indice={idx1} total={totalVideos} />
+                </div>
+              </>
+            )}
           </div>
           <p className="gxw-info__ghost">{ghostNext}</p>
+          {!reproductor && (
+            <button
+              type="button"
+              className="gxw-info__ver"
+              onClick={(e) => abrirDesdeCarrusel(indiceSeg, e.currentTarget)}
+            >
+              <span aria-hidden="true">▶</span> Ver video
+            </button>
+          )}
         </aside>
       </div>
 
       {/* ---------------- HUD inferior ---------------- */}
       <footer className={`gxw__hud gxw__hud--bottom`} aria-hidden={vista === 'list'}>
         <div className="gxw__counter" aria-hidden="true">
-          <span className="gxw__counter-cur">{pad(info.cur + 1)}</span>
+          <span className="gxw__counter-cur">{pad(indiceSeg + 1)}</span>
           <span className="gxw__counter-slash">/</span>
-          <span className="gxw__counter-total">{pad(N)}</span>
+          <span className="gxw__counter-total">{pad(totalVideos)}</span>
         </div>
         <div className="gxw__scrollhint" aria-hidden="true">
           <span className="gxw__scrollhint-line" />
@@ -620,17 +1436,21 @@ export function RuletaVideos() {
       {/* ---------------- Vista lista ---------------- */}
       <section className={`gxw__list ${vista === 'list' ? 'is-open' : ''}`} aria-hidden={vista !== 'list'}>
         <div className="gxw__list-grid">
-          {VIDEOS_RULETA.map((video, i) => (
+          {videosLista.map((video, i) => (
             <button
               key={video.id}
               type="button"
               className={`gxw-list__item ${fallidos[i] ? 'is-failed' : ''}`}
-              onClick={() => {
-                pendienteRef.current = i;
-                setVista('wheel');
-              }}
+              aria-label={`Ver video: ${video.titulo}`}
+              tabIndex={vista === 'list' ? 0 : -1}
+              onClick={(e) => abrirDesdeLista(i, e.currentTarget)}
             >
-              <div className="gxw-list__thumb">
+              <div
+                className="gxw-list__thumb"
+                ref={(el) => {
+                  listThumbsRef.current[i] = el;
+                }}
+              >
                 <img
                   src={miniatura(video.id)}
                   alt=""
@@ -639,6 +1459,7 @@ export function RuletaVideos() {
                   onError={() => marcarFallido(i)}
                 />
                 <div className="gxw-list__fallback">{video.titulo}</div>
+                <span className="gxw-list__ver" aria-hidden="true">▶ Ver video</span>
               </div>
               <div className="gxw-list__meta">
                 <span className="gxw-list__name">{video.titulo}</span>
@@ -649,124 +1470,6 @@ export function RuletaVideos() {
           ))}
         </div>
       </section>
-
-      {/* ---------------- Buscador Inteligente con Gemini y «Pregúntale al Video» ---------------- */}
-      <div className="max-w-[1160px] mx-auto px-4 sm:px-6 py-8 relative z-20">
-        <div className="rounded-2xl bg-[#140A10]/95 border border-white/15 p-5 sm:p-6 text-white shadow-2xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 className="font-serif text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                <span>🔍 «Pregúntale al Video» & Buscador con Google Gemini</span>
-              </h3>
-              <p className="text-xs text-pink-100/75 mt-0.5">
-                Escribe lo que le pasa o necesita tu mascota. Gemini analizará tu consulta y cargará el video y segundo más indicado.
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 w-fit">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Gemini 3.5 Flash + YouTube API
-            </span>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="text"
-              value={consultaGemini}
-              onChange={(e) => setConsultaGemini(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && buscarVideoConGemini()}
-              placeholder="Ej: Mi perro comió chocolate y tiembla / ¿A qué temperatura debe estar el agua de baño?"
-              className="flex-1 rounded-xl bg-black/50 border border-white/20 px-4 py-2.5 text-xs sm:text-sm text-white placeholder-white/40 outline-none focus:border-pink-400"
-            />
-            <button
-              type="button"
-              disabled={buscandoGemini}
-              onClick={() => buscarVideoConGemini()}
-              className="px-5 py-2.5 rounded-xl bg-[#501228] hover:bg-[#6E1E3A] text-white font-semibold text-xs sm:text-sm transition cursor-pointer whitespace-nowrap"
-            >
-              {buscandoGemini ? '⏳ Buscando con Gemini...' : '✨ Buscar Video con Gemini'}
-            </button>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-white/70">
-            <span className="text-white/50">Ejemplos rápidos:</span>
-            <button
-              type="button"
-              onClick={() => buscarVideoConGemini('Mi perro comió chocolate y tiene vómitos')}
-              className="px-2.5 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-700/60 transition cursor-pointer"
-            >
-              🚨 Mi perro comió chocolate
-            </button>
-            <button
-              type="button"
-              onClick={() => buscarVideoConGemini('¿A qué temperatura debe estar el agua para bañar a mi perro?')}
-              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-            >
-              💧 Temperatura del agua de baño
-            </button>
-            <button
-              type="button"
-              onClick={() => buscarVideoConGemini('Primeros auxilios para gatos en casa')}
-              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-            >
-              🐱 Primeros auxilios en gatos
-            </button>
-          </div>
-
-          {resultadoGemini && resultadoGemini.best_match && (
-            <div className="pt-3 border-t border-white/15 space-y-3">
-              {resultadoGemini.is_medical_emergency && resultadoGemini.emergency_alert && (
-                <div className="p-3.5 rounded-xl bg-rose-950/90 border border-rose-500 text-rose-100 text-xs space-y-1">
-                  <div className="font-bold text-rose-300 flex items-center gap-1.5">
-                    <span>🚨 {resultadoGemini.emergency_alert.title}</span>
-                  </div>
-                  <p>{resultadoGemini.emergency_alert.message}</p>
-                  <p className="text-[11px] text-rose-300 font-semibold pt-1">
-                    📞 Emergencias Veterinarias CR: 9-1-1 • Hospital Veterinario UNA: 2277-3600 • Cruz Roja: 1322
-                  </p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center bg-black/40 p-4 rounded-xl border border-white/10">
-                <div className="md:col-span-5 aspect-video rounded-lg overflow-hidden bg-black border border-white/15">
-                  {videoReproductorDirecto && (
-                    <iframe
-                      key={`${videoReproductorDirecto.youtube_id}_${videoReproductorDirecto.start_seconds}`}
-                      className="w-full h-full"
-                      src={`https://www.youtube.com/embed/${encodeURIComponent(videoReproductorDirecto.youtube_id)}?start=${videoReproductorDirecto.start_seconds || 0}&autoplay=1`}
-                      title={videoReproductorDirecto.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  )}
-                </div>
-                <div className="md:col-span-7 space-y-2 text-xs">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold">
-                      ✨ Video más indicado según Gemini
-                    </span>
-                    <span className="text-white/60">
-                      Canal: {resultadoGemini.best_match.channel_title}
-                    </span>
-                  </div>
-                  <h4 className="text-sm sm:text-base font-bold text-white">
-                    {resultadoGemini.best_match.title}
-                  </h4>
-                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 text-pink-100">
-                    <strong className="text-pink-300">🧠 Por qué te lo recomienda Gemini: </strong>
-                    {resultadoGemini.best_match.why_recommended}
-                  </div>
-                  {resultadoGemini.best_match.direct_answer && (
-                    <p className="text-white/90 leading-relaxed">
-                      <strong className="text-emerald-300">💡 Respuesta directa: </strong>
-                      {resultadoGemini.best_match.direct_answer}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
     </section>
   );
 }

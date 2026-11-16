@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutPanel } from '../layouts/LayoutPanel';
+import { PageWrapper } from '../components/PageWrapper';
 import { LOCALES } from '../data/locales';
 import { UNIDADES_FLOTA } from '../data/flota';
 import { ConsolaIA } from '../components/ConsolaIA';
@@ -39,7 +40,14 @@ export function Panel() {
   const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
   const [animandoSalida, setAnimandoSalida] = useState(false);
   const telemetria = useTelemetria();
-  const { ajustes, actualizarAjustes, usuario, cerrarSesion } = useSesion();
+  const { ajustes, actualizarAjustes, usuario, cerrarSesion, isLoggedIn } = useSesion();
+
+  // Protección de ruta: Si la sesión está cerrada, redirigir al login
+  React.useEffect(() => {
+    if (!isLoggedIn) {
+      navigate('/acceso', { replace: true });
+    }
+  }, [isLoggedIn, navigate]);
 
   const handleSolicitarCierre = () => {
     setModalConfirmacionAbierto(true);
@@ -110,7 +118,8 @@ export function Panel() {
   };
 
   return (
-    <LayoutPanel tabs={tabsConfig} tabActiva={tabActiva} onTabChange={setTabActiva}>
+    <PageWrapper>
+      <LayoutPanel tabs={tabsConfig} tabActiva={tabActiva} onTabChange={setTabActiva}>
       {/* Modal de confirmación y advertencia */}
       <ModalConfirmarCierre
         isOpen={modalConfirmacionAbierto}
@@ -506,6 +515,7 @@ export function Panel() {
         )}
       </div>
     </LayoutPanel>
+    </PageWrapper>
   );
 }
 

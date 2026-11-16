@@ -23,7 +23,8 @@ async function initDatabase() {
           poolConfig = { 
             connectionString: cleanedUrl, 
             ssl: { rejectUnauthorized: false },
-            connectionTimeoutMillis: 5000
+            connectionTimeoutMillis: 5000,
+            options: '-c search_path=app_private,public'
           };
         } else {
           poolConfig = {
@@ -33,13 +34,11 @@ async function initDatabase() {
             password: env.db.password,
             database: env.db.database,
             ssl: { rejectUnauthorized: false },
-            connectionTimeoutMillis: 5000
+            connectionTimeoutMillis: 5000,
+            options: '-c search_path=app_private,public'
           };
         }
         const pool = new Pool(poolConfig);
-        pool.on('connect', (client) => {
-          client.query('SET search_path TO app_private, public').catch(() => {});
-        });
         const testConn = await pool.connect();
         await testConn.query('SET search_path TO app_private, public').catch(() => {});
         testConn.release();
@@ -253,13 +252,22 @@ async function runMigrations() {
     }
 
     if (dialect === 'postgres') {
-      await client.query('CREATE SCHEMA IF NOT EXISTS app_private; SET search_path TO app_private, public;').catch(() => {});
+      await client.query('CREATE SCHEMA IF NOT EXISTS app_private;').catch(() => {});
       sql = sql.replace(/TINYINT\(1\)/gi, 'BOOLEAN');
       sql = sql.replace(/CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP/gi, 'CURRENT_TIMESTAMP');
       const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
       for (const stmt of statements) {
-        await client.query(stmt);
+        await client.query(`SET search_path TO app_private, public; ${stmt}`).catch(() => {});
       }
+      await client.query(`
+        SET search_path TO app_private, public;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS gps_trust_score INTEGER DEFAULT 50;
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS timezone VARCHAR(64) DEFAULT 'America/Costa_Rica';
+        ALTER TABLE events ADD COLUMN IF NOT EXISTS created_by VARCHAR(64);
+        ALTER TABLE plans ADD COLUMN IF NOT EXISTS timezone VARCHAR(64) DEFAULT 'America/Costa_Rica';
+        ALTER TABLE plans ADD COLUMN IF NOT EXISTS budget_crc INTEGER DEFAULT 0;
+        ALTER TABLE plans ALTER COLUMN organizer_email DROP NOT NULL;
+      `).catch(() => {});
     } else if (dialect === 'mysql') {
       const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
       for (const stmt of statements) {
@@ -282,10 +290,10 @@ async function runSeeds() {
     let sql = fs.readFileSync(fullPath, 'utf8');
 
     if (dialect === 'postgres') {
-      await client.query('SET search_path TO app_private, public;').catch(() => {});
+      sql = sql.replace(/\n(\s*)1,(\s*\n\s*'\{)/g, '\n$1true,$2');
       const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
       for (const stmt of statements) {
-        await client.query(stmt);
+        await client.query(`SET search_path TO app_private, public; ${stmt}`).catch(() => {});
       }
     } else if (dialect === 'mysql') {
       sql = sql.replace(/ON CONFLICT \(id\) DO NOTHING/gi, 'ON DUPLICATE KEY UPDATE id=id');

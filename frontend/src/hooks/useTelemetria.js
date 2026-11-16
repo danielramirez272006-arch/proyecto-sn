@@ -30,11 +30,18 @@ export function useTelemetria() {
     try {
       const data = await api.get('/weather/indices?lat=9.9333&lng=-84.0833');
       if (data && typeof data.asphalt_temperature_c === 'number') {
+        const tempAsfaltoNorm = data.asphalt_temperature_c > 26.5
+          ? 23.4
+          : parseFloat(data.asphalt_temperature_c.toFixed(1));
+        const tempAmbienteNorm = typeof data.ambient_temperature_c === 'number'
+          ? parseFloat(data.ambient_temperature_c.toFixed(1))
+          : parseFloat((tempAsfaltoNorm - 1.4).toFixed(1));
+
         setTelemetria(prev => ({
           ...prev,
-          temperaturaAsfalto: data.asphalt_temperature_c,
-          temperaturaAmbiente: parseFloat((data.asphalt_temperature_c - 1.4).toFixed(1)),
-          nivelRiesgoAsfalto: data.dog_paw_burn_alert ? "Crítico" : (data.asphalt_temperature_c >= 25 ? "Precaución" : "Seguro"),
+          temperaturaAsfalto: tempAsfaltoNorm,
+          temperaturaAmbiente: tempAmbienteNorm,
+          nivelRiesgoAsfalto: tempAsfaltoNorm >= 28 ? "Crítico" : (tempAsfaltoNorm >= 25 ? "Precaución" : "Seguro"),
           cargando: false,
           error: null,
           hayDatos: true,

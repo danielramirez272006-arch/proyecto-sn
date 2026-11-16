@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useSesion } from '../hooks/useSesion';
 import { Dog, ShieldCheck, Heart, Sparkles, MapPin } from 'lucide-react';
 
 export function Footer() {
+  const { isLoggedIn } = useSesion();
   return (
     <footer className="border-t border-slate-200/80 bg-white/60 mt-20 pt-16 pb-12 text-sm text-slate-600">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
@@ -38,12 +40,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/#terrazas" className="hover:text-[#501228] transition-colors">
+                <Link to="/terrazas" className="hover:text-[#501228] transition-colors">
                   Radar de Terrazas Verificadas
                 </Link>
               </li>
               <li>
-                <Link to="/#copiloto" className="hover:text-[#501228] transition-colors">
+                <Link to="/copiloto" className="hover:text-[#501228] transition-colors">
                   Copiloto Bruno (Asistente)
                 </Link>
               </li>
@@ -62,8 +64,8 @@ export function Footer() {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link to="/panel" className="hover:text-[#501228] transition-colors">
-                  Centro de Mando IA
+                <Link to={isLoggedIn ? "/panel" : "/acceso"} className="hover:text-[#501228] transition-colors">
+                  {isLoggedIn ? 'Centro de Mando IA' : 'Acceso a Operadores'}
                 </Link>
               </li>
               <li>

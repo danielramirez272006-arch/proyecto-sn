@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { LayoutPublico } from '../layouts/LayoutPublico';
 import { Home } from '../pages/Home';
+import { MapaPage } from '../pages/MapaPage';
 import { TerrazasPage } from '../pages/TerrazasPage';
 import { CopilotoPage } from '../pages/CopilotoPage';
 import { Nosotros } from '../pages/Nosotros';
@@ -23,6 +24,7 @@ export function AnimatedRoutes() {
         {/* Rutas Públicas de GoToX */}
         <Route element={<LayoutPublico />}>
           <Route path="/" element={<Home />} />
+          <Route path="/mapa" element={<MapaPage />} />
           <Route path="/terrazas" element={<TerrazasPage />} />
           <Route path="/copiloto" element={<CopilotoPage />} />
           <Route path="/nosotros" element={<Nosotros />} />

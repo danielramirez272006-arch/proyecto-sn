@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, LogOut, X, ShieldAlert } from 'lucide-react';
 import { Button } from './ui/Button';
 
 /**
  * Modal de advertencia antes de cerrar sesión.
- * Pregunta confirmación al usuario para evitar salidas accidentales.
+ * Usa createPortal hacia document.body para evitar que contenedores con backdrop-filter,
+ * transform o sticky distorsionen o corten el centrado en pantalla.
  */
 export function ModalConfirmarCierre({
   isOpen,
@@ -17,7 +19,7 @@ export function ModalConfirmarCierre({
   const estaAbierto = Boolean(isOpen ?? visible);
   const handleCerrar = onClose || onCancelar || (() => {});
 
-  // Manejo de tecla Escape
+  // Manejo de tecla Escape y bloqueo de scroll
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && estaAbierto) {
@@ -34,24 +36,24 @@ export function ModalConfirmarCierre({
     };
   }, [estaAbierto, handleCerrar]);
 
-  if (!estaAbierto) return null;
+  if (!estaAbierto || typeof document === 'undefined') return null;
 
-  return (
+  const modalContenido = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-confirmar-cierre-titulo"
     >
-      {/* Fondo con desenfoque cinematográfico */}
+      {/* Fondo con oscurecimiento cinematográfico y desenfoque */}
       <div
-        className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-md transition-opacity duration-200"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-200"
         onClick={handleCerrar}
         aria-hidden="true"
       />
 
-      {/* Contenedor del Diálogo */}
-      <div className="relative w-full max-w-md bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-white/10 rounded-3xl shadow-2xl p-6 sm:p-7 z-10 transition-all transform duration-200 animate-in zoom-in-95 space-y-5">
+      {/* Contenedor del Diálogo Centrado Perfectamente */}
+      <div className="relative w-full max-w-md bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-white/10 rounded-3xl shadow-2xl p-6 sm:p-7 z-10 transition-all transform duration-200 animate-in zoom-in-95 my-auto space-y-5 select-none">
         {/* Encabezado con Icono de Advertencia */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3.5">
@@ -119,4 +121,8 @@ export function ModalConfirmarCierre({
       </div>
     </div>
   );
+
+  return createPortal(modalContenido, document.body);
 }
+
+export default ModalConfirmarCierre;

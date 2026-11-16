@@ -89,6 +89,25 @@ export function Panel() {
   return (
     <LayoutPanel tabs={tabsConfig} tabActiva={tabActiva} onTabChange={setTabActiva}>
       <div className="space-y-6">
+        {/* Banner Superior del Módulo Activo */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200/60">
+          <div>
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#111827] tracking-tight">
+              {tabActiva === 'vitals' && 'Telemetría Urbana & Signos Vitales GAM'}
+              {tabActiva === 'locales' && 'Directorio de Terrazas & Aforo'}
+              {tabActiva === 'flota' && 'Flota de Ambulancias SOS GAM'}
+              {tabActiva === 'ajustes' && 'Ajustes de Inteligencia Artificial'}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-sans mt-0.5">
+              Supervisión de sensores, aforos caninos y protocolos de bienestar animal en tiempo real.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 self-start sm:self-auto px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 gotox-radar-dot" />
+            <span>Sensores GAM En Línea</span>
+          </div>
+        </div>
+
         {/* PESTAÑA 1: TELEMETRÍA & VITALS */}
         {tabActiva === 'vitals' && (
           <div className="space-y-6">

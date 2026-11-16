@@ -204,16 +204,85 @@ Reglas importantes:
     return geminiClient.getMetrics();
   }
 
-  async generatePlanDraft({ promptText, budgetCrc = 12000, attendeesCount = 2, preferences = [] }) {
-    const places = await placesRepository.findAll({ limit: 4 });
-    const selected = places.slice(0, 2);
+  async generatePlanDraft({ promptText = '', budgetCrc = 12000, attendeesCount = 2, preferences = [] }) {
+    const places = await placesRepository.findAll({ limit: 20 });
+    const safeBudget = Math.max(0, Number(budgetCrc) || 12000);
+    const safeAttendees = Math.max(1, Number(attendeesCount) || 2);
+
+    if (process.env.NODE_ENV !== 'test' && geminiClient.isConfigured() && places.length > 0) {
+      try {
+        const systemInstruction = `Eres el Asistente Copiloto de Planes de Sinergia Urbana Costa Rica, potenciado por Google Gemini.
+A partir de la solicitud del usuario ("promptText"), el presupuesto en colones (CRC), el número de personas y el catálogo real de lugares verificados, selecciona de 2 a 3 paradas óptimas y coherentes.
+Devuelve exclusivamente un JSON con:
+- suggested_title: título atractivo y contextual para la salida
+- clarifying_questions: array de 2 preguntas breves de seguimiento
+- voice_summary: resumen hablado amigable en español tico explicando por qué elegiste estos lugares
+- selected_stops: array de objetos { place_id, duration_minutes, estimated_cost_crc, reason }`;
+
+        const aiDraft = await geminiClient.generateJson({
+          prompt: `Solicitud del cliente: "${promptText}"
+Personas: ${safeAttendees}
+Presupuesto total: ₡${safeBudget} CRC
+Preferencias: ${(preferences || []).join(', ')}
+Catálogo de lugares: ${JSON.stringify(places.map(p => ({ id: p.id, name: p.name, category: p.category, address: p.address, attributes: p.attributes_metadata })))}`,
+          systemInstruction,
+          temperature: 0.25
+        });
+
+        if (aiDraft && Array.isArray(aiDraft.selected_stops) && aiDraft.selected_stops.length > 0) {
+          const proposedStops = aiDraft.selected_stops.map((st, idx) => {
+            const matchedPlace = places.find(p => p.id === st.place_id) || places[idx % places.length];
+            return {
+              place_id: matchedPlace.id,
+              place_name: matchedPlace.name,
+              category: matchedPlace.category,
+              address: matchedPlace.address,
+              order: idx + 1,
+              duration_minutes: Number(st.duration_minutes) || 75,
+              estimated_cost_crc: Number(st.estimated_cost_crc) || Math.round(safeBudget / aiDraft.selected_stops.length),
+              reason: st.reason || 'Seleccionado por afinidad con tu solicitud'
+            };
+          });
+
+          return {
+            provider: 'Google Gemini Cloud',
+            draft_id: `drf_${Date.now()}`,
+            suggested_title: aiDraft.suggested_title || `Salida de ${safeAttendees} personas: ${promptText || 'Sabores y Cultura'}`,
+            estimated_budget_crc: safeBudget,
+            budget_per_person_crc: Math.round(safeBudget / safeAttendees),
+            clarifying_questions: Array.isArray(aiDraft.clarifying_questions) ? aiDraft.clarifying_questions : [
+              '¿Desean transporte en tren o vehículo propio?',
+              '¿Llevarán mascotas que requieran terraza pet-friendly?'
+            ],
+            proposed_stops: proposedStops,
+            voice_summary: aiDraft.voice_summary || `He preparado un borrador con ${proposedStops.length} paradas recomendadas para un presupuesto de ₡${safeBudget} colones.`
+          };
+        }
+      } catch (err) {
+        console.warn('[ConciergeService] Fallback en generatePlanDraft:', err.message);
+      }
+    }
+
+    // Selección contextual heurística por palabras clave del promptText y preferencias
+    const queryTerms = `${promptText} ${(preferences || []).join(' ')}`.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+    const scoredPlaces = [...places].sort((a, b) => {
+      const textA = `${a.name} ${a.category} ${a.address || ''} ${JSON.stringify(a.attributes_metadata || {})}`.toLowerCase();
+      const textB = `${b.name} ${b.category} ${b.address || ''} ${JSON.stringify(b.attributes_metadata || {})}`.toLowerCase();
+      const scoreA = queryTerms.reduce((acc, term) => acc + (textA.includes(term) ? 1 : 0), 0);
+      const scoreB = queryTerms.reduce((acc, term) => acc + (textB.includes(term) ? 1 : 0), 0);
+      return scoreB - scoreA;
+    });
+
+    const selected = scoredPlaces.slice(0, 2);
 
     const draft = {
       provider: 'Google Gemini',
       draft_id: `drf_${Date.now()}`,
-      suggested_title: `Salida de ${attendeesCount} personas: Café y Sabores Locales`,
-      estimated_budget_crc: budgetCrc,
-      budget_per_person_crc: Math.round(budgetCrc / Math.max(1, attendeesCount)),
+      suggested_title: promptText
+        ? `Plan para ${safeAttendees}: ${promptText.slice(0, 45)}`
+        : `Salida de ${safeAttendees} personas: Café y Sabores Locales`,
+      estimated_budget_crc: safeBudget,
+      budget_per_person_crc: Math.round(safeBudget / safeAttendees),
       clarifying_questions: [
         '¿Desean transporte en tren o vehículo propio?',
         '¿Llevarán mascotas que requieran terraza pet-friendly?'
@@ -225,9 +294,10 @@ Reglas importantes:
         address: p.address,
         order: idx + 1,
         duration_minutes: 75,
-        estimated_cost_crc: Math.round(budgetCrc / Math.max(1, selected.length)),
+        estimated_cost_crc: Math.round(safeBudget / Math.max(1, selected.length)),
+        reason: `Recomendado por coincidencia con tu búsqueda (${p.category})`
       })),
-      voice_summary: `He preparado un borrador con ${selected.length} paradas recomendadas para un presupuesto de ${budgetCrc} colones.`
+      voice_summary: `He preparado un borrador con ${selected.length} paradas recomendadas para un presupuesto de ${safeBudget} colones.`
     };
 
     return draft;

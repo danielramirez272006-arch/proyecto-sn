@@ -23,6 +23,16 @@ class ReportConsensusJob {
     }
     return verifiedAlerts;
   }
+
+  async evaluateConsensus(reports = []) {
+    const verified = this.calculateConsensus(reports);
+    return {
+      evaluated_at: new Date().toISOString(),
+      reports_analyzed: reports.length,
+      verified_clusters: verified.length,
+      alerts: verified
+    };
+  }
 }
 
 module.exports = new ReportConsensusJob();

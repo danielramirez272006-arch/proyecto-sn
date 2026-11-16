@@ -144,7 +144,7 @@ export function Nosotros() {
               Solicita la inspección acústica y térmica oficial de GoToX Pet OS para obtener la certificación física e integrarte a nuestro radar satelital.
             </p>
           </div>
-          <Link to="/panel">
+          <Link to="/terrazas">
             <Button variant="primary" icon={ArrowRight}>
               Ver Locales Auditados
             </Button>

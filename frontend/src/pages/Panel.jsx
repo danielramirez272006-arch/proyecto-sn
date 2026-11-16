@@ -40,7 +40,14 @@ export function Panel() {
   const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
   const [animandoSalida, setAnimandoSalida] = useState(false);
   const telemetria = useTelemetria();
-  const { ajustes, actualizarAjustes, usuario, cerrarSesion } = useSesion();
+  const { ajustes, actualizarAjustes, usuario, cerrarSesion, isLoggedIn } = useSesion();
+
+  // Protección de ruta: Si la sesión está cerrada, redirigir al login
+  React.useEffect(() => {
+    if (!isLoggedIn) {
+      navigate('/acceso', { replace: true });
+    }
+  }, [isLoggedIn, navigate]);
 
   const handleSolicitarCierre = () => {
     setModalConfirmacionAbierto(true);

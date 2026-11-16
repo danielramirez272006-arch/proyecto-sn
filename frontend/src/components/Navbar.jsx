@@ -134,7 +134,8 @@ export function Navbar() {
 
           {/* Menú de Usuario Logueado o Botón de Iniciar Sesión */}
           {isLoggedIn ? (
-            <div className="relative" ref={menuRef}>
+            <>
+              <div className="relative" ref={menuRef}>
               <button
                 type="button"
                 onClick={() => setUsuarioMenuAbierto(!usuarioMenuAbierto)}
@@ -233,38 +234,48 @@ export function Navbar() {
                 </div>
               )}
             </div>
-          ) : (
-            <Link to="/acceso">
-              <Button variant="secondary" size="sm" icon={LogIn}>
-                Iniciar Sesión
+
+            {/* Botón Entrar al Panel: Solo visible con sesión activa */}
+            <Link to="/panel">
+              <Button variant="primary" size="sm" icon={Activity}>
+                Entrar al Panel
               </Button>
             </Link>
-          )}
-
-          <Link to="/panel">
-            <Button variant="primary" size="sm" icon={Activity}>
-              Entrar al Panel
+          </>
+        ) : (
+          <Link to="/acceso">
+            <Button variant="primary" size="sm" icon={LogIn}>
+              Iniciar Sesión
             </Button>
           </Link>
-        </div>
+        )}
+      </div>
 
-        {/* Botón Móvil */}
-        <div className="flex lg:hidden items-center gap-2">
-          <BotonTema conMenu={true} className="w-8 h-8" />
+      {/* Botón Móvil */}
+      <div className="flex lg:hidden items-center gap-2">
+        <BotonTema conMenu={true} className="w-8 h-8" />
+        {isLoggedIn ? (
           <Link to="/panel">
             <Button variant="primary" size="sm" className="px-2.5 py-1 text-xs">
               Panel
             </Button>
           </Link>
-          <button
-            type="button"
-            onClick={() => setMenuAbierto(!menuAbierto)}
-            aria-label="Abrir menú de navegación"
-            className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-[#501228] dark:hover:text-[#f0a6be] hover:bg-[#FDF2F4] dark:hover:bg-slate-800 transition-colors"
-          >
-            {menuAbierto ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
+        ) : (
+          <Link to="/acceso">
+            <Button variant="primary" size="sm" className="px-2.5 py-1 text-xs" icon={LogIn}>
+              Entrar
+            </Button>
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={() => setMenuAbierto(!menuAbierto)}
+          aria-label="Abrir menú de navegación"
+          className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-[#501228] dark:hover:text-[#f0a6be] hover:bg-[#FDF2F4] dark:hover:bg-slate-800 transition-colors"
+        >
+          {menuAbierto ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </div>
       </div>
 
       {/* Menú Móvil Desplegable */}
@@ -323,18 +334,11 @@ export function Navbar() {
                 </button>
               </div>
             ) : (
-              <>
-                <Link to="/acceso" onClick={() => setMenuAbierto(false)}>
-                  <Button variant="secondary" className="w-full justify-center" icon={LogIn}>
-                    Iniciar Sesión
-                  </Button>
-                </Link>
-                <Link to="/panel" onClick={() => setMenuAbierto(false)}>
-                  <Button variant="primary" className="w-full justify-center">
-                    Centro de Mando IA
-                  </Button>
-                </Link>
-              </>
+              <Link to="/acceso" onClick={() => setMenuAbierto(false)}>
+                <Button variant="primary" className="w-full justify-center" icon={LogIn}>
+                  Iniciar Sesión
+                </Button>
+              </Link>
             )}
           </div>
         </div>

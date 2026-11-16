@@ -166,8 +166,13 @@ export function CopilotoBruno() {
             <Card className="border-slate-200/90 p-6 bg-gradient-to-br from-white to-[#FAF9FE] shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#501228] text-white flex items-center justify-center font-serif font-black text-xl shadow-sm">
-                    🐾
+                  <div className="relative">
+                    <img
+                      src="/imagenes/copiloto-bruno.jpg"
+                      alt="Avatar Copiloto Bruno"
+                      className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl object-cover shadow-sm ring-2 ring-[#501228]/25"
+                    />
+                    <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" title="Copiloto Bruno en línea" />
                   </div>
                   <div>
                     <h3 className="font-serif text-xl font-bold text-[#111827]">

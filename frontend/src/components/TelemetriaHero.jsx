@@ -55,6 +55,37 @@ export function TelemetriaHero() {
           </div>
         </div>
 
+        {/* Tarjeta Destacada / Hero Banner Paseo en Barrio Escalante */}
+        <div className="mt-10 relative rounded-3xl overflow-hidden border border-slate-200/80 shadow-lg group">
+          <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden bg-slate-900">
+            <img
+              src="/imagenes/hero-escalante.jpg"
+              alt="Paseo canino en Barrio Escalante, San José Costa Rica"
+              className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-7 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3 text-white">
+              <div className="space-y-1.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-semibold tracking-wide uppercase text-white border border-white/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Barrio Escalante &bull; Corredor Gastronómico GAM
+                </span>
+                <h2 className="font-serif text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-white">
+                  Paseos seguros bajo arboledas tropicales
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-200 max-w-xl leading-relaxed">
+                  Aceras sombreadas, terrazas abiertas con puntos de hidratación y monitoreo térmico continuo en tiempo real.
+                </p>
+              </div>
+              <a href="#terrazas" className="shrink-0">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl bg-white/95 hover:bg-white text-[#501228] transition-all shadow-sm active:scale-95">
+                  Explorar Terrazas <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </a>
+            </div>
+          </div>
+        </div>
+
         {/* Tarjetas de Telemetría Urbana en Vivo */}
         <div className="mt-12 md:mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {/* Métrica 1: Temperatura Asfalto */}

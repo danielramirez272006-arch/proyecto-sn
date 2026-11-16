@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CarnetDigital } from '../components/CarnetDigital';
 import { QrCollar } from '../components/QrCollar';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Tabla, Tr, Td } from '../components/ui/Tabla';
+import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
+import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useSesion } from '../hooks/useSesion';
 import {
   Dog,
@@ -18,21 +21,61 @@ import {
   Syringe,
   AlertCircle,
   ExternalLink,
-  Plus
+  Plus,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 
 export function Perfil() {
-  const { mascota, usuario } = useSesion();
+  const { mascota, usuario, isLoggedIn, cerrarSesion } = useSesion();
+  const navigate = useNavigate();
   const [tabPerfil, setTabPerfil] = useState('pasaporte'); // 'pasaporte' | 'vacunacion' | 'rutas' | 'collar'
+  const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
+  const [animandoSalida, setAnimandoSalida] = useState(false);
+
+  const handleSolicitarCierre = () => {
+    setModalConfirmacionAbierto(true);
+  };
+
+  const handleConfirmarSalida = () => {
+    setModalConfirmacionAbierto(false);
+    setAnimandoSalida(true);
+  };
+
+  const handleCompletarSalida = () => {
+    cerrarSesion();
+    setAnimandoSalida(false);
+    navigate('/acceso');
+  };
 
   return (
     <div className="w-full py-8 md:py-16">
+      {/* Modal de confirmación y advertencia */}
+      <ModalConfirmarCierre
+        isOpen={modalConfirmacionAbierto}
+        onClose={() => setModalConfirmacionAbierto(false)}
+        onConfirmar={handleConfirmarSalida}
+        nombreUsuario={usuario?.nombre}
+      />
+
+      {/* Animación de cierre de sesión hacia /acceso */}
+      <AnimacionCierreSesion
+        visible={animandoSalida}
+        nombreUsuario={usuario?.nombre}
+        onCompletado={handleCompletarSalida}
+      />
+
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 space-y-10">
         {/* Cabecera del Perfil Canino */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-200/80 gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-3xl bg-[#501228] text-white flex items-center justify-center font-serif font-black text-2xl shadow-md">
-              🐾
+            <div className="relative">
+              <img
+                src="/imagenes/copiloto-bruno.jpg"
+                alt={mascota.nombre}
+                className="w-16 h-16 rounded-3xl object-cover shadow-md ring-2 ring-[#501228]/25"
+              />
+              <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" title="Chip activo en red GAM" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -40,6 +83,12 @@ export function Perfil() {
                   {mascota.nombre}
                 </h1>
                 <Badge variant="burdeos">Bóveda Pet-OS</Badge>
+                {isLoggedIn && (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/70">
+                    <UserCheck className="w-3 h-3 text-emerald-600" />
+                    <span>{usuario?.nombre || 'Tutor'}</span>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500">
                 {mascota.raza} &bull; {mascota.pesoKg} kg &bull; Chip: <span className="font-mono text-slate-700">{mascota.microchipId}</span>
@@ -47,11 +96,31 @@ export function Perfil() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="p-2.5 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs flex items-center gap-1.5 font-medium">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="p-2.5 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs flex items-center gap-1.5 font-medium shadow-2xs">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>Póliza INS Vigente</span>
             </div>
+
+            {isLoggedIn ? (
+              <button
+                type="button"
+                onClick={handleSolicitarCierre}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100/90 border border-rose-200/80 shadow-2xs transition-all active:scale-[0.98]"
+                title="Cerrar sesión activa y volver al acceso"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                <span>Cerrar Sesión</span>
+              </button>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => navigate('/acceso')}
+              >
+                Iniciar Sesión
+              </Button>
+            )}
           </div>
         </div>
 
@@ -126,6 +195,29 @@ export function Perfil() {
                     </h3>
                   </div>
                   <Badge variant="success">{mascota.polizaMedica.estado}</Badge>
+                </div>
+
+                {/* Banner de Cuidado Veterinario Certificado */}
+                <div className="relative rounded-2xl overflow-hidden border border-slate-200/70 shadow-2xs">
+                  <div className="relative h-44 sm:h-52 w-full overflow-hidden bg-slate-900">
+                    <img
+                      src="/imagenes/boveda-veterinaria.jpg"
+                      alt="Cuidado Veterinario en Hospital Veterinario Escalante"
+                      className="w-full h-full object-cover object-center"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-3.5 sm:p-4 text-white">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300 block">
+                        Red Hospitalaria GAM Certificada
+                      </span>
+                      <p className="font-serif font-bold text-sm sm:text-base text-white">
+                        {mascota.tutor.veterinariaCabecera}
+                      </p>
+                      <p className="text-[11px] text-slate-200">
+                        Cobertura hospitalaria directa, triage 24/7 y telemetría de signos vitales sincronizada.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">

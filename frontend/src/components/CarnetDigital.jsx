@@ -108,7 +108,7 @@ export function CarnetDigital({ mascota, interactivo = true }) {
           </div>
 
           {/* Alergias / Alerta */}
-          <div className="flex items-start gap-2 bg-amber-50/70 p-2 rounded-xl border border-amber-200/50 text-[11px] text-amber-900">
+          <div className="carnet-alergias flex items-start gap-2 bg-amber-50/70 p-2 rounded-xl border border-amber-200/50 text-[11px] text-amber-900">
             <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
             <div>
               <span className="font-semibold">Alergias registradas:</span> {mascota.alergias.join(', ')}.

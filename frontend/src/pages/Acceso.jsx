@@ -5,6 +5,8 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
+import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
+import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useSesion } from '../hooks/useSesion';
 import { useTelemetria } from '../hooks/useTelemetria';
 import {
@@ -19,12 +21,13 @@ import {
   LogIn,
   UserPlus,
   ArrowRight,
-  Shield
+  Shield,
+  LogOut
 } from 'lucide-react';
 
 export function Acceso() {
   const navigate = useNavigate();
-  const { iniciarSesion, mascota, actualizarMascota } = useSesion();
+  const { iniciarSesion, cerrarSesion, isLoggedIn, usuario, mascota, actualizarMascota } = useSesion();
   const telemetria = useTelemetria();
 
   const [modo, setModo] = useState('login'); // 'login' | 'onboarding-pet'
@@ -41,6 +44,24 @@ export function Acceso() {
   const [errores, setErrores] = useState({});
   const [exitoMensaje, setExitoMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
+  const [animandoSalida, setAnimandoSalida] = useState(false);
+
+  const handleSolicitarCierre = () => {
+    setModalConfirmacionAbierto(true);
+  };
+
+  const handleConfirmarSalida = () => {
+    setModalConfirmacionAbierto(false);
+    setAnimandoSalida(true);
+  };
+
+  const handleCompletarSalida = () => {
+    cerrarSesion();
+    setAnimandoSalida(false);
+    setModo('login');
+    setExitoMensaje('Has cerrado sesión correctamente. Ingresa tus credenciales para continuar.');
+  };
 
   const validar = () => {
     const err = {};
@@ -89,6 +110,21 @@ export function Acceso() {
 
   return (
     <div className="w-full min-h-[calc(100vh-140px)] py-10 md:py-16 flex items-center">
+      {/* Modal de Advertencia antes de cerrar sesión */}
+      <ModalConfirmarCierre
+        isOpen={modalConfirmacionAbierto}
+        onClose={() => setModalConfirmacionAbierto(false)}
+        onConfirmar={handleConfirmarSalida}
+        nombreUsuario={usuario?.nombre}
+      />
+
+      {/* Animación fluida de cierre de sesión */}
+      <AnimacionCierreSesion
+        visible={animandoSalida}
+        nombreUsuario={usuario?.nombre}
+        onCompletado={handleCompletarSalida}
+      />
+
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6 w-full">
         {/* Grilla principal 50/50 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
@@ -110,15 +146,55 @@ export function Acceso() {
               </p>
             </div>
 
+            {/* Banner de Sesión Activa con botón para Cerrar Sesión */}
+            {isLoggedIn && (
+              <div className="banner-sesion-activa p-4 rounded-2xl bg-gradient-to-r from-emerald-50/90 to-[#FDF2F4] border border-emerald-200/80 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#501228] text-white flex items-center justify-center font-bold text-sm shadow-2xs">
+                    {usuario?.nombre?.charAt(0) || 'U'}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="titulo-banner text-xs font-bold text-[#111827]">Sesión activa en este navegador</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <p className="subtexto-banner text-xs text-slate-600">
+                      Conectado como <strong>{usuario?.nombre}</strong> ({usuario?.correo})
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => navigate('/panel')}
+                    className="flex-1 sm:flex-none text-xs"
+                  >
+                    Ir al Panel
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    icon={LogOut}
+                    onClick={handleSolicitarCierre}
+                    className="btn-cerrar-sesion flex-1 sm:flex-none text-xs"
+                  >
+                    Cerrar Sesión
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Alternador de Modo (Segmented Control Elegante) */}
-            <div className="p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80 flex items-center gap-1 shadow-2xs">
+            <div className="segmented-control-modo p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80 flex items-center gap-1 shadow-2xs">
               <button
                 type="button"
                 onClick={() => setModo('login')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all ${
                   modo === 'login'
-                    ? 'bg-white text-[#501228] shadow-sm font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'segmented-tab-activa bg-white text-[#501228] shadow-sm font-bold'
+                    : 'segmented-tab-inactiva text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <LogIn className="w-3.5 h-3.5" />
@@ -129,8 +205,8 @@ export function Acceso() {
                 onClick={() => setModo('onboarding-pet')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all ${
                   modo === 'onboarding-pet'
-                    ? 'bg-white text-[#501228] shadow-sm font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'segmented-tab-activa bg-white text-[#501228] shadow-sm font-bold'
+                    : 'segmented-tab-inactiva text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <UserPlus className="w-3.5 h-3.5" />

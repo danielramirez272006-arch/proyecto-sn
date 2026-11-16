@@ -15,7 +15,7 @@ export const TERRAZAS = [
     servicios: ["Bowls térmicos", "Sombra 90%+", "Menú barista canino", "Bolsas biodegradables"],
     horarioRecomendado: "08:00 - 11:30 | 15:30 - 18:00",
     temperaturaPiso: "21.8 °C",
-    imagen: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80"
+    imagen: "/imagenes/terrazas-verificadas.jpg"
   },
   {
     id: "arbol-de-seda",

@@ -48,16 +48,13 @@ export function Navbar() {
 
   const enlaces = [
     { nombre: 'Inicio', ruta: '/' },
-    { nombre: 'Terrazas Verificadas', ruta: '/#terrazas' },
-    { nombre: 'Copiloto Bruno', ruta: '/#copiloto' },
+    { nombre: 'Terrazas Verificadas', ruta: '/terrazas' },
+    { nombre: 'Copiloto Bruno', ruta: '/copiloto' },
     { nombre: 'Sobre Nosotros', ruta: '/nosotros' },
     { nombre: 'Bóveda Pet', ruta: '/perfil' }
   ];
 
   const esRutaActiva = (ruta) => {
-    if (ruta.startsWith('/#')) {
-      return location.pathname === '/' && location.hash === ruta.replace('/', '');
-    }
     return location.pathname === ruta;
   };
 

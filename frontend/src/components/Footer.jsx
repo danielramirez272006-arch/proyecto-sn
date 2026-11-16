@@ -38,12 +38,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/#terrazas" className="hover:text-[#501228] transition-colors">
+                <Link to="/terrazas" className="hover:text-[#501228] transition-colors">
                   Radar de Terrazas Verificadas
                 </Link>
               </li>
               <li>
-                <Link to="/#copiloto" className="hover:text-[#501228] transition-colors">
+                <Link to="/copiloto" className="hover:text-[#501228] transition-colors">
                   Copiloto Bruno (Asistente)
                 </Link>
               </li>

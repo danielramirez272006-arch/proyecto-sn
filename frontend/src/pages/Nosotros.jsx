@@ -6,6 +6,7 @@ import { ChatGptCat } from '../components/avatares/ChatGptCat';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { PageWrapper } from '../components/PageWrapper';
 import { ShieldCheck, Heart, Sparkles, MapPin, Award, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -24,7 +25,7 @@ export function Nosotros() {
   };
 
   return (
-    <div className="w-full py-12 md:py-20">
+    <PageWrapper className="py-12 md:py-20">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 space-y-16">
         {/* Encabezado Editorial */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
@@ -150,7 +151,7 @@ export function Nosotros() {
           </Link>
         </div>
       </div>
-    </div>
+    </PageWrapper>
   );
 }
 

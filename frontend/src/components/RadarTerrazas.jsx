@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { TERRAZAS } from '../data/terrazas';
 import { api } from '../shared/services/api-client';
 import { Card } from './ui/Card';
@@ -326,6 +327,19 @@ export function RadarTerrazas() {
             })}
           </div>
         )}
+
+        {/* Acceso a la Página Independiente de Terrazas */}
+        <div className="pt-4 flex justify-center">
+          <Link to="/terrazas">
+            <Button
+              variant="secondary"
+              size="lg"
+              className="bg-[#111827] text-[#E8EDF5] hover:text-[#F27B91] border-white/10 hover:border-[#F27B91]/30 shadow-md font-semibold"
+            >
+              Explorar Catálogo Completo de Terrazas Verificadas &rarr;
+            </Button>
+          </Link>
+        </div>
 
         {/* ============================================================
             MODAL DE FICHA DE VERIFICACIÓN

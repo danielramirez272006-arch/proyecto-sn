@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CarnetDigital } from '../components/CarnetDigital';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { PageWrapper } from '../components/PageWrapper';
 import { useSesion } from '../hooks/useSesion';
 import { useTelemetria } from '../hooks/useTelemetria';
 import {
@@ -94,7 +95,7 @@ export function Acceso() {
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] py-10 md:py-16 flex items-center">
+    <PageWrapper className="min-h-[calc(100vh-140px)] py-10 md:py-16 flex items-center">
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6 w-full">
         {/* Grilla principal 50/50 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
@@ -325,6 +326,6 @@ export function Acceso() {
           </div>
         </div>
       </div>
-    </div>
+    </PageWrapper>
   );
 }

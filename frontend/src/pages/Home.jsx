@@ -3,6 +3,7 @@ import { TelemetriaHero } from '../components/TelemetriaHero';
 import { RadarTerrazas } from '../components/RadarTerrazas';
 import { CopilotoBruno } from '../components/CopilotoBruno';
 import { RuletaVideos } from '../components/RuletaVideos';
+import { PageWrapper } from '../components/PageWrapper';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ShieldCheck, Navigation, Award, ArrowRight, Sparkles } from 'lucide-react';
@@ -10,7 +11,7 @@ import { Link } from 'react-router-dom';
 
 export function Home() {
   return (
-    <div className="w-full space-y-4">
+    <PageWrapper className="space-y-4">
       {/* 1. Hero Editorial y Telemetría Urbana en Vivo */}
       <TelemetriaHero />
 
@@ -112,6 +113,6 @@ export function Home() {
           </div>
         </div>
       </section>
-    </div>
+    </PageWrapper>
   );
 }

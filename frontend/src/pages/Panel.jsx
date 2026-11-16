@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LayoutPanel } from '../layouts/LayoutPanel';
+import { PageWrapper } from '../components/PageWrapper';
 import { LOCALES } from '../data/locales';
 import { UNIDADES_FLOTA } from '../data/flota';
 import { ConsolaIA } from '../components/ConsolaIA';
@@ -110,7 +111,8 @@ export function Panel() {
   };
 
   return (
-    <LayoutPanel tabs={tabsConfig} tabActiva={tabActiva} onTabChange={setTabActiva}>
+    <PageWrapper>
+      <LayoutPanel tabs={tabsConfig} tabActiva={tabActiva} onTabChange={setTabActiva}>
       {/* Modal de confirmación y advertencia */}
       <ModalConfirmarCierre
         isOpen={modalConfirmacionAbierto}
@@ -506,6 +508,7 @@ export function Panel() {
         )}
       </div>
     </LayoutPanel>
+    </PageWrapper>
   );
 }
 

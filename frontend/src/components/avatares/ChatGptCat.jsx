@@ -76,3 +76,6 @@ export function ChatGptCat({ className = 'w-24 h-24', size = 96 }) {
   );
 }
 
+export default ChatGptCat;
+
+

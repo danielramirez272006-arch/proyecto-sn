@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, LogOut, X, ShieldAlert } from 'lucide-react';
 import { Button } from './ui/Button';
 
 /**
  * Modal de advertencia antes de cerrar sesión.
- * Pregunta confirmación al usuario para evitar salidas accidentales.
+ * Usa createPortal hacia document.body para evitar que contenedores con backdrop-filter,
+ * transform o sticky distorsionen o corten el centrado en pantalla.
  */
 export function ModalConfirmarCierre({
   isOpen,
@@ -17,7 +19,7 @@ export function ModalConfirmarCierre({
   const estaAbierto = Boolean(isOpen ?? visible);
   const handleCerrar = onClose || onCancelar || (() => {});
 
-  // Manejo de tecla Escape
+  // Manejo de tecla Escape y bloqueo de scroll
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && estaAbierto) {
@@ -34,39 +36,39 @@ export function ModalConfirmarCierre({
     };
   }, [estaAbierto, handleCerrar]);
 
-  if (!estaAbierto) return null;
+  if (!estaAbierto || typeof document === 'undefined') return null;
 
-  return (
+  const modalContenido = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-confirmar-cierre-titulo"
     >
-      {/* Fondo con desenfoque cinematográfico */}
+      {/* Fondo con oscurecimiento cinematográfico y desenfoque */}
       <div
-        className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-md transition-opacity duration-200"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-200"
         onClick={handleCerrar}
         aria-hidden="true"
       />
 
-      {/* Contenedor del Diálogo */}
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-7 z-10 transition-all transform duration-200 animate-in zoom-in-95 space-y-5">
+      {/* Contenedor del Diálogo Centrado Perfectamente */}
+      <div className="relative w-full max-w-md bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-white/10 rounded-3xl shadow-2xl p-6 sm:p-7 z-10 transition-all transform duration-200 animate-in zoom-in-95 my-auto space-y-5 select-none">
         {/* Encabezado con Icono de Advertencia */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200/80 dark:border-amber-800/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-700/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
               <AlertTriangle className="w-6 h-6 animate-pulse" />
             </div>
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
-                Confirmación de Salida
+                Advertencia de Seguridad
               </span>
               <h3
                 id="modal-confirmar-cierre-titulo"
-                className="font-serif font-bold text-xl text-[#111827] dark:text-white tracking-tight"
+                className="font-serif font-bold text-xl text-[#111827] dark:text-[#E8EDF5] tracking-tight"
               >
-                ¿Cerrar sesión activa?
+                ¿Seguro que quieres cerrar sesión?
               </h3>
             </div>
           </div>
@@ -82,15 +84,15 @@ export function ModalConfirmarCierre({
         </div>
 
         {/* Mensaje descriptivo de la advertencia */}
-        <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+        <div className="space-y-2 text-xs text-slate-600 dark:text-[#94A3B8] leading-relaxed">
           <p>
             Estás a punto de salir de la cuenta de{' '}
-            <strong className="text-slate-900 dark:text-white font-semibold">
+            <strong className="text-slate-900 dark:text-[#E8EDF5] font-semibold">
               {nombreUsuario}
             </strong>
             .
           </p>
-          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/60 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#162032] border border-slate-200/70 dark:border-white/10 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <span>
               La bóveda biométrica y telemetría de tu mascota quedarán protegidas. Deberás ingresar tus credenciales nuevamente para acceder.
@@ -103,7 +105,7 @@ export function ModalConfirmarCierre({
           <button
             type="button"
             onClick={handleCerrar}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 transition-colors"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-[#1e293b] hover:bg-slate-200 dark:hover:bg-[#273549] border border-slate-200/80 dark:border-white/10 transition-colors"
           >
             Cancelar
           </button>
@@ -119,4 +121,8 @@ export function ModalConfirmarCierre({
       </div>
     </div>
   );
+
+  return createPortal(modalContenido, document.body);
 }
+
+export default ModalConfirmarCierre;

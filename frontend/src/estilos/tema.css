@@ -617,10 +617,46 @@
 }
 
 /* Pie del sidebar del Panel: superficie sólida acorde al tema */
-:root[data-tema='morado'] .panel-sidebar-pie,
+:root[data-tema='morado'] .panel-sidebar-pie {
+  background-color: transparent !important;
+  border-color: rgba(247, 222, 232, 0.12) !important;
+}
 :root[data-tema='oscuro'] .panel-sidebar-pie {
-  background-color: var(--th-sidebar-bg) !important;
-  border-color: var(--th-sidebar-border) !important;
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ------------------------------------------------------------
+   Carnet Digital en Modos Oscuros
+   ------------------------------------------------------------ */
+:root[data-tema='oscuro'] .carnet-digital-card {
+  background-image: linear-gradient(145deg, #111827 0%, #0d131f 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #E8EDF5 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(242, 123, 145, 0.08) !important;
+}
+:root[data-tema='morado'] .carnet-digital-card {
+  background-image: linear-gradient(145deg, #1a1017 0%, #120910 100%) !important;
+  border-color: rgba(247, 222, 232, 0.15) !important;
+  color: #fdf2f6 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 25px rgba(124, 41, 73, 0.25) !important;
+}
+
+:root[data-tema='oscuro'] .carnet-alergias {
+  background-color: rgba(217, 119, 6, 0.14) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  color: #fde68a !important;
+}
+:root[data-tema='oscuro'] .carnet-alergias span {
+  color: #fcd34d !important;
+}
+:root[data-tema='morado'] .carnet-alergias {
+  background-color: rgba(217, 119, 6, 0.16) !important;
+  border-color: rgba(245, 158, 11, 0.32) !important;
+  color: #fde68a !important;
+}
+:root[data-tema='morado'] .carnet-alergias span {
+  color: #fcd34d !important;
 }
 
 /* ------------------------------------------------------------

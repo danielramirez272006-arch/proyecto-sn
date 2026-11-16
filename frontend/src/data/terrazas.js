@@ -2,6 +2,7 @@ export const TERRAZAS = [
   {
     id: "franco-cafe",
     nombre: "Franco Café",
+    categoria: "Cafetería Botánica & Brunch",
     zona: "Barrio Escalante, San José Este",
     descripcion: "Terraza botánica abierta con microclima fresco, estación de agua de manantial filtrada y áreas de sombra natural.",
     decibelios: 46,
@@ -12,14 +13,17 @@ export const TERRAZAS = [
     puntuacionPet: 4.9,
     verificado: true,
     insignia: "Certificación Oro Pet-OS",
+    procedenciaVerificacion: "Auditoría Urbana GAM 2026",
     servicios: ["Bowls térmicos", "Sombra 90%+", "Menú barista canino", "Bolsas biodegradables"],
+    condicionesMascotas: "Perros de todos los tamaños con correa. Se admiten hasta 2 por mesa.",
     horarioRecomendado: "08:00 - 11:30 | 15:30 - 18:00",
     temperaturaPiso: "21.8 °C",
-    imagen: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80"
+    imagen: "/imagenes/terrazas-verificadas.jpg"
   },
   {
     id: "arbol-de-seda",
     nombre: "El Árbol de Seda",
+    categoria: "Restaurante Vegetariano & Patio",
     zona: "Barrio Escalante, San José Este",
     descripcion: "Restaurante vegetariano íntimo con patio posterior empedrado y aislamiento acústico vegetal ideal para caninos sensibles.",
     decibelios: 42,
@@ -30,7 +34,9 @@ export const TERRAZAS = [
     puntuacionPet: 4.8,
     verificado: true,
     insignia: "Refugio Acústico Certificado",
+    procedenciaVerificacion: "Certificación Acústica Pet-OS",
     servicios: ["Agua fresca con electrolitos", "Piso de barro térmico", "Golosinas deshidratadas naturales"],
+    condicionesMascotas: "Especialmente adaptado para caninos sensibles a detonaciones o bullicio.",
     horarioRecomendado: "11:30 - 16:00",
     temperaturaPiso: "22.2 °C",
     imagen: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80"
@@ -38,6 +44,7 @@ export const TERRAZAS = [
   {
     id: "apotecario",
     nombre: "Apotecario",
+    categoria: "Café, Kombucha & Fermentos",
     zona: "Barrio California, San José",
     descripcion: "Espacio cervecero artesanal y fermentos con amplia nave semi-abierta, ventilación cruzada y anclajes seguros en cada mesa.",
     decibelios: 58,
@@ -48,7 +55,9 @@ export const TERRAZAS = [
     puntuacionPet: 4.7,
     verificado: true,
     insignia: "Social Seguro Pet-OS",
+    procedenciaVerificacion: "Inspección de Bienestar Animal GAM",
     servicios: ["Anclajes confortables", "Recipientes antideslizantes", "Área de descompresión"],
+    condicionesMascotas: "Ideal para caninos sociables. Espacios amplios con ventilación cruzada.",
     horarioRecomendado: "16:00 - 19:30",
     temperaturaPiso: "23.4 °C",
     imagen: "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=800&q=80"
@@ -56,6 +65,7 @@ export const TERRAZAS = [
   {
     id: "cafe-miel",
     nombre: "Café Miel Garage",
+    categoria: "Cafetería Vintage & Terraza Techada",
     zona: "Otoya / Barrio Amón, San José",
     descripcion: "Rincón histórico con terraza techada de aire vintage, piso cerámico fresco y atención especializada para caninos de razas medianas.",
     decibelios: 51,
@@ -66,10 +76,11 @@ export const TERRAZAS = [
     puntuacionPet: 4.6,
     verificado: true,
     insignia: "Patrimonio Amigable",
+    procedenciaVerificacion: "Registro Histórico Pet-Friendly San José",
     servicios: ["Bowls cerámicos", "Bocadillos de avena y calabaza", "Alfombra refrescante"],
+    condicionesMascotas: "Se admite un perro por mesa con reserva sugerida para terrazas exteriores.",
     horarioRecomendado: "09:00 - 13:00",
     temperaturaPiso: "22.0 °C",
     imagen: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80"
   }
 ];
-

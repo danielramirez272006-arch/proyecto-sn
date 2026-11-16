@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LayoutPanel } from '../layouts/LayoutPanel';
 import { LOCALES } from '../data/locales';
 import { UNIDADES_FLOTA } from '../data/flota';
@@ -8,6 +9,8 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Tabla, Tr, Td } from '../components/ui/Tabla';
+import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
+import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useSesion } from '../hooks/useSesion';
 import {
@@ -25,13 +28,33 @@ import {
   AlertTriangle,
   Battery,
   PhoneCall,
-  Save
+  Save,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 
 export function Panel() {
+  const navigate = useNavigate();
   const [tabActiva, setTabActiva] = useState('vitals');
+  const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
+  const [animandoSalida, setAnimandoSalida] = useState(false);
   const telemetria = useTelemetria();
-  const { ajustes, actualizarAjustes } = useSesion();
+  const { ajustes, actualizarAjustes, usuario, cerrarSesion } = useSesion();
+
+  const handleSolicitarCierre = () => {
+    setModalConfirmacionAbierto(true);
+  };
+
+  const handleConfirmarSalida = () => {
+    setModalConfirmacionAbierto(false);
+    setAnimandoSalida(true);
+  };
+
+  const handleCompletarSalida = () => {
+    cerrarSesion();
+    setAnimandoSalida(false);
+    navigate('/acceso');
+  };
 
   // Estado para la tabla de locales
   const [busquedaLocal, setBusquedaLocal] = useState('');
@@ -88,6 +111,21 @@ export function Panel() {
 
   return (
     <LayoutPanel tabs={tabsConfig} tabActiva={tabActiva} onTabChange={setTabActiva}>
+      {/* Modal de confirmación y advertencia */}
+      <ModalConfirmarCierre
+        isOpen={modalConfirmacionAbierto}
+        onClose={() => setModalConfirmacionAbierto(false)}
+        onConfirmar={handleConfirmarSalida}
+        nombreUsuario={usuario?.nombre}
+      />
+
+      {/* Animación de cierre de sesión hacia /acceso */}
+      <AnimacionCierreSesion
+        visible={animandoSalida}
+        nombreUsuario={usuario?.nombre}
+        onCompletado={handleCompletarSalida}
+      />
+
       <div className="space-y-6">
         {/* Banner Superior del Módulo Activo */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200/60">
@@ -433,6 +471,36 @@ export function Panel() {
                   Guardar Preferencias
                 </Button>
               </form>
+            </Card>
+
+            {/* Gestión de Sesión y Cuenta */}
+            <Card className="p-6 border-slate-200/80 space-y-4 bg-white shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="space-y-0.5">
+                  <span className="text-sm font-semibold text-slate-800 block">
+                    Sesión del Operador
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    Autenticado como <strong>{usuario?.nombre || 'Operador'}</strong> ({usuario?.correo || 'mariana.rojas@gotox.cr'}).
+                  </span>
+                </div>
+                <Badge variant="success">Activo</Badge>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+                <p className="text-xs text-slate-500">
+                  Cierra tu sesión si estás en una terminal compartida del centro de monitoreo o si deseas cambiar de cuenta.
+                </p>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  icon={LogOut}
+                  onClick={handleSolicitarCierre}
+                  className="shrink-0"
+                >
+                  Cerrar Sesión Activa
+                </Button>
+              </div>
             </Card>
           </div>
         )}

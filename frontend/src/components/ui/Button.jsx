@@ -24,7 +24,7 @@ export function Button({
     secondary: 'bg-white text-[#501228] hover:bg-[#FDF2F4] border border-slate-200/80 shadow-sm hover:border-[#501228]/30',
     outline: 'bg-transparent text-[#501228] hover:bg-[#501228]/5 border border-[#501228]/30 hover:border-[#501228]',
     ghost: 'bg-transparent text-[#4B5563] hover:text-[#501228] hover:bg-[#501228]/5 border border-transparent',
-    danger: 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200/60'
+    danger: 'btn-cerrar-sesion bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200/60'
   };
 
   return (

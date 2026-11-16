@@ -33,6 +33,11 @@ export function TemaProvider({ children }) {
     const raiz = document.documentElement;
     raiz.dataset.tema = tema;
     raiz.style.colorScheme = tema === 'claro' ? 'light' : 'dark';
+    if (tema === 'oscuro' || tema === 'morado') {
+      raiz.classList.add('dark');
+    } else {
+      raiz.classList.remove('dark');
+    }
     try {
       window.localStorage.setItem(CLAVE, tema);
     } catch (_) {

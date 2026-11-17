@@ -90,7 +90,7 @@ export function MapaPage() {
       {/* ============================================================
           ENCABEZADO EDITORIAL DEL MAPA GAM
           ============================================================ */}
-      <section className="relative overflow-hidden pt-8 pb-6 border-b border-white/5 bg-gradient-to-b from-[#111827] via-[#090D14] to-[#090D14]">
+      <section className="gotox-hero-section relative overflow-hidden pt-8 pb-6 border-b border-white/5 bg-gradient-to-b from-[#111827] via-[#090D14] to-[#090D14]">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-left">
             <div className="space-y-1.5 max-w-2xl">

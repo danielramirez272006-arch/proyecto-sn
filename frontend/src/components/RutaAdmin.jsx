@@ -28,7 +28,7 @@ export function RutaAdmin({ children }) {
   if (usuario?.role !== 'admin') {
     return (
       <Navigate
-        to="/perfil"
+        to="/usuario?tab=cuenta"
         replace
         state={{
           accesoDenegadoAdmin: true

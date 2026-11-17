@@ -55,7 +55,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to={isLoggedIn ? "/perfil" : "/acceso"} className="hover:text-[#501228] transition-colors">
+                <Link to={isLoggedIn ? "/usuario?tab=cuenta" : "/acceso"} className="hover:text-[#501228] transition-colors">
                   Bóveda Pet & Pasaporte
                 </Link>
               </li>
@@ -69,8 +69,8 @@ export function Footer() {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link to={esAdmin ? "/panel" : isLoggedIn ? "/perfil" : "/acceso"} className="hover:text-[#501228] transition-colors">
-                  {esAdmin ? 'Panel de Administración' : isLoggedIn ? 'Mi Cuenta GoToX' : 'Acceso de Usuarios'}
+                <Link to={esAdmin ? "/panel" : isLoggedIn ? "/usuario" : "/acceso"} className="hover:text-[#501228] transition-colors">
+                  {esAdmin ? 'Panel de Administración' : isLoggedIn ? 'Mi Espacio de Usuario' : 'Acceso de Usuarios'}
                 </Link>
               </li>
               <li>

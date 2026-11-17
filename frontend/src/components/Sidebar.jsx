@@ -18,10 +18,7 @@ import {
   Menu,
   X,
   ChevronRight,
-  Shield,
-  Compass,
-  Calendar,
-  Heart
+  Shield
 } from 'lucide-react';
 import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
@@ -40,20 +37,12 @@ export function Sidebar() {
 
   const enlacesNavegacion = [
     { nombre: 'Inicio', ruta: '/', icon: Home },
-    ...(isLoggedIn
-      ? [
-          { nombre: 'Explorar', ruta: '/explorar', icon: Compass },
-          { nombre: 'Mis Planes', ruta: '/mis-planes', icon: Calendar },
-          { nombre: 'Favoritos', ruta: '/favoritos', icon: Heart },
-          { nombre: 'Mi Mascota', ruta: '/mi-mascota', icon: Dog }
-        ]
-      : []),
     { nombre: 'Mapa Interactivo', ruta: '/mapa', icon: Map, badge: 'GAM' },
     { nombre: 'Terrazas Verificadas', ruta: '/terrazas', icon: Coffee },
     { nombre: 'Copiloto Bruno', ruta: '/copiloto', icon: Sparkles },
     { nombre: 'Sobre Nosotros', ruta: '/nosotros', icon: Users },
     ...(isLoggedIn
-      ? [{ nombre: 'Bóveda Pet', ruta: '/perfil', icon: ShieldCheck, badge: 'Activo' }]
+      ? [{ nombre: 'Bóveda Pet', ruta: '/usuario', icon: ShieldCheck, badge: 'Activo' }]
       : [{ nombre: 'Bóveda Pet', ruta: '/acceso', icon: ShieldCheck }])
   ];
 
@@ -311,16 +300,16 @@ export function Sidebar() {
         {/* Perfil de Usuario y Acciones */}
         {isLoggedIn ? (
           <div className="space-y-2">
-            {/* Tarjeta de Mariana / Usuario */}
+            {/* Tarjeta de Usuario */}
             <Link
-              to="/perfil"
+              to={esAdmin ? '/panel' : '/usuario'}
               onClick={() => esMovil && setMenuMovilAbierto(false)}
               className={`flex items-center justify-between p-2.5 rounded-xl border transition-all group ${clasesTema.tarjetaUsuario}`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="relative">
                   <div className="w-8 h-8 rounded-lg bg-[#501228] border border-[#F27B91]/30 text-white flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-[#6E1E3A] transition-colors">
-                    {usuario?.nombre?.charAt(0) || 'M'}
+                    {usuario?.nombre?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 ${esClaro ? 'border-white' : 'border-[#111827]'}`} />
                 </div>
@@ -350,8 +339,8 @@ export function Sidebar() {
               <span className="text-[10px] opacity-80 font-medium">Salir</span>
             </button>
 
-            {/* Botón Principal Destacado: Solo visible para administradores exclusivos */}
-            {esAdmin && (
+            {/* Botón Principal Destacado según Rol */}
+            {esAdmin ? (
               <Link
                 to="/panel"
                 onClick={() => esMovil && setMenuMovilAbierto(false)}
@@ -359,6 +348,15 @@ export function Sidebar() {
               >
                 <Activity className="w-4 h-4" />
                 <span>Entrar al Panel</span>
+              </Link>
+            ) : (
+              <Link
+                to="/usuario"
+                onClick={() => esMovil && setMenuMovilAbierto(false)}
+                className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] ${clasesTema.botonPrincipal}`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Entrar a Mi Espacio</span>
               </Link>
             )}
           </div>
@@ -428,11 +426,11 @@ export function Sidebar() {
             </Link>
           ) : isLoggedIn ? (
             <Link
-              to="/perfil"
+              to="/usuario"
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-[#501228] border border-[#F27B91]/30"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-[#F27B91]" />
-              <span className="hidden xs:inline">Mi Cuenta</span>
+              <span className="hidden xs:inline">Mi Espacio</span>
             </Link>
           ) : (
             <Link

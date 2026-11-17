@@ -123,7 +123,7 @@ export function Panel() {
     if (!isLoggedIn) {
       navigate('/acceso', { replace: true });
     } else if (!esAdmin) {
-      navigate('/perfil', { replace: true, state: { accesoDenegadoAdmin: true } });
+      navigate('/usuario?tab=cuenta', { replace: true, state: { accesoDenegadoAdmin: true } });
     }
   }, [isLoggedIn, esAdmin, navigate]);
 

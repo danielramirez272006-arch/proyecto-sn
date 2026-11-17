@@ -31,7 +31,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-export function Perfil() {
+export function Perfil({ embebido = false }) {
   const {
     mascota,
     usuario,
@@ -229,7 +229,7 @@ export function Perfil() {
   };
 
   return (
-    <PageWrapper className="py-8 md:py-14">
+    <PageWrapper className={embebido ? 'py-2' : 'py-8 md:py-14'}>
       <ModalConfirmarCierre
         isOpen={modalConfirmacionAbierto}
         onClose={() => setModalConfirmacionAbierto(false)}

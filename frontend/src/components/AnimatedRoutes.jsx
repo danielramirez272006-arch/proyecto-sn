@@ -5,16 +5,12 @@ import { LayoutPublico } from '../layouts/LayoutPublico';
 import { RutaPrivada } from './RutaPrivada';
 import { RutaAdmin } from './RutaAdmin';
 import { Home } from '../pages/Home';
-import { ExplorarPage } from '../pages/ExplorarPage';
-import { MisPlanesPage } from '../pages/MisPlanesPage';
-import { FavoritosPage } from '../pages/FavoritosPage';
-import { MiMascotaPage } from '../pages/MiMascotaPage';
+import { UsuarioPanel } from '../pages/UsuarioPanel';
 import { MapaPage } from '../pages/MapaPage';
 import { TerrazasPage } from '../pages/TerrazasPage';
 import { CopilotoPage } from '../pages/CopilotoPage';
 import { Nosotros } from '../pages/Nosotros';
 import { Acceso } from '../pages/Acceso';
-import { Perfil } from '../pages/Perfil';
 import { Panel } from '../pages/Panel';
 
 /**
@@ -27,9 +23,8 @@ export function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Rutas de GoToX */}
+        {/* Rutas Públicas de GoToX */}
         <Route element={<LayoutPublico />}>
-          {/* Públicas: visibles con o sin sesión */}
           <Route path="/" element={<Home />} />
           <Route path="/mapa" element={<MapaPage />} />
           <Route path="/terrazas" element={<TerrazasPage />} />
@@ -37,12 +32,12 @@ export function AnimatedRoutes() {
           <Route path="/nosotros" element={<Nosotros />} />
           <Route path="/acceso" element={<Acceso />} />
 
-          {/* Exclusivas para usuarios con sesión iniciada */}
+          {/* Atajos de rutas de usuario redirigen al Portal Exclusivo de Usuarios */}
           <Route
             path="/explorar"
             element={
               <RutaPrivada modulo="Explorar Catálogo">
-                <ExplorarPage />
+                <Navigate to="/usuario?tab=explorar" replace />
               </RutaPrivada>
             }
           />
@@ -50,7 +45,7 @@ export function AnimatedRoutes() {
             path="/mis-planes"
             element={
               <RutaPrivada modulo="Mis Planes">
-                <MisPlanesPage />
+                <Navigate to="/usuario?tab=planes" replace />
               </RutaPrivada>
             }
           />
@@ -58,7 +53,7 @@ export function AnimatedRoutes() {
             path="/favoritos"
             element={
               <RutaPrivada modulo="Mis Favoritos">
-                <FavoritosPage />
+                <Navigate to="/usuario?tab=favoritos" replace />
               </RutaPrivada>
             }
           />
@@ -66,21 +61,31 @@ export function AnimatedRoutes() {
             path="/mi-mascota"
             element={
               <RutaPrivada modulo="Mi Mascota">
-                <MiMascotaPage />
+                <Navigate to="/usuario?tab=mascota" replace />
               </RutaPrivada>
             }
           />
           <Route
             path="/perfil"
             element={
-              <RutaPrivada modulo="Bóveda Pet">
-                <Perfil />
+              <RutaPrivada modulo="Mi Cuenta & Bóveda">
+                <Navigate to="/usuario?tab=cuenta" replace />
               </RutaPrivada>
             }
           />
         </Route>
 
-        {/* Centro de Mando IA (exclusivo para administradores autorizados) */}
+        {/* Página Exclusiva de Usuarios (Portal independiente, logo apunta a /) */}
+        <Route
+          path="/usuario"
+          element={
+            <RutaPrivada modulo="Mi Espacio de Usuario">
+              <UsuarioPanel />
+            </RutaPrivada>
+          }
+        />
+
+        {/* Página Exclusiva de Administración (solo cuentas role === 'admin', logo apunta a /) */}
         <Route
           path="/panel"
           element={

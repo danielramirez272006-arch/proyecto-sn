@@ -70,7 +70,7 @@ export function Acceso() {
     const destinoUsuario =
       rutaDestino && rutaDestino !== '/panel' && rutaDestino !== '/acceso'
         ? rutaDestino
-        : '/perfil';
+        : '/usuario';
     navigate(destinoUsuario, { replace: true });
   };
 

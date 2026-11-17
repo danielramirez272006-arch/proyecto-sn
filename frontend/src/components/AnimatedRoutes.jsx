@@ -3,6 +3,10 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { LayoutPublico } from '../layouts/LayoutPublico';
 import { Home } from '../pages/Home';
+import { ExplorarPage } from '../pages/ExplorarPage';
+import { MisPlanesPage } from '../pages/MisPlanesPage';
+import { FavoritosPage } from '../pages/FavoritosPage';
+import { MiMascotaPage } from '../pages/MiMascotaPage';
 import { MapaPage } from '../pages/MapaPage';
 import { TerrazasPage } from '../pages/TerrazasPage';
 import { CopilotoPage } from '../pages/CopilotoPage';
@@ -24,6 +28,10 @@ export function AnimatedRoutes() {
         {/* Rutas Públicas de GoToX */}
         <Route element={<LayoutPublico />}>
           <Route path="/" element={<Home />} />
+          <Route path="/explorar" element={<ExplorarPage />} />
+          <Route path="/mis-planes" element={<MisPlanesPage />} />
+          <Route path="/favoritos" element={<FavoritosPage />} />
+          <Route path="/mi-mascota" element={<MiMascotaPage />} />
           <Route path="/mapa" element={<MapaPage />} />
           <Route path="/terrazas" element={<TerrazasPage />} />
           <Route path="/copiloto" element={<CopilotoPage />} />

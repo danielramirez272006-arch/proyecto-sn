@@ -132,6 +132,15 @@ class AdminController {
     }
   }
 
+  async listUsers(req, res, next) {
+    try {
+      const users = await adminService.listUsers();
+      return success(res, users, { total: users.length });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getAuditLogs(req, res, next) {
     try {
       const logs = await adminService.getAuditLogs();

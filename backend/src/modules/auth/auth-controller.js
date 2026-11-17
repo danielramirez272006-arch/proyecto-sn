@@ -22,12 +22,15 @@ class AuthController {
 
   async register(req, res, next) {
     try {
-      const { name, email, password } = req.body;
+      const { name, email, password, phone, zone, hasPet, pet } = req.body;
       if (!name || !email || !password) return badRequest(res, 'name, email y password son requeridos');
       if (!EMAIL_REGEX.test(String(email).trim())) return badRequest(res, 'El formato del correo electrónico no es válido');
       if (String(password).length < 6) return badRequest(res, 'La contraseña debe tener al menos 6 caracteres');
 
-      const result = await authService.register({ name, email, password, role: 'client' }, req);
+      const result = await authService.register(
+        { name, email, password, role: 'client', phone, zone, hasPet, pet },
+        req
+      );
       return created(res, result);
     } catch (err) {
       if (err.message === 'EMAIL_ALREADY_REGISTERED') {

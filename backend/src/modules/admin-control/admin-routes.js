@@ -7,6 +7,9 @@ const { requireAdmin } = require('../../shared/middlewares/auth-role-guard');
 // Proteger todas las rutas de administración
 router.use(requireAdmin);
 
+// Gestión de usuarios registrados (solo administradores exclusivos)
+router.get('/users', (req, res, next) => adminController.listUsers(req, res, next));
+
 // Gestión y reprogramación de eventos
 router.patch('/events/:id', (req, res, next) => adminController.patchEvent(req, res, next));
 

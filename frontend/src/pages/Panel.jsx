@@ -15,6 +15,7 @@ import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
+import { api } from '../shared/services/api-client';
 import {
   Activity,
   Building2,
@@ -43,12 +44,11 @@ import {
   Sparkles
 } from 'lucide-react';
 
-// Datos iniciales de usuarios administrativos
+// Datos iniciales mientras se cargan usuarios reales desde el backend
 const USUARIOS_INICIALES = [
-  { id: "usr-001", nombre: "Mariana Rojas", email: "mariana.rojas@gotox.cr", rol: "Administrador General", estado: "Activo", sesion: "En línea" },
-  { id: "usr-002", nombre: "Ing. Carlos Brenes", email: "carlos.brenes@gotox.cr", rol: "Inspector Ambiental", estado: "Activo", sesion: "En terreno" },
-  { id: "usr-003", nombre: "Dra. Valeria Mora", email: "valeria.mora@gotox.cr", rol: "Coordinadora Veterinaria", estado: "Activo", sesion: "En guardia" },
-  { id: "usr-004", nombre: "Tutor Demostración", email: "invitado.gam@gotox.cr", rol: "Tutor Certificado", estado: "Activo", sesion: "Desconectado" }
+  { id: "usr_admin_gotox", nombre: "Administrador GoToX", email: "admin@gotox.cr", rol: "Administrador General", estado: "Activo", sesion: "En línea" },
+  { id: "usr_client_mariana", nombre: "Mariana Rojas", email: "mariana.rojas@gotox.cr", rol: "Usuario GoToX", estado: "Activo", sesion: "Registrado" },
+  { id: "usr_client_1", nombre: "Carlos Alvarado", email: "carlos@ejemplo.cr", rol: "Usuario GoToX", estado: "Activo", sesion: "Registrado" }
 ];
 
 // Incidencias activas del sistema GAM
@@ -100,7 +100,7 @@ export function Panel() {
   const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
   const [animandoSalida, setAnimandoSalida] = useState(false);
   const telemetria = useTelemetria();
-  const { ajustes, actualizarAjustes, usuario, cerrarSesion, isLoggedIn } = useSesion();
+  const { ajustes, actualizarAjustes, usuario, cerrarSesion, isLoggedIn, esAdmin } = useSesion();
 
   // Estados interactivos administrativos
   const [locales, setLocales] = useState(LOCALES_DATA);
@@ -118,12 +118,39 @@ export function Panel() {
   const [ajustesLocales, setAjustesLocales] = useState(ajustes);
   const [guardadoAjustes, setGuardadoAjustes] = useState(false);
 
-  // Redirección si la sesión no está activa
+  // Protección estricta: solo cuentas exclusivas con role === 'admin'
   React.useEffect(() => {
     if (!isLoggedIn) {
       navigate('/acceso', { replace: true });
+    } else if (!esAdmin) {
+      navigate('/perfil', { replace: true, state: { accesoDenegadoAdmin: true } });
     }
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, esAdmin, navigate]);
+
+  // Cargar usuarios reales del backend si la sesión es administrativa
+  React.useEffect(() => {
+    if (!esAdmin) return;
+    let activo = true;
+    api
+      .get('/admin/users')
+      .then((list) => {
+        if (!activo || !Array.isArray(list) || list.length === 0) return;
+        setUsuarios(
+          list.map((u) => ({
+            id: u.id,
+            nombre: u.name,
+            email: u.email,
+            rol: u.role === 'admin' ? 'Administrador General' : 'Usuario GoToX',
+            estado: 'Activo',
+            sesion: u.id === usuario?.id ? 'En línea' : 'Registrado'
+          }))
+        );
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [esAdmin, usuario?.id]);
 
   const handleSolicitarCierre = () => setModalConfirmacionAbierto(true);
   const handleConfirmarSalida = () => {
@@ -511,6 +538,7 @@ export function Panel() {
                         className="text-xs p-1.5 rounded-lg border border-current/20 bg-transparent outline-none font-semibold"
                       >
                         <option value="Administrador General">Administrador General</option>
+                        <option value="Usuario GoToX">Usuario GoToX</option>
                         <option value="Inspector Ambiental">Inspector Ambiental</option>
                         <option value="Coordinadora Veterinaria">Coordinadora Veterinaria</option>
                         <option value="Tutor Certificado">Tutor Certificado</option>

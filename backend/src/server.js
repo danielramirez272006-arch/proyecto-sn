@@ -1,6 +1,7 @@
 const app = require('./app');
 const env = require('./shared/config/env-config');
 const { initDatabase, runMigrations, runSeeds } = require('./shared/config/database');
+const authService = require('./modules/auth/auth-service');
 const { emailWorker } = require('./modules/notifications');
 const { orchestrator } = require('./autonomous-agents');
 
@@ -16,6 +17,7 @@ async function bootstrap() {
       try {
         await runMigrations();
         await runSeeds();
+        await authService.ensureDefaultAccounts();
       } catch (dbErr) {
         console.warn('[Server] Aviso al auto-aplicar migraciones/seeds:', dbErr.message);
       }

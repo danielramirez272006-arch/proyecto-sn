@@ -3,6 +3,62 @@ const { query, execute } = require('../../shared/config/database');
 const { generateToken, generateRefreshToken, verifyToken } = require('../../shared/middlewares/auth-role-guard');
 const auditService = require('../../shared/audit/audit-service');
 
+// Cuentas exclusivas administrativas y usuarios demo de desarrollo
+const DEFAULT_ACCOUNTS = [
+  {
+    id: 'usr_admin_gotox',
+    name: 'Administrador GoToX',
+    email: process.env.ADMIN_EMAIL || 'admin@gotox.cr',
+    password: process.env.ADMIN_PASSWORD || 'AdminGoToX2026!',
+    role: 'admin',
+    gpsTrustScore: 100,
+    zone: 'Centro de Mando GAM, San José',
+    hasPet: false
+  },
+  {
+    id: 'usr_admin_1',
+    name: 'Admin Sistema SN',
+    email: 'admin@ejemplo.cr',
+    password: process.env.ADMIN_PASSWORD || 'AdminGoToX2026!',
+    role: 'admin',
+    gpsTrustScore: 100,
+    zone: 'San José Centro',
+    hasPet: false
+  },
+  {
+    id: 'usr_client_mariana',
+    name: 'Mariana Rojas',
+    email: 'mariana.rojas@gotox.cr',
+    password: process.env.DEMO_USER_PASSWORD || 'GoToX2026!',
+    role: 'client',
+    gpsTrustScore: 95,
+    phone: '+506 8832-9011',
+    zone: 'Barrio Escalante, San José',
+    hasPet: true,
+    pet: {
+      id: 'PET-CR-9820-BRUNO',
+      name: 'Bruno',
+      species: 'Canino',
+      breed: 'Golden Retriever',
+      weight_kg: 29.4,
+      age_years: 3,
+      microchip_id: 'CRC-756-092-882-991',
+      color_coat: 'Dorado Claro'
+    }
+  },
+  {
+    id: 'usr_client_1',
+    name: 'Carlos Alvarado',
+    email: 'carlos@ejemplo.cr',
+    password: process.env.DEMO_USER_PASSWORD || 'Cliente2026!',
+    role: 'client',
+    gpsTrustScore: 80,
+    phone: '+506 8810-4455',
+    zone: 'Los Yoses, Montes de Oca',
+    hasPet: false
+  }
+];
+
 class AuthService {
   hashPassword(password) {
     const salt = crypto.randomBytes(16).toString('hex');
@@ -34,6 +90,142 @@ class AuthService {
     return simpleHash === storedHash;
   }
 
+  async ensureDefaultAccounts() {
+    for (const acc of DEFAULT_ACCOUNTS) {
+      try {
+        const normalizedEmail = acc.email.trim().toLowerCase();
+        const existing = await query('SELECT id, password_hash, role FROM users WHERE LOWER(email) = ? OR id = ?', [
+          normalizedEmail,
+          acc.id
+        ]);
+
+        let targetUserId = acc.id;
+
+        if (!existing || existing.length === 0) {
+          const passwordHash = this.hashPassword(acc.password);
+          await execute(
+            `INSERT INTO users (id, name, email, password_hash, role, gps_trust_score)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [acc.id, acc.name, normalizedEmail, passwordHash, acc.role, acc.gpsTrustScore || 80]
+          );
+        } else {
+          targetUserId = existing[0].id;
+          const storedHash = existing[0].password_hash || '';
+          const isPlaceholderHash =
+            storedHash.startsWith('$2b$10$ephemeral_') || storedHash.startsWith('sha256_mock');
+
+          if (isPlaceholderHash) {
+            const realHash = this.hashPassword(acc.password);
+            await execute('UPDATE users SET password_hash = ?, role = ? WHERE id = ?', [
+              realHash,
+              acc.role,
+              targetUserId
+            ]);
+          }
+        }
+
+        // Inicializar bóveda y mascota por defecto si aún no existen
+        const vaultRows = await query('SELECT user_id FROM user_vaults WHERE user_id = ?', [targetUserId]).catch(() => null);
+        if (vaultRows && vaultRows.length === 0) {
+          await this._saveInitialUserVaultAndPet(targetUserId, {
+            phone: acc.phone || null,
+            zone: acc.zone || 'San José, Costa Rica',
+            hasPet: acc.hasPet !== false,
+            pet: acc.pet || null
+          });
+        }
+      } catch (err) {
+        // Ignorar si las tablas aún no están migradas durante algún unit test aislado
+      }
+    }
+  }
+
+  async _saveInitialUserVaultAndPet(userId, { phone = null, zone = null, hasPet = false, pet = null } = {}) {
+    try {
+      const hasPetFlag = hasPet ? 1 : 0;
+      await execute(
+        `INSERT INTO user_vaults (user_id, phone, zone, has_pet, budget_level, interests_json, preferences_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          phone || null,
+          zone || 'Barrio Escalante, San José',
+          hasPetFlag,
+          'medio',
+          JSON.stringify(['Cafeterías de especialidad', 'Terrazas al aire libre']),
+          JSON.stringify({
+            notificacionesLluvia: true,
+            notificacionesAcusticas: true,
+            notificacionesEventos: false,
+            compartirUbicacion: true
+          })
+        ]
+      ).catch(() => {});
+
+      const petName = pet?.name || pet?.nombre;
+      if (hasPet && petName && String(petName).trim()) {
+        const petId = pet.id || `pet_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+        await execute(
+          `INSERT INTO user_pets (id, user_id, name, species, breed, weight_kg, age_years, microchip_id, color_coat, allergies_text)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            petId,
+            userId,
+            String(petName).trim(),
+            pet.species || pet.especie || 'Canino',
+            pet.breed || pet.raza || 'Mestizo',
+            Number(pet.weight_kg || pet.pesoKg || 15),
+            Number(pet.age_years || pet.edadAnos || 2),
+            pet.microchip_id || pet.microchipId || null,
+            pet.color_coat || pet.colorManto || 'Variado',
+            Array.isArray(pet.alergias) ? pet.alergias.join(', ') : (pet.allergies_text || pet.alergias || null)
+          ]
+        ).catch(() => {});
+      }
+    } catch (_) {
+      // Continuar de forma segura si la tabla aún no existe
+    }
+  }
+
+  async _loadUserProfileDetails(userId) {
+    try {
+      const vaultRows = await query('SELECT * FROM user_vaults WHERE user_id = ?', [userId]).catch(() => []);
+      const petRows = await query('SELECT * FROM user_pets WHERE user_id = ? ORDER BY created_at ASC', [userId]).catch(() => []);
+      const vault = vaultRows?.[0] || null;
+      const primaryPet = petRows?.[0] || null;
+
+      return {
+        phone: vault?.phone || null,
+        zone: vault?.zone || 'San José, Costa Rica',
+        hasPet: vault ? Boolean(vault.has_pet) : Boolean(primaryPet),
+        pets: petRows || [],
+        pet: primaryPet
+          ? {
+              id: primaryPet.id,
+              nombre: primaryPet.name,
+              especie: primaryPet.species || 'Canino',
+              raza: primaryPet.breed || 'Mestizo',
+              pesoKg: Number(primaryPet.weight_kg || 15),
+              edadAnos: Number(primaryPet.age_years || 2),
+              microchipId: primaryPet.microchip_id || '',
+              colorManto: primaryPet.color_coat || 'Variado',
+              alergias: primaryPet.allergies_text
+                ? String(primaryPet.allergies_text).split(',').map((s) => s.trim()).filter(Boolean)
+                : []
+            }
+          : null
+      };
+    } catch (_) {
+      return {
+        phone: null,
+        zone: 'San José, Costa Rica',
+        hasPet: false,
+        pets: [],
+        pet: null
+      };
+    }
+  }
+
   async _saveRefreshToken(userId, refreshToken) {
     const tokenId = `rt_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
@@ -50,6 +242,8 @@ class AuthService {
   }
 
   async login(email, password, req = null) {
+    await this.ensureDefaultAccounts();
+
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const rows = await query('SELECT * FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
     if (!rows || rows.length === 0) {
@@ -82,6 +276,8 @@ class AuthService {
       req
     });
 
+    const profileDetails = await this._loadUserProfileDetails(user.id);
+
     return {
       token,
       refresh_token: refreshToken,
@@ -91,13 +287,15 @@ class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        ...profileDetails
       }
     };
   }
 
-  async register({ name, email, password, role = 'client' }, req = null) {
+  async register({ name, email, password, role = 'client', phone = null, zone = null, hasPet = false, pet = null }, req = null) {
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const cleanName = String(name || '').trim();
+    // El registro público siempre asigna 'client' (o 'business_owner'); nunca 'admin'
     const safeRole = role === 'business_owner' ? 'business_owner' : 'client';
 
     const existing = await query('SELECT id FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
@@ -114,6 +312,14 @@ class AuthService {
       [id, cleanName, normalizedEmail, pbkdf2Hash, safeRole]
     );
 
+    const hasPetEffective = Boolean(hasPet && (pet?.name || pet?.nombre));
+    await this._saveInitialUserVaultAndPet(id, {
+      phone,
+      zone,
+      hasPet: hasPetEffective,
+      pet
+    });
+
     const tokenPayload = { id, email: normalizedEmail, role: safeRole, name: cleanName };
     const token = generateToken(tokenPayload, '2h');
     const refreshToken = generateRefreshToken(tokenPayload, '30d');
@@ -125,15 +331,23 @@ class AuthService {
       action: 'USER_REGISTERED',
       resource: 'users',
       resourceId: id,
-      details: { name: cleanName, email: normalizedEmail, role: safeRole },
+      details: { name: cleanName, email: normalizedEmail, role: safeRole, hasPet: hasPetEffective },
       req
     });
+
+    const profileDetails = await this._loadUserProfileDetails(id);
 
     return {
       token,
       refresh_token: refreshToken,
       expires_in: 7200,
-      user: { id, name: cleanName, email: normalizedEmail, role: safeRole }
+      user: {
+        id,
+        name: cleanName,
+        email: normalizedEmail,
+        role: safeRole,
+        ...profileDetails
+      }
     };
   }
 
@@ -224,10 +438,29 @@ class AuthService {
       const rawToken = authHeader.replace(/^Bearer\s+/, '');
       const decoded = verifyToken(rawToken);
       if (decoded && !decoded.is_refresh) {
+        let userRecord = {
+          id: decoded.id,
+          name: decoded.name,
+          email: decoded.email,
+          role: decoded.role
+        };
+
+        try {
+          const rows = await query('SELECT id, name, email, role FROM users WHERE id = ?', [decoded.id]);
+          if (rows && rows.length > 0) {
+            userRecord = rows[0];
+          }
+        } catch (_) {}
+
+        const profileDetails = await this._loadUserProfileDetails(userRecord.id);
+
         return {
           authenticated: true,
           type: 'registered_user',
-          user: decoded
+          user: {
+            ...userRecord,
+            ...profileDetails
+          }
         };
       }
     }

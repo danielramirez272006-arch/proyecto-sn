@@ -48,8 +48,16 @@ const DIRECTORIO_VETERINARIO_GAM = [
 export function MiMascotaPage() {
   const { mascota, usuario } = useSesion();
   const { esClaro, esMorado, esOscuro } = useTema();
-  const [tieneMascota, setTieneMascota] = useState(true);
+  const [tieneMascota, setTieneMascota] = useState(() =>
+    usuario?.tieneMascota !== undefined ? Boolean(usuario.tieneMascota) : Boolean(mascota?.nombre && mascota.nombre !== 'Sin mascota registrada')
+  );
   const [lugarSeleccionado, setLugarSeleccionado] = useState(null);
+
+  React.useEffect(() => {
+    if (usuario?.tieneMascota !== undefined) {
+      setTieneMascota(Boolean(usuario.tieneMascota));
+    }
+  }, [usuario?.tieneMascota]);
 
   const lugaresPet = LUGARES_GOTOX.filter(l => l.petFriendly === 'si').slice(0, 3);
 
@@ -252,7 +260,9 @@ export function MiMascotaPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-serif font-bold text-2xl tracking-tight">Espacios Recomendados para Salir con Bruno</h2>
+                <h2 className="font-serif font-bold text-2xl tracking-tight">
+                  Espacios Recomendados para Salir con {mascota?.nombre && mascota.nombre !== 'Sin mascota registrada' ? mascota.nombre : 'tu mascota'}
+                </h2>
                 <p className="text-xs opacity-60">Locales con agua filtrada, piso fresco y certificación acústica.</p>
               </div>
               <Link to="/explorar" className="text-xs font-bold text-[#F27B91] hover:underline flex items-center gap-1">

@@ -4,7 +4,7 @@ import { useSesion } from '../hooks/useSesion';
 import { Dog, ShieldCheck, Heart, Sparkles, MapPin } from 'lucide-react';
 
 export function Footer() {
-  const { isLoggedIn } = useSesion();
+  const { isLoggedIn, esAdmin } = useSesion();
   return (
     <footer className="border-t border-slate-200/80 bg-white/60 mt-20 pt-16 pb-12 text-sm text-slate-600">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
@@ -69,8 +69,8 @@ export function Footer() {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link to={isLoggedIn ? "/panel" : "/acceso"} className="hover:text-[#501228] transition-colors">
-                  {isLoggedIn ? 'Centro de Mando IA' : 'Acceso a Operadores'}
+                <Link to={esAdmin ? "/panel" : isLoggedIn ? "/perfil" : "/acceso"} className="hover:text-[#501228] transition-colors">
+                  {esAdmin ? 'Panel de Administración' : isLoggedIn ? 'Mi Cuenta GoToX' : 'Acceso de Usuarios'}
                 </Link>
               </li>
               <li>

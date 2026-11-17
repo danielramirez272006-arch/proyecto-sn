@@ -1019,4 +1019,82 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(detailRes.status, 200);
     assert.equal(detailRes.body.data.id, firstId);
   });
+
+  await suite.test('43. Cuentas exclusivas Admin vs Usuarios Normales, Mascota vinculada y Bóveda persistente', async () => {
+    // 1. Cuenta exclusiva Admin puede iniciar sesión y ver /api/admin/users
+    const adminLoginRes = await executeMockRequest('POST', '/api/auth/login', {
+      body: { email: 'admin@gotox.cr', password: process.env.ADMIN_PASSWORD || 'AdminGoToX2026!' }
+    });
+    assert.equal(adminLoginRes.status, 200);
+    assert.equal(adminLoginRes.body.data.user.role, 'admin');
+
+    const adminUsersRes = await executeMockRequest('GET', '/api/admin/users', {
+      headers: { Authorization: `Bearer ${adminLoginRes.body.data.token}` }
+    });
+    assert.equal(adminUsersRes.status, 200);
+    assert.ok(Array.isArray(adminUsersRes.body.data));
+    assert.ok(adminUsersRes.body.data.some((u) => u.email === 'admin@gotox.cr'));
+
+    // 2. Registrar nuevo usuario con información de su mascota (ignora role='admin')
+    const clientRegRes = await executeMockRequest('POST', '/api/auth/register', {
+      body: {
+        name: 'Laura Jiménez',
+        email: 'laura.jimenez@gotox.cr',
+        password: 'MiClaveSegura2026!',
+        role: 'admin',
+        phone: '+506 8700-1122',
+        zone: 'Rohrmoser, Pavas',
+        hasPet: true,
+        pet: {
+          nombre: 'Max',
+          especie: 'Canino',
+          raza: 'Beagle',
+          pesoKg: 13.5,
+          microchipId: 'CRC-999-MAX-01'
+        }
+      }
+    });
+    assert.equal(clientRegRes.status, 201);
+    assert.equal(clientRegRes.body.data.user.role, 'client');
+    assert.equal(clientRegRes.body.data.user.pet.nombre, 'Max');
+    assert.equal(clientRegRes.body.data.user.pet.raza, 'Beagle');
+
+    const clientToken = clientRegRes.body.data.token;
+
+    // 3. Usuario normal puede leer y actualizar su propia bóveda (/api/client/vault)
+    const vaultGetRes = await executeMockRequest('GET', '/api/client/vault', {
+      headers: { Authorization: `Bearer ${clientToken}` }
+    });
+    assert.equal(vaultGetRes.status, 200);
+    assert.equal(vaultGetRes.body.data.user.name, 'Laura Jiménez');
+    assert.equal(vaultGetRes.body.data.pet.nombre, 'Max');
+
+    const vaultUpdateRes = await executeMockRequest('POST', '/api/client/vault', {
+      headers: { Authorization: `Bearer ${clientToken}` },
+      body: {
+        zone: 'Santa Ana, San José',
+        pet: { nombre: 'Max Jr', raza: 'Beagle Tricolor', pesoKg: 14.2 }
+      }
+    });
+    assert.equal(vaultUpdateRes.status, 200);
+    assert.equal(vaultUpdateRes.body.data.user.zone, 'Santa Ana, San José');
+    assert.equal(vaultUpdateRes.body.data.pet.nombre, 'Max Jr');
+
+    // 4. Usuario normal NO tiene acceso a rutas administrativas (403 Forbidden)
+    const forbiddenUsersRes = await executeMockRequest('GET', '/api/admin/users', {
+      headers: { Authorization: `Bearer ${clientToken}` }
+    });
+    assert.equal(forbiddenUsersRes.status, 403);
+
+    const forbiddenTelemetryRes = await executeMockRequest('GET', '/api/admin/telemetry', {
+      headers: { Authorization: `Bearer ${clientToken}` }
+    });
+    assert.equal(forbiddenTelemetryRes.status, 403);
+
+    // 5. Login con contraseña incorrecta devuelve 401
+    const badLoginRes = await executeMockRequest('POST', '/api/auth/login', {
+      body: { email: 'admin@gotox.cr', password: 'WrongPassword123' }
+    });
+    assert.equal(badLoginRes.status, 401);
+  });
 });

@@ -31,7 +31,7 @@ import { AnimacionCierreSesion } from './AnimacionCierreSesion';
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isLoggedIn, usuario, cerrarSesion } = useSesion();
+  const { isLoggedIn, esAdmin, usuario, cerrarSesion } = useSesion();
   const { tema, setTema, esClaro, esMorado, esOscuro } = useTema();
 
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
@@ -326,11 +326,11 @@ export function Sidebar() {
                 </div>
                 <div className="truncate text-left">
                   <p className="text-xs font-bold truncate group-hover:text-[#501228] transition-colors">
-                    {usuario?.nombre || 'Mariana Rojas'}
+                    {usuario?.nombre || 'Usuario GoToX'}
                   </p>
                   <p className={`text-[10px] truncate flex items-center gap-1 ${clasesTema.subtexto}`}>
-                    <Shield className="w-2.5 h-2.5 text-emerald-500" />
-                    <span>Tutor Certificado</span>
+                    <Shield className={`w-2.5 h-2.5 ${esAdmin ? 'text-[#F27B91]' : 'text-emerald-500'}`} />
+                    <span>{esAdmin ? 'Administrador Exclusivo' : 'Usuario GoToX'}</span>
                   </p>
                 </div>
               </div>
@@ -350,15 +350,17 @@ export function Sidebar() {
               <span className="text-[10px] opacity-80 font-medium">Salir</span>
             </button>
 
-            {/* Botón Principal Destacado: Entrar al Panel */}
-            <Link
-              to="/panel"
-              onClick={() => esMovil && setMenuMovilAbierto(false)}
-              className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] ${clasesTema.botonPrincipal}`}
-            >
-              <Activity className="w-4 h-4" />
-              <span>Entrar al Panel</span>
-            </Link>
+            {/* Botón Principal Destacado: Solo visible para administradores exclusivos */}
+            {esAdmin && (
+              <Link
+                to="/panel"
+                onClick={() => esMovil && setMenuMovilAbierto(false)}
+                className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] ${clasesTema.botonPrincipal}`}
+              >
+                <Activity className="w-4 h-4" />
+                <span>Entrar al Panel</span>
+              </Link>
+            )}
           </div>
         ) : (
           /* Estado Sesión Cerrada: Botón Iniciar Sesión */
@@ -416,13 +418,21 @@ export function Sidebar() {
         </Link>
 
         <div className="flex items-center gap-2">
-          {isLoggedIn ? (
+          {esAdmin ? (
             <Link
               to="/panel"
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-[#501228] border border-[#F27B91]/30"
             >
               <Activity className="w-3.5 h-3.5 text-[#F27B91]" />
               <span className="hidden xs:inline">Panel</span>
+            </Link>
+          ) : isLoggedIn ? (
+            <Link
+              to="/perfil"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-[#501228] border border-[#F27B91]/30"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#F27B91]" />
+              <span className="hidden xs:inline">Mi Cuenta</span>
             </Link>
           ) : (
             <Link

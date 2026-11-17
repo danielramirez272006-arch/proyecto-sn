@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { LayoutPublico } from '../layouts/LayoutPublico';
 import { RutaPrivada } from './RutaPrivada';
+import { RutaAdmin } from './RutaAdmin';
 import { Home } from '../pages/Home';
 import { ExplorarPage } from '../pages/ExplorarPage';
 import { MisPlanesPage } from '../pages/MisPlanesPage';
@@ -79,13 +80,13 @@ export function AnimatedRoutes() {
           />
         </Route>
 
-        {/* Centro de Mando IA (exclusivo con sesión) */}
+        {/* Centro de Mando IA (exclusivo para administradores autorizados) */}
         <Route
           path="/panel"
           element={
-            <RutaPrivada modulo="Centro de Mando IA">
+            <RutaAdmin>
               <Panel />
-            </RutaPrivada>
+            </RutaAdmin>
           }
         />
 

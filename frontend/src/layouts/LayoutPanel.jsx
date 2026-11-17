@@ -303,11 +303,11 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                 </div>
                 <div className="truncate text-left">
                   <p className="text-xs font-bold truncate group-hover:text-[#F27B91] transition-colors">
-                    {usuario?.nombre || 'Mariana Rojas'}
+                    {usuario?.nombre || 'Administrador'}
                   </p>
                   <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
                     <Shield className="w-2.5 h-2.5 text-emerald-500" />
-                    <span>Operador Nivel 1</span>
+                    <span>Administrador Exclusivo</span>
                   </p>
                 </div>
               </Link>

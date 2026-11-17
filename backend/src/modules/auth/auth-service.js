@@ -43,7 +43,8 @@ const DEFAULT_ACCOUNTS = [
       weight_kg: 29.4,
       age_years: 3,
       microchip_id: 'CRC-756-092-882-991',
-      color_coat: 'Dorado Claro'
+      color_coat: 'Dorado Claro',
+      photo_url: '/imagenes/copiloto-bruno.jpg'
     }
   },
   {
@@ -133,6 +134,12 @@ class AuthService {
             hasPet: acc.hasPet !== false,
             pet: acc.pet || null
           });
+        } else if (acc.pet?.photo_url) {
+          await this._ensurePetPhotoColumn();
+          await execute(
+            'UPDATE user_pets SET photo_url = ? WHERE user_id = ? AND (photo_url IS NULL OR photo_url = "")',
+            [acc.pet.photo_url, targetUserId]
+          ).catch(() => {});
         }
       } catch (err) {
         // Ignorar si las tablas aún no están migradas durante algún unit test aislado
@@ -140,8 +147,17 @@ class AuthService {
     }
   }
 
+  async _ensurePetPhotoColumn() {
+    if (this._photoColChecked) return;
+    try {
+      await execute('ALTER TABLE user_pets ADD COLUMN photo_url TEXT').catch(() => {});
+    } catch (_) {}
+    this._photoColChecked = true;
+  }
+
   async _saveInitialUserVaultAndPet(userId, { phone = null, zone = null, hasPet = false, pet = null } = {}) {
     try {
+      await this._ensurePetPhotoColumn();
       const hasPetFlag = hasPet ? 1 : 0;
       await execute(
         `INSERT INTO user_vaults (user_id, phone, zone, has_pet, budget_level, interests_json, preferences_json)
@@ -165,9 +181,10 @@ class AuthService {
       const petName = pet?.name || pet?.nombre;
       if (hasPet && petName && String(petName).trim()) {
         const petId = pet.id || `pet_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+        const photoUrl = pet.foto || pet.photoUrl || pet.photo_url || pet.imagen || null;
         await execute(
-          `INSERT INTO user_pets (id, user_id, name, species, breed, weight_kg, age_years, microchip_id, color_coat, allergies_text)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO user_pets (id, user_id, name, species, breed, weight_kg, age_years, microchip_id, color_coat, allergies_text, photo_url)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             petId,
             userId,
@@ -178,7 +195,8 @@ class AuthService {
             Number(pet.age_years || pet.edadAnos || 2),
             pet.microchip_id || pet.microchipId || null,
             pet.color_coat || pet.colorManto || 'Variado',
-            Array.isArray(pet.alergias) ? pet.alergias.join(', ') : (pet.allergies_text || pet.alergias || null)
+            Array.isArray(pet.alergias) ? pet.alergias.join(', ') : (pet.allergies_text || pet.alergias || null),
+            photoUrl
           ]
         ).catch(() => {});
       }
@@ -189,6 +207,7 @@ class AuthService {
 
   async _loadUserProfileDetails(userId) {
     try {
+      await this._ensurePetPhotoColumn();
       const vaultRows = await query('SELECT * FROM user_vaults WHERE user_id = ?', [userId]).catch(() => []);
       const petRows = await query('SELECT * FROM user_pets WHERE user_id = ? ORDER BY created_at ASC', [userId]).catch(() => []);
       const vault = vaultRows?.[0] || null;
@@ -209,6 +228,8 @@ class AuthService {
               edadAnos: Number(primaryPet.age_years || 2),
               microchipId: primaryPet.microchip_id || '',
               colorManto: primaryPet.color_coat || 'Variado',
+              foto: primaryPet.photo_url || null,
+              photoUrl: primaryPet.photo_url || null,
               alergias: primaryPet.allergies_text
                 ? String(primaryPet.allergies_text).split(',').map((s) => s.trim()).filter(Boolean)
                 : []

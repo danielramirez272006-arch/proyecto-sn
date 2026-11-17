@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CarnetDigital } from '../components/CarnetDigital';
+import { SelectorFotoMascota } from '../components/SelectorFotoMascota';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { PageWrapper } from '../components/PageWrapper';
@@ -52,6 +53,7 @@ export function Acceso() {
   const [razaPerro, setRazaPerro] = useState('');
   const [pesoPerro, setPesoPerro] = useState('');
   const [microchipPerro, setMicrochipPerro] = useState('');
+  const [fotoPerro, setFotoPerro] = useState(null);
 
   const [errores, setErrores] = useState({});
   const [errorBackend, setErrorBackend] = useState('');
@@ -146,7 +148,8 @@ export function Acceso() {
             especie: 'Canino',
             raza: razaPerro.trim() || 'Mestizo',
             pesoKg: pesoPerro ? Number(pesoPerro) : 15,
-            microchipId: microchipPerro.trim() || ''
+            microchipId: microchipPerro.trim() || '',
+            foto: fotoPerro
           }
         : null;
 
@@ -200,6 +203,7 @@ export function Acceso() {
           raza: incluirMascota ? razaPerro || 'Raza / Especie' : 'Perfil Personal',
           pesoKg: incluirMascota && pesoPerro ? Number(pesoPerro) : 15,
           microchipId: microchipPerro || 'CRC-PENDIENTE',
+          foto: incluirMascota ? fotoPerro : null,
           tutor: {
             ...mascota.tutor,
             nombre: nombreUsuario || 'Nuevo Usuario GoToX',
@@ -546,6 +550,12 @@ export function Acceso() {
                             placeholder="CRC-756-000-001"
                           />
                         </div>
+
+                        <SelectorFotoMascota
+                          valor={fotoPerro}
+                          onChange={setFotoPerro}
+                          nombreMascota={nombrePerro || 'tu perro'}
+                        />
                       </div>
                     ) : (
                       <p className="text-xs text-slate-500 dark:text-slate-400">

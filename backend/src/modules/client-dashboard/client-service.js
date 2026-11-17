@@ -6,6 +6,14 @@ class ClientDashboardService {
     this.vaults = new Map();
   }
 
+  async _ensurePetPhotoColumn() {
+    if (this._photoColChecked) return;
+    try {
+      await execute('ALTER TABLE user_pets ADD COLUMN photo_url TEXT').catch(() => {});
+    } catch (_) {}
+    this._photoColChecked = true;
+  }
+
   async getVault(userId) {
     let userRecord = null;
     let vaultRow = null;
@@ -14,6 +22,7 @@ class ClientDashboardService {
     let realBadges = [];
 
     try {
+      await this._ensurePetPhotoColumn();
       const userRows = await query('SELECT id, name, email, role, created_at FROM users WHERE id = ?', [userId]);
       if (userRows && userRows.length > 0) {
         userRecord = userRows[0];
@@ -75,6 +84,8 @@ class ClientDashboardService {
       edadAnos: Number(p.age_years || 2),
       microchipId: p.microchip_id || '',
       colorManto: p.color_coat || 'Variado',
+      foto: p.photo_url || null,
+      photoUrl: p.photo_url || null,
       alergias: p.allergies_text
         ? String(p.allergies_text).split(',').map((s) => s.trim()).filter(Boolean)
         : []
@@ -171,16 +182,20 @@ class ClientDashboardService {
       // Si viene información de mascota, guardarla o actualizarla
       const incomingPet = updates.pet;
       if (incomingPet && (incomingPet.nombre || incomingPet.name)) {
+        await this._ensurePetPhotoColumn();
         const petName = String(incomingPet.nombre || incomingPet.name).trim();
-        const existingPets = await query('SELECT id FROM user_pets WHERE user_id = ? ORDER BY created_at ASC', [userId]).catch(() => []);
+        const existingPets = await query('SELECT id, photo_url FROM user_pets WHERE user_id = ? ORDER BY created_at ASC', [userId]).catch(() => []);
         const allergiesStr = Array.isArray(incomingPet.alergias)
           ? incomingPet.alergias.join(', ')
           : (incomingPet.allergies_text || incomingPet.alergias || null);
+        const hasIncomingPhoto = incomingPet.foto !== undefined || incomingPet.photoUrl !== undefined || incomingPet.photo_url !== undefined;
+        const incomingPhoto = incomingPet.foto ?? incomingPet.photoUrl ?? incomingPet.photo_url ?? null;
 
         if (existingPets && existingPets.length > 0) {
+          const finalPhoto = hasIncomingPhoto ? incomingPhoto : (existingPets[0].photo_url || null);
           await execute(
             `UPDATE user_pets
-             SET name = ?, species = ?, breed = ?, weight_kg = ?, age_years = ?, microchip_id = ?, color_coat = ?, allergies_text = ?, updated_at = CURRENT_TIMESTAMP
+             SET name = ?, species = ?, breed = ?, weight_kg = ?, age_years = ?, microchip_id = ?, color_coat = ?, allergies_text = ?, photo_url = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?`,
             [
               petName,
@@ -191,14 +206,15 @@ class ClientDashboardService {
               incomingPet.microchipId || incomingPet.microchip_id || null,
               incomingPet.colorManto || incomingPet.color_coat || 'Variado',
               allergiesStr,
+              finalPhoto,
               existingPets[0].id
             ]
           );
         } else {
           const petId = `pet_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
           await execute(
-            `INSERT INTO user_pets (id, user_id, name, species, breed, weight_kg, age_years, microchip_id, color_coat, allergies_text)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO user_pets (id, user_id, name, species, breed, weight_kg, age_years, microchip_id, color_coat, allergies_text, photo_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               petId,
               userId,
@@ -209,7 +225,8 @@ class ClientDashboardService {
               Number(incomingPet.edadAnos || incomingPet.age_years || 2),
               incomingPet.microchipId || incomingPet.microchip_id || null,
               incomingPet.colorManto || incomingPet.color_coat || 'Variado',
-              allergiesStr
+              allergiesStr,
+              incomingPhoto
             ]
           );
         }

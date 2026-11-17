@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS user_pets (
     microchip_id VARCHAR(120) NULL,
     color_coat VARCHAR(80) NULL,
     allergies_text TEXT NULL,
+    photo_url TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

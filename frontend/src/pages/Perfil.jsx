@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { CarnetDigital } from '../components/CarnetDigital';
 import { QrCollar } from '../components/QrCollar';
+import { SelectorFotoMascota } from '../components/SelectorFotoMascota';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -80,6 +81,7 @@ export function Perfil() {
     edadAnos: mascota?.edadAnos > 0 ? String(mascota.edadAnos) : '',
     microchipId: mascota?.microchipId && mascota.microchipId !== 'En trámite' ? mascota.microchipId : '',
     colorManto: mascota?.colorManto || '',
+    foto: mascota?.foto || mascota?.photoUrl || null,
     alergias: Array.isArray(mascota?.alergias) ? mascota.alergias.join(', ') : ''
   });
 
@@ -130,6 +132,7 @@ export function Perfil() {
         edadAnos: mascota.edadAnos > 0 ? String(mascota.edadAnos) : '',
         microchipId: mascota.microchipId && mascota.microchipId !== 'En trámite' ? mascota.microchipId : '',
         colorManto: mascota.colorManto || '',
+        foto: mascota.foto || mascota.photoUrl || null,
         alergias: Array.isArray(mascota.alergias) ? mascota.alergias.join(', ') : ''
       });
     }
@@ -163,6 +166,7 @@ export function Perfil() {
               edadAnos: formMascota.edadAnos ? Number(formMascota.edadAnos) : 2,
               microchipId: formMascota.microchipId.trim(),
               colorManto: formMascota.colorManto.trim() || 'Variado',
+              foto: formMascota.foto || null,
               alergias: formMascota.alergias
                 .split(',')
                 .map((s) => s.trim())
@@ -214,6 +218,8 @@ export function Perfil() {
     edadAnos: formMascota.edadAnos ? Number(formMascota.edadAnos) : 2,
     microchipId: formMascota.microchipId || 'En trámite',
     colorManto: formMascota.colorManto || 'Variado',
+    foto: formMascota.foto || null,
+    photoUrl: formMascota.foto || null,
     tutor: {
       ...mascota?.tutor,
       nombre: perfilUsuario.nombre,
@@ -685,6 +691,12 @@ export function Perfil() {
                           Editar Datos de Mi Mascota
                         </h3>
                         <form onSubmit={handleGuardarCambios} className="space-y-4 text-xs">
+                          <SelectorFotoMascota
+                            valor={formMascota.foto}
+                            onChange={(foto) => setFormMascota({ ...formMascota, foto })}
+                            nombreMascota={formMascota.nombre || 'tu perro'}
+                          />
+
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Nombre de la Mascota</label>

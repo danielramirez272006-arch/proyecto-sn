@@ -22,6 +22,8 @@ const SESION_DEFECTO = {
     raza: 'Sin especificar',
     pesoKg: 0,
     microchipId: '',
+    foto: null,
+    photoUrl: null,
     tutor: {
       ...MASCOTA_ACTIVA_DEFECTO.tutor,
       nombre: '',
@@ -64,6 +66,8 @@ function construirMascotaParaUsuario(petData, user) {
     };
   }
 
+  const fotoUrl = petData.foto || petData.photoUrl || petData.photo_url || petData.imagen || null;
+
   return {
     ...MASCOTA_ACTIVA_DEFECTO,
     id: petData.id || `PET-CR-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -74,7 +78,13 @@ function construirMascotaParaUsuario(petData, user) {
     edadAnos: Number(petData.edadAnos ?? petData.age_years ?? 2),
     microchipId: petData.microchipId || petData.microchip_id || 'En trámite',
     colorManto: petData.colorManto || petData.color_coat || 'Variado',
-    alergias: Array.isArray(petData.alergias) ? petData.alergias : [],
+    foto: fotoUrl,
+    photoUrl: fotoUrl,
+    alergias: Array.isArray(petData.alergias)
+      ? petData.alergias
+      : (typeof petData.alergias === 'string' && petData.alergias
+          ? petData.alergias.split(',').map((s) => s.trim()).filter(Boolean)
+          : []),
     tutor: baseTutor
   };
 }

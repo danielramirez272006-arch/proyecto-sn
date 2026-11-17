@@ -1050,7 +1050,8 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
           especie: 'Canino',
           raza: 'Beagle',
           pesoKg: 13.5,
-          microchipId: 'CRC-999-MAX-01'
+          microchipId: 'CRC-999-MAX-01',
+          foto: 'data:image/jpeg;base64,/9j/4AAQSkZJRg=='
         }
       }
     });
@@ -1058,6 +1059,7 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(clientRegRes.body.data.user.role, 'client');
     assert.equal(clientRegRes.body.data.user.pet.nombre, 'Max');
     assert.equal(clientRegRes.body.data.user.pet.raza, 'Beagle');
+    assert.equal(clientRegRes.body.data.user.pet.foto, 'data:image/jpeg;base64,/9j/4AAQSkZJRg==');
 
     const clientToken = clientRegRes.body.data.token;
 
@@ -1068,17 +1070,24 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(vaultGetRes.status, 200);
     assert.equal(vaultGetRes.body.data.user.name, 'Laura Jiménez');
     assert.equal(vaultGetRes.body.data.pet.nombre, 'Max');
+    assert.equal(vaultGetRes.body.data.pet.foto, 'data:image/jpeg;base64,/9j/4AAQSkZJRg==');
 
     const vaultUpdateRes = await executeMockRequest('POST', '/api/client/vault', {
       headers: { Authorization: `Bearer ${clientToken}` },
       body: {
         zone: 'Santa Ana, San José',
-        pet: { nombre: 'Max Jr', raza: 'Beagle Tricolor', pesoKg: 14.2 }
+        pet: {
+          nombre: 'Max Jr',
+          raza: 'Beagle Tricolor',
+          pesoKg: 14.2,
+          foto: 'https://ejemplo.cr/max-jr.jpg'
+        }
       }
     });
     assert.equal(vaultUpdateRes.status, 200);
     assert.equal(vaultUpdateRes.body.data.user.zone, 'Santa Ana, San José');
     assert.equal(vaultUpdateRes.body.data.pet.nombre, 'Max Jr');
+    assert.equal(vaultUpdateRes.body.data.pet.foto, 'https://ejemplo.cr/max-jr.jpg');
 
     // 4. Usuario normal NO tiene acceso a rutas administrativas (403 Forbidden)
     const forbiddenUsersRes = await executeMockRequest('GET', '/api/admin/users', {

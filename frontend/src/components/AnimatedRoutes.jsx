@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { LayoutPublico } from '../layouts/LayoutPublico';
+import { RutaPrivada } from './RutaPrivada';
 import { Home } from '../pages/Home';
 import { ExplorarPage } from '../pages/ExplorarPage';
 import { MisPlanesPage } from '../pages/MisPlanesPage';
@@ -25,23 +26,68 @@ export function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Rutas Públicas de GoToX */}
+        {/* Rutas de GoToX */}
         <Route element={<LayoutPublico />}>
+          {/* Públicas: visibles con o sin sesión */}
           <Route path="/" element={<Home />} />
-          <Route path="/explorar" element={<ExplorarPage />} />
-          <Route path="/mis-planes" element={<MisPlanesPage />} />
-          <Route path="/favoritos" element={<FavoritosPage />} />
-          <Route path="/mi-mascota" element={<MiMascotaPage />} />
           <Route path="/mapa" element={<MapaPage />} />
           <Route path="/terrazas" element={<TerrazasPage />} />
           <Route path="/copiloto" element={<CopilotoPage />} />
           <Route path="/nosotros" element={<Nosotros />} />
           <Route path="/acceso" element={<Acceso />} />
-          <Route path="/perfil" element={<Perfil />} />
+
+          {/* Exclusivas para usuarios con sesión iniciada */}
+          <Route
+            path="/explorar"
+            element={
+              <RutaPrivada modulo="Explorar Catálogo">
+                <ExplorarPage />
+              </RutaPrivada>
+            }
+          />
+          <Route
+            path="/mis-planes"
+            element={
+              <RutaPrivada modulo="Mis Planes">
+                <MisPlanesPage />
+              </RutaPrivada>
+            }
+          />
+          <Route
+            path="/favoritos"
+            element={
+              <RutaPrivada modulo="Mis Favoritos">
+                <FavoritosPage />
+              </RutaPrivada>
+            }
+          />
+          <Route
+            path="/mi-mascota"
+            element={
+              <RutaPrivada modulo="Mi Mascota">
+                <MiMascotaPage />
+              </RutaPrivada>
+            }
+          />
+          <Route
+            path="/perfil"
+            element={
+              <RutaPrivada modulo="Bóveda Pet">
+                <Perfil />
+              </RutaPrivada>
+            }
+          />
         </Route>
 
-        {/* Centro de Mando IA */}
-        <Route path="/panel" element={<Panel />} />
+        {/* Centro de Mando IA (exclusivo con sesión) */}
+        <Route
+          path="/panel"
+          element={
+            <RutaPrivada modulo="Centro de Mando IA">
+              <Panel />
+            </RutaPrivada>
+          }
+        />
 
         {/* Redirección por defecto */}
         <Route path="*" element={<Navigate to="/" replace />} />

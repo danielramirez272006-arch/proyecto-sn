@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { CarnetDigital } from '../components/CarnetDigital';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
@@ -22,6 +22,9 @@ import {
 
 export function Acceso() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const rutaDestino = location.state?.from || '/panel';
+  const moduloSolicitado = location.state?.modulo || null;
   const { iniciarSesion, loginConBackend, registrarConBackend, mascota, actualizarMascota } = useSesion();
   const telemetria = useTelemetria();
   const { tema, esClaro, esMorado, esOscuro } = useTema();
@@ -84,7 +87,7 @@ export function Acceso() {
     setExitoMensaje('¡Sesión autorizada en GoToX Pet OS!');
     setTimeout(() => {
       setCargando(false);
-      navigate('/panel');
+      navigate(rutaDestino);
     }, 500);
   };
 
@@ -114,9 +117,21 @@ export function Acceso() {
               </h1>
               <p className="text-sm sm:text-base text-slate-600 dark:text-[#94A3B8] font-sans leading-relaxed">
                 {modo === 'login'
-                  ? 'Inicia sesión para gestionar el carnet médico digital, el radar de terrazas pet-friendly y las alertas térmicas en tiempo real.'
+                  ? 'Inicia sesión para desbloquear Explorar, Mis Planes, Favoritos, Mi Mascota, el carnet médico digital y las alertas térmicas en tiempo real.'
                   : 'Registra los datos biométricos de tu mascota para activar el Copiloto Bruno y la medalla QR.'}
               </p>
+              {moduloSolicitado && (
+                <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                  esClaro
+                    ? 'bg-[#FDF2F4] border-[#F9E2E8] text-[#501228]'
+                    : 'bg-[#55152D]/30 border-[#F27B91]/30 text-[#F27B91]'
+                }`}>
+                  <Lock className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    Inicia sesión para acceder a <strong>{moduloSolicitado}</strong>.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Alternador de Modo (Segmented Control Elegante) */}
@@ -182,7 +197,7 @@ export function Acceso() {
                     setCorreo('mariana.rojas@gotox.cr');
                     setNombreTutor('Mariana Rojas');
                     iniciarSesion('mariana.rojas@gotox.cr', 'Mariana Rojas');
-                    navigate('/panel');
+                    navigate(rutaDestino);
                   }}
                   className={`flex items-center justify-between p-3 rounded-xl border text-xs font-semibold transition-all shadow-2xs group ${
                     esClaro
@@ -204,7 +219,7 @@ export function Acceso() {
                     setCorreo('invitado.gam@gotox.cr');
                     setNombreTutor('Tutor Invitado');
                     iniciarSesion('invitado.gam@gotox.cr', 'Tutor Invitado');
-                    navigate('/panel');
+                    navigate(rutaDestino);
                   }}
                   className={`flex items-center justify-between p-3 rounded-xl border text-xs font-semibold transition-all shadow-2xs group ${
                     esClaro

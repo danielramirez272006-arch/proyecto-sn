@@ -40,10 +40,14 @@ export function Sidebar() {
 
   const enlacesNavegacion = [
     { nombre: 'Inicio', ruta: '/', icon: Home },
-    { nombre: 'Explorar', ruta: '/explorar', icon: Compass },
-    { nombre: 'Mis Planes', ruta: '/mis-planes', icon: Calendar },
-    { nombre: 'Favoritos', ruta: '/favoritos', icon: Heart },
-    { nombre: 'Mi Mascota', ruta: '/mi-mascota', icon: Dog },
+    ...(isLoggedIn
+      ? [
+          { nombre: 'Explorar', ruta: '/explorar', icon: Compass },
+          { nombre: 'Mis Planes', ruta: '/mis-planes', icon: Calendar },
+          { nombre: 'Favoritos', ruta: '/favoritos', icon: Heart },
+          { nombre: 'Mi Mascota', ruta: '/mi-mascota', icon: Dog }
+        ]
+      : []),
     { nombre: 'Mapa Interactivo', ruta: '/mapa', icon: Map, badge: 'GAM' },
     { nombre: 'Terrazas Verificadas', ruta: '/terrazas', icon: Coffee },
     { nombre: 'Copiloto Bruno', ruta: '/copiloto', icon: Sparkles },

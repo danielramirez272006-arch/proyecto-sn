@@ -40,6 +40,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/mapa" className="hover:text-[#501228] transition-colors">
+                  Mapa Interactivo GAM
+                </Link>
+              </li>
+              <li>
                 <Link to="/terrazas" className="hover:text-[#501228] transition-colors">
                   Radar de Terrazas Verificadas
                 </Link>
@@ -50,7 +55,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/perfil" className="hover:text-[#501228] transition-colors">
+                <Link to={isLoggedIn ? "/perfil" : "/acceso"} className="hover:text-[#501228] transition-colors">
                   Bóveda Pet & Pasaporte
                 </Link>
               </li>

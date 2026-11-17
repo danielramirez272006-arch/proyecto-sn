@@ -1374,3 +1374,40 @@
   --gxw-bg: #090D14;
   --gxw-scrim: rgba(9, 13, 20, .52);
 }
+
+/* El buscador sigue disponible mientras se reproduce un video. */
+.gxw.has-player .gxw-chat {
+  padding: 8px 12px;
+  gap: 6px;
+}
+
+.gxw.has-player .gxw-chat__title {
+  font-size: clamp(14px, 1.4vw, 16px);
+}
+
+.gxw.has-player .gxw-chat__form {
+  flex-direction: row;
+}
+
+.gxw.has-player .gxw-chat__input,
+.gxw.has-player .gxw-chat__btn {
+  min-height: 44px;
+  padding: 6px 10px;
+}
+
+.gxw.has-player .gxw-chat__sugerencias {
+  display: none;
+}
+
+.gxw.has-player .gxw-chat__log {
+  max-height: 80px;
+  padding-top: 6px;
+}
+
+.gxw .gxw-chat :is(.gxw-chat__btn, .gxw-chat__ver, .gxw-chat__msg.is-user) {
+  color: var(--gxw-chat-on-accent, #fff);
+}
+
+:root:is([data-tema="oscuro"], [data-tema="morado"]) .gxw {
+  --gxw-chat-on-accent: #2b0714;
+}

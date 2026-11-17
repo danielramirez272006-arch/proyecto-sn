@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { checkHealth, query } = require('../config/database');
-const { success } = require('../utils/http-response');
+const { success, badRequest } = require('../utils/http-response');
 const deepSeekClient = require('../config/deepseek-config');
 const geminiClient = require('../config/gemini-config');
 const supabaseClient = require('../config/supabase-config');
@@ -164,6 +164,23 @@ router.get('/places/smart-search', async (req, res, next) => {
     });
     return success(res, results, { total: results.length });
   } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/places/nearby-real', async (req, res, next) => {
+  try {
+    const { lat, lng, radius, limit } = req.query;
+    if (lat === undefined || lng === undefined) {
+      return badRequest(res, 'lat y lng son requeridos para consultar restaurantes cercanos');
+    }
+    const overpassService = require('../../modules/places/overpass-places-service');
+    const result = await overpassService.findNearbyRestaurants({ lat, lng, radius, limit });
+    return success(res, result);
+  } catch (err) {
+    if (err.message === 'INVALID_COORDINATES') {
+      return badRequest(res, 'Coordenadas lat/lng inválidas');
+    }
     next(err);
   }
 });

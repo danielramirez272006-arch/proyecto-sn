@@ -140,6 +140,37 @@ class AdminController {
       next(err);
     }
   }
+
+  async listUsers(req, res, next) {
+    try {
+      const { role, search } = req.query || {};
+      const users = await adminService.listUsers({ role, search });
+      return success(res, { users, total: users.length });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async updateUserRole(req, res, next) {
+    try {
+      const { role } = req.body || {};
+      if (!role) return badRequest(res, 'El campo role es requerido');
+
+      const updated = await adminService.updateUserRole(req.params.id, role, req.user?.id || null, req);
+      return success(res, { user: updated });
+    } catch (err) {
+      if (err.message === 'INVALID_ROLE') {
+        return badRequest(res, 'Rol inválido. Roles permitidos: admin, organizer, merchant, business_owner, client');
+      }
+      if (err.message === 'CANNOT_DEMOTE_SELF') {
+        return badRequest(res, 'No puedes quitarte el rol admin a tu propia sesión');
+      }
+      if (err.message === 'USER_NOT_FOUND') {
+        return notFound(res, 'Usuario no encontrado');
+      }
+      next(err);
+    }
+  }
 }
 
 module.exports = new AdminController();

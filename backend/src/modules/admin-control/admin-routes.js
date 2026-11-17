@@ -37,4 +37,8 @@ router.get('/telemetry', (req, res) => adminController.getCopilotTelemetry(req, 
 router.post('/ai/query', (req, res, next) => adminController.runAdminAiQuery(req, res, next));
 router.get('/audit-logs', (req, res, next) => adminController.getAuditLogs(req, res, next));
 
+// Gestión administrativa de usuarios y roles
+router.get('/users', (req, res, next) => adminController.listUsers(req, res, next));
+router.patch('/users/:id/role', (req, res, next) => adminController.updateUserRole(req, res, next));
+
 module.exports = router;

@@ -16,10 +16,15 @@ const PERMISSIONS = {
 const ROLE_PERMISSIONS = {
   admin: Object.values(PERMISSIONS),
   merchant: [PERMISSIONS.PLANS_CREATE, PERMISSIONS.PLANS_VOTE],
+  business_owner: [PERMISSIONS.PLANS_CREATE, PERMISSIONS.PLANS_VOTE],
   organizer: [PERMISSIONS.PLANS_CREATE, PERMISSIONS.PLANS_VOTE, PERMISSIONS.PLANS_CONFIRM],
   client: [PERMISSIONS.PLANS_CREATE, PERMISSIONS.PLANS_VOTE],
   guest: [PERMISSIONS.PLANS_VOTE]
 };
+
+function getPermissionsForRole(role = 'client') {
+  return [...(ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.client || [])];
+}
 
 function verifyToken(token) {
   try {
@@ -87,6 +92,7 @@ function requirePermission(requiredPermission) {
 module.exports = {
   PERMISSIONS,
   ROLE_PERMISSIONS,
+  getPermissionsForRole,
   verifyToken,
   authenticateOptional,
   requireAuth,

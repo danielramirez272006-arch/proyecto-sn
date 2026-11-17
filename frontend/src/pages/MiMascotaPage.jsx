@@ -17,7 +17,8 @@ import {
   PlusCircle,
   Clock,
   Compass,
-  ArrowRight
+  ArrowRight,
+  MapPin
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

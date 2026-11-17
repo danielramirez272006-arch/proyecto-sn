@@ -110,7 +110,7 @@ export function TerrazasPage() {
       {/* ============================================================
           HERO EDITORIAL PROTAGONISTA DE TERRAZAS VERIFICADAS
           ============================================================ */}
-      <section className="relative overflow-hidden pt-8 pb-14 md:py-16 border-b border-white/5 bg-gradient-to-b from-[#111827] via-[#090D14] to-[#090D14]">
+      <section className="gotox-hero-section relative overflow-hidden pt-8 pb-14 md:py-16 border-b border-white/5 bg-gradient-to-b from-[#111827] via-[#090D14] to-[#090D14]">
         {/* Efecto de resplandor ambiental */}
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#55152D]/20 rounded-full blur-3xl pointer-events-none" />
 

@@ -197,7 +197,7 @@ export function CopilotoPage() {
       {/* ============================================================
           ENCABEZADO DE IDENTIDAD VISUAL DE BRUNO
           ============================================================ */}
-      <section className="relative overflow-hidden pt-8 pb-10 border-b border-white/5 bg-gradient-to-b from-[#111827] via-[#090D14] to-[#090D14]">
+      <section className="gotox-hero-section relative overflow-hidden pt-8 pb-10 border-b border-white/5 bg-gradient-to-b from-[#111827] via-[#090D14] to-[#090D14]">
         {/* Resplandor ambiental suave */}
         <div className="absolute top-0 left-1/3 w-80 h-80 bg-[#F27B91]/15 rounded-full blur-3xl pointer-events-none" />
 

@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
+const env = require('../../shared/config/env-config');
 const { query, execute } = require('../../shared/config/database');
-const { generateToken, generateRefreshToken, verifyToken } = require('../../shared/middlewares/auth-role-guard');
+const { generateToken, generateRefreshToken, verifyToken, getPermissionsForRole } = require('../../shared/middlewares/auth-role-guard');
 const auditService = require('../../shared/audit/audit-service');
 
 class AuthService {
@@ -91,6 +92,7 @@ class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        permissions: getPermissionsForRole(user.role),
       }
     };
   }
@@ -133,7 +135,7 @@ class AuthService {
       token,
       refresh_token: refreshToken,
       expires_in: 7200,
-      user: { id, name: cleanName, email: normalizedEmail, role: safeRole }
+      user: { id, name: cleanName, email: normalizedEmail, role: safeRole, permissions: getPermissionsForRole(safeRole) }
     };
   }
 
@@ -182,7 +184,10 @@ class AuthService {
       token: newAccessToken,
       refresh_token: newRefreshToken,
       expires_in: 7200,
-      user: tokenPayload
+      user: {
+        ...tokenPayload,
+        permissions: getPermissionsForRole(tokenPayload.role),
+      }
     };
   }
 
@@ -224,10 +229,32 @@ class AuthService {
       const rawToken = authHeader.replace(/^Bearer\s+/, '');
       const decoded = verifyToken(rawToken);
       if (decoded && !decoded.is_refresh) {
+        let userInfo = {
+          id: decoded.id,
+          name: decoded.name,
+          email: decoded.email,
+          role: decoded.role || 'client',
+        };
+
+        try {
+          const rows = await query(
+            'SELECT id, name, email, role, gps_trust_score FROM users WHERE id = ?',
+            [decoded.id]
+          );
+          if (rows && rows.length > 0) {
+            userInfo = rows[0];
+          }
+        } catch (dbErr) {
+          // Mantener datos del JWT si la consulta no aplica en este contexto
+        }
+
         return {
           authenticated: true,
           type: 'registered_user',
-          user: decoded
+          user: {
+            ...userInfo,
+            permissions: getPermissionsForRole(userInfo.role),
+          }
         };
       }
     }
@@ -239,7 +266,8 @@ class AuthService {
         user: {
           id: guestToken,
           name: 'Invitado Temporal',
-          role: 'guest'
+          role: 'guest',
+          permissions: getPermissionsForRole('guest'),
         }
       };
     }
@@ -247,8 +275,49 @@ class AuthService {
     return {
       authenticated: false,
       type: 'anonymous',
-      user: null
+      user: null,
+      permissions: [],
     };
+  }
+
+  async ensureBootstrapAdmin({
+    email = env.adminBootstrap.email,
+    password = env.adminBootstrap.password,
+    name = env.adminBootstrap.name,
+  } = {}) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const rawPassword = String(password || '');
+    const cleanName = String(name || 'Admin Sistema GoToX').trim();
+
+    if (!normalizedEmail || !rawPassword) {
+      return { skipped: true, reason: 'ADMIN_BOOTSTRAP_NOT_CONFIGURED' };
+    }
+
+    const existing = await query('SELECT id, role, password_hash FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
+    const pbkdf2Hash = this.hashPassword(rawPassword);
+
+    if (!existing || existing.length === 0) {
+      const id = `usr_admin_${crypto.randomBytes(4).toString('hex')}`;
+      await execute(
+        `INSERT INTO users (id, name, email, password_hash, role, gps_trust_score)
+         VALUES (?, ?, ?, ?, 'admin', 100)`,
+        [id, cleanName, normalizedEmail, pbkdf2Hash]
+      );
+      return { created: true, updated: false, id, email: normalizedEmail, role: 'admin' };
+    }
+
+    const current = existing[0];
+    const hasPlaceholderHash = String(current.password_hash || '').startsWith('$2b$10$ephemeral_hash_');
+
+    if (current.role !== 'admin' || hasPlaceholderHash) {
+      await execute(
+        `UPDATE users SET role = 'admin', password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [hasPlaceholderHash ? pbkdf2Hash : current.password_hash, current.id]
+      );
+      return { created: false, updated: true, id: current.id, email: normalizedEmail, role: 'admin' };
+    }
+
+    return { created: false, updated: false, id: current.id, email: normalizedEmail, role: 'admin' };
   }
 }
 

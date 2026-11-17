@@ -5,7 +5,7 @@ import { Footer } from '../components/Footer';
 
 export function LayoutPublico() {
   return (
-    <div className="tema-publico min-h-screen flex flex-col md:flex-row bg-[#090D14] text-[#E8EDF5] transition-colors duration-200">
+    <div className="tema-publico gotox-layout-publico min-h-screen flex flex-col md:flex-row transition-colors duration-200">
       {/* Menú lateral vertical fijo (Sidebar SaaS moderno) */}
       <Sidebar />
 

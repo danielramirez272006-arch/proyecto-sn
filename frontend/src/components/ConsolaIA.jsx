@@ -115,17 +115,17 @@ export function ConsolaIA() {
   };
 
   return (
-    <Card className="border-slate-200/80 p-6 space-y-4 shadow-sm bg-gradient-to-b from-white to-[#FAF9FE]">
+    <Card className="consola-ia-card border-slate-200/80 dark:border-white/10 p-6 space-y-4 shadow-sm bg-white dark:bg-[#111827] text-slate-800 dark:text-[#E8EDF5]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-[#501228] flex items-center justify-center text-white">
             <Sparkles className="w-4 h-4 text-[#FDF2F4]" />
           </div>
           <div>
-            <h3 className="font-serif font-bold text-base text-[#111827]">
+            <h3 className="font-serif font-bold text-base text-[#111827] dark:text-white">
               Consola de Mando IA Urbana
             </h3>
-            <span className="text-[11px] text-slate-500">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
               Conectada en vivo con Google Gemini 3.5 Flash (Cliente) &bull; Telemetría GAM
             </span>
           </div>
@@ -140,7 +140,7 @@ export function ConsolaIA() {
             key={i}
             type="button"
             onClick={() => procesarConsulta(sug)}
-            className="text-xs px-3 py-1.5 rounded-full bg-white text-slate-700 border border-slate-200/90 hover:border-[#501228] hover:text-[#501228] transition-all shadow-2xs"
+            className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-[#162032] text-slate-700 dark:text-slate-200 border border-slate-200/90 dark:border-white/10 hover:border-[#501228] dark:hover:border-white/30 hover:text-[#501228] dark:hover:text-white transition-all shadow-2xs"
           >
             {sug}
           </button>
@@ -154,7 +154,7 @@ export function ConsolaIA() {
           value={consulta}
           onChange={(e) => setConsulta(e.target.value)}
           placeholder="Escribe tu consulta urbana (ej. ¿Hay espacio en Escalante para un Golden?)..."
-          className="w-full bg-white text-sm text-[#111827] rounded-xl border border-slate-200 pl-4 pr-12 py-3 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#501228]/20 focus:border-[#501228] transition-all"
+          className="w-full bg-white dark:bg-[#162032] text-sm text-[#111827] dark:text-white rounded-xl border border-slate-200 dark:border-white/10 pl-4 pr-12 py-3 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#501228]/20 dark:focus:ring-white/20 focus:border-[#501228] dark:focus:border-white/30 transition-all"
         />
         <button
           type="submit"
@@ -167,25 +167,25 @@ export function ConsolaIA() {
       </form>
 
       {/* Panel de Respuesta Sintética */}
-      <div className="mt-4 p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs space-y-2.5">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+      <div className="mt-4 p-4 rounded-xl bg-white dark:bg-[#162032] border border-slate-200/80 dark:border-white/10 shadow-2xs space-y-2.5">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
           <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4 text-[#501228]" />
-            <span className="font-semibold text-xs text-[#111827]">
+            <Bot className="w-4 h-4 text-[#501228] dark:text-[#F27B91]" />
+            <span className="font-semibold text-xs text-[#111827] dark:text-white">
               {cargando ? 'Analizando telemetría y cartografía...' : respuesta.titulo}
             </span>
           </div>
-          <span className="text-[11px] font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
+          <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
             {respuesta.kpi}
           </span>
         </div>
 
-        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
           {cargando ? 'Consultando sensores térmicos y niveles de aforo...' : respuesta.contenido}
         </p>
 
         {respuesta.accionSugerida && !cargando && (
-          <div className="pt-2 flex items-center gap-2 text-xs text-[#501228] bg-[#FDF2F4] p-2.5 rounded-lg border border-[#F9E2E8]">
+          <div className="pt-2 flex items-center gap-2 text-xs text-[#501228] dark:text-[#F27B91] bg-[#FDF2F4] dark:bg-[#55152D]/25 p-2.5 rounded-lg border border-[#F9E2E8] dark:border-[#55152D]/50">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span><strong>Recomendación del sistema:</strong> {respuesta.accionSugerida}</span>
           </div>

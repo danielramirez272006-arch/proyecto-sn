@@ -43,6 +43,11 @@ const env = {
   youtube: {
     apiKey: process.env.YOUTUBE_API_KEY || '',
   },
+  adminBootstrap: {
+    email: process.env.ADMIN_EMAIL || '',
+    password: process.env.ADMIN_PASSWORD || '',
+    name: process.env.ADMIN_NAME || 'Admin Sistema GoToX',
+  },
   webhook: {
     url: process.env.WEBHOOK_URL || '',
   },

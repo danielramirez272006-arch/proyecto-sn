@@ -167,6 +167,21 @@
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
+/* Neutralizar gradientes claros en modo oscuro */
+:root[data-tema='oscuro'] .from-white,
+:root[data-tema='oscuro'] .from-slate-50,
+:root[data-tema='oscuro'] .to-\[\#FAF9FE\] {
+  --tw-gradient-from: #111827 !important;
+  --tw-gradient-to: #0D131F !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+:root[data-tema='oscuro'] .consola-ia-card {
+  background-color: #111827 !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
 :root[data-tema='oscuro'] .bg-white,
 :root[data-tema='oscuro'] .bg-white\/95,
 :root[data-tema='oscuro'] .bg-white\/90,
@@ -177,14 +192,27 @@
 }
 
 :root[data-tema='oscuro'] .bg-slate-50,
+:root[data-tema='oscuro'] .bg-slate-50\/90,
+:root[data-tema='oscuro'] .bg-slate-50\/80,
 :root[data-tema='oscuro'] .bg-slate-100 {
   background-color: #162032 !important;
+}
+
+:root[data-tema='oscuro'] .bg-\[\#FDF2F4\] {
+  background-color: #162032 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+:root[data-tema='oscuro'] .border-\[\#F9E2E8\] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 :root[data-tema='oscuro'] .border-slate-100,
 :root[data-tema='oscuro'] .border-slate-200,
 :root[data-tema='oscuro'] .border-slate-200\/60,
-:root[data-tema='oscuro'] .border-slate-200\/80 {
+:root[data-tema='oscuro'] .border-slate-200\/70,
+:root[data-tema='oscuro'] .border-slate-200\/80,
+:root[data-tema='oscuro'] .border-slate-200\/90 {
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
@@ -192,6 +220,12 @@
 :root[data-tema='oscuro'] .text-slate-900,
 :root[data-tema='oscuro'] .text-slate-800 {
   color: #FFFFFF !important;
+}
+
+:root[data-tema='oscuro'] .text-\[\#501228\],
+:root[data-tema='oscuro'] .text-\[\#55152D\],
+:root[data-tema='oscuro'] .text-\[\#6E1E3A\] {
+  color: #F27B91 !important;
 }
 
 :root[data-tema='oscuro'] .text-slate-700,
@@ -202,6 +236,25 @@
 :root[data-tema='oscuro'] .text-slate-500,
 :root[data-tema='oscuro'] .text-slate-400 {
   color: #94A3B8 !important;
+}
+
+:root[data-tema='oscuro'] .btn-cerrar-sesion {
+  background-color: rgba(76, 5, 25, 0.3) !important;
+  color: #FDA4AF !important;
+  border-color: rgba(159, 18, 57, 0.4) !important;
+}
+
+:root[data-tema='oscuro'] .bg-emerald-50 {
+  background-color: rgba(6, 78, 59, 0.35) !important;
+  color: #6EE7B7 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+:root[data-tema='oscuro'] .bg-amber-50,
+:root[data-tema='oscuro'] .bg-amber-50\/70 {
+  background-color: rgba(120, 53, 15, 0.3) !important;
+  color: #FCD34D !important;
+  border-color: rgba(217, 119, 6, 0.3) !important;
 }
 
 :root[data-tema='oscuro'] input,
@@ -237,6 +290,21 @@
   border-color: rgba(242, 123, 145, 0.18) !important;
 }
 
+/* Neutralizar gradientes claros en modo vino */
+:root[data-tema='morado'] .from-white,
+:root[data-tema='morado'] .from-slate-50,
+:root[data-tema='morado'] .to-\[\#FAF9FE\] {
+  --tw-gradient-from: #1F0C18 !important;
+  --tw-gradient-to: #12070F !important;
+  --tw-gradient-stops: var(--tw-gradient-from), #180913 50%, var(--tw-gradient-to) !important;
+}
+
+:root[data-tema='morado'] .consola-ia-card {
+  background-color: #1A1017 !important;
+  background-image: none !important;
+  border-color: rgba(242, 123, 145, 0.18) !important;
+}
+
 :root[data-tema='morado'] .from-\[\#111827\],
 :root[data-tema='morado'] .from-\[\#090D14\] {
   --tw-gradient-from: #1F0C18 !important;
@@ -269,15 +337,29 @@
 }
 
 :root[data-tema='morado'] .bg-slate-50,
+:root[data-tema='morado'] .bg-slate-50\/90,
+:root[data-tema='morado'] .bg-slate-50\/80,
 :root[data-tema='morado'] .bg-slate-100,
 :root[data-tema='morado'] .bg-\[\#162032\] {
   background-color: #23121F !important;
   border-color: rgba(242, 123, 145, 0.18) !important;
 }
 
+:root[data-tema='morado'] .bg-\[\#FDF2F4\] {
+  background-color: #2D1222 !important;
+  border-color: rgba(242, 123, 145, 0.25) !important;
+}
+
+:root[data-tema='morado'] .border-\[\#F9E2E8\] {
+  border-color: rgba(242, 123, 145, 0.25) !important;
+}
+
 :root[data-tema='morado'] .border-slate-100,
 :root[data-tema='morado'] .border-slate-200,
 :root[data-tema='morado'] .border-slate-200\/60,
+:root[data-tema='morado'] .border-slate-200\/70,
+:root[data-tema='morado'] .border-slate-200\/80,
+:root[data-tema='morado'] .border-slate-200\/90,
 :root[data-tema='morado'] .border-white\/5,
 :root[data-tema='morado'] .border-white\/10,
 :root[data-tema='morado'] .border-white\/15 {
@@ -288,6 +370,13 @@
 :root[data-tema='morado'] .text-slate-900,
 :root[data-tema='morado'] .text-slate-800 {
   color: #FDF2F6 !important;
+}
+
+/* En modo vino, los textos en color de marca se convierten a rosa de acento para máximo contraste */
+:root[data-tema='morado'] .text-\[\#501228\],
+:root[data-tema='morado'] .text-\[\#55152D\],
+:root[data-tema='morado'] .text-\[\#6E1E3A\] {
+  color: #F27B91 !important;
 }
 
 :root[data-tema='morado'] .text-\[\#E8EDF5\],
@@ -305,6 +394,25 @@
 :root[data-tema='morado'] .text-slate-700,
 :root[data-tema='morado'] .text-slate-600 {
   color: #D8C3CC !important;
+}
+
+:root[data-tema='morado'] .btn-cerrar-sesion {
+  background-color: #2D0E19 !important;
+  color: #FDA4AF !important;
+  border-color: rgba(242, 123, 145, 0.3) !important;
+}
+
+:root[data-tema='morado'] .bg-emerald-50 {
+  background-color: rgba(6, 78, 59, 0.4) !important;
+  color: #A7F3D0 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+:root[data-tema='morado'] .bg-amber-50,
+:root[data-tema='morado'] .bg-amber-50\/70 {
+  background-color: #2A1418 !important;
+  color: #FDE68A !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
 }
 
 :root[data-tema='morado'] input,

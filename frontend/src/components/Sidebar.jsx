@@ -136,8 +136,8 @@ export function Sidebar() {
     botonCerrarSesion: esClaro
       ? 'text-rose-700 bg-rose-50 hover:bg-rose-100 border-rose-200'
       : esMorado
-      ? 'text-rose-300 bg-rose-950/40 hover:bg-rose-900/60 border-rose-800/50'
-      : 'text-rose-300 bg-rose-950/40 hover:bg-rose-900/60 border-rose-800/60',
+      ? 'text-rose-300 bg-[#2D0E19] hover:bg-[#3D1423] border-rose-800/40'
+      : 'text-rose-300 bg-rose-950/30 hover:bg-rose-900/50 border-rose-900/50',
 
     botonPrincipal: esClaro
       ? 'bg-[#501228] hover:bg-[#6E1E3A] text-white shadow-sm'

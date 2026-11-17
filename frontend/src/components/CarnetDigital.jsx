@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Heart, QrCode, Phone, AlertCircle, Award, Sparkles, Dog } from 'lucide-react';
 import { Badge } from './ui/Badge';
+import { useTema } from '../context/TemaContext';
 
 export function CarnetDigital({ mascota, interactivo = true }) {
+  const { esClaro, esMorado, esOscuro } = useTema();
   const [inclinacion, setInclinacion] = useState({ x: 0, y: 0 });
   const [volteado, setVolteado] = useState(false);
 
@@ -20,6 +22,54 @@ export function CarnetDigital({ mascota, interactivo = true }) {
     setInclinacion({ x: 0, y: 0 });
   };
 
+  const clasesCarnet = {
+    tarjeta: esClaro
+      ? 'bg-gradient-to-br from-white via-[#FCFAFE] to-[#F8F1F5] border-slate-200/90 text-slate-800'
+      : esMorado
+      ? 'bg-gradient-to-br from-[#1E0C17] via-[#160811] to-[#10050C] border-[#F27B91]/30 text-[#FDF2F6]'
+      : 'bg-gradient-to-br from-[#111827] via-[#131d2e] to-[#0d131f] border-white/10 text-[#E8EDF5]',
+
+    bordeInterno: esClaro
+      ? 'border-slate-200/60'
+      : esMorado
+      ? 'border-[#F27B91]/20'
+      : 'border-white/10',
+
+    marcaAgua: esClaro ? 'text-[#501228] opacity-5' : esMorado ? 'text-[#F27B91] opacity-10' : 'text-white opacity-5',
+
+    iconoHeader: esClaro ? 'bg-[#501228] text-white' : esMorado ? 'bg-[#55152D] text-white' : 'bg-[#1E293B] text-white',
+
+    subtituloHeader: esClaro ? 'text-[#501228]' : esMorado ? 'text-[#F27B91]' : 'text-slate-400',
+
+    titulo: esClaro ? 'text-[#111827]' : esMorado ? 'text-white' : 'text-white',
+
+    cajaDato: esClaro
+      ? 'bg-white/80 border-slate-200/60'
+      : esMorado
+      ? 'bg-[#24111E] border-[#F27B91]/20'
+      : 'bg-[#162032] border-white/10',
+
+    cajaMicrochip: esClaro
+      ? 'bg-slate-50/90 border-slate-200/70 text-[#111827]'
+      : esMorado
+      ? 'bg-[#24111E] border-[#F27B91]/25 text-[#FDF2F6]'
+      : 'bg-[#162032] border-white/10 text-[#E8EDF5]',
+
+    cajaPoliza: esClaro
+      ? 'bg-[#FDF2F4] border-[#F9E2E8]'
+      : esMorado
+      ? 'bg-[#2F1323] border-[#F27B91]/30'
+      : 'bg-[#162032] border-white/10',
+
+    cajaAlergias: esClaro
+      ? 'bg-amber-50/70 border-amber-200/50 text-amber-900'
+      : esMorado
+      ? 'bg-[#2B1410] border-amber-500/30 text-amber-200'
+      : 'bg-amber-950/25 border-amber-800/40 text-amber-300',
+
+    textoPie: esClaro ? 'text-slate-500' : esMorado ? 'text-[#D8C3CC]' : 'text-slate-400',
+  };
+
   return (
     <div className="perspective-1000 w-full max-w-md mx-auto select-none">
       <div
@@ -30,26 +80,26 @@ export function CarnetDigital({ mascota, interactivo = true }) {
           transform: `rotateX(${inclinacion.x}deg) rotateY(${inclinacion.y}deg)`,
           transition: 'transform 0.15s ease-out'
         }}
-        className={`carnet-digital-card relative w-full rounded-3xl p-6 shadow-xl border border-slate-200/90 dark:border-white/10 text-slate-800 dark:text-[#E8EDF5] transition-all duration-300 ${
+        className={`carnet-digital-card relative w-full rounded-3xl p-6 shadow-xl border transition-all duration-300 ${
           interactivo ? 'cursor-pointer hover:shadow-2xl' : ''
-        } bg-gradient-to-br from-white via-[#FCFAFE] to-[#F8F1F5] dark:from-[#111827] dark:via-[#131d2e] dark:to-[#0d131f]`}
+        } ${clasesCarnet.tarjeta}`}
       >
         {/* Marca de agua / textura de fondo */}
-        <div className="absolute top-0 right-0 p-8 opacity-5 dark:opacity-10 pointer-events-none">
-          <Dog className="w-48 h-48 text-[#501228] dark:text-[#F27B91]" />
+        <div className={`absolute top-0 right-0 p-8 pointer-events-none ${clasesCarnet.marcaAgua}`}>
+          <Dog className="w-48 h-48" />
         </div>
 
         {/* Encabezado del Carnet */}
-        <div className="flex items-start justify-between pb-4 border-b border-slate-200/60 dark:border-white/10 relative z-10">
+        <div className={`flex items-start justify-between pb-4 border-b relative z-10 ${clasesCarnet.bordeInterno}`}>
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#501228] dark:bg-[#55152D] flex items-center justify-center text-white shadow-md">
-              <Dog className="w-6 h-6 text-[#FDF2F4]" />
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-md ${clasesCarnet.iconoHeader}`}>
+              <Dog className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[10px] tracking-widest uppercase font-semibold text-[#501228] dark:text-[#F27B91] block">
+              <span className={`text-[10px] tracking-widest uppercase font-semibold block ${clasesCarnet.subtituloHeader}`}>
                 Bóveda Biométrica &bull; GAM
               </span>
-              <h3 className="font-serif font-black text-xl text-[#111827] dark:text-white">
+              <h3 className={`font-serif font-black text-xl ${clasesCarnet.titulo}`}>
                 {mascota.nombre}
               </h3>
             </div>
@@ -59,7 +109,7 @@ export function CarnetDigital({ mascota, interactivo = true }) {
             <Badge variant="burdeos" className="text-[10px] shadow-2xs">
               Pet-OS Verificado
             </Badge>
-            <span className="text-[9px] text-slate-400 dark:text-slate-400 block mt-1 tabular-nums">
+            <span className="text-[9px] opacity-60 block mt-1 tabular-nums">
               ID: {mascota.id.split('-').slice(-2).join('-')}
             </span>
           </div>
@@ -68,61 +118,61 @@ export function CarnetDigital({ mascota, interactivo = true }) {
         {/* Cuerpo del Carnet */}
         <div className="py-4 space-y-3.5 relative z-10 text-xs">
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/80 dark:bg-[#162032] p-2.5 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-2xs">
-              <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-400 block">Raza & Manto</span>
-              <p className="font-bold text-slate-800 dark:text-[#E8EDF5] text-xs truncate">{mascota.raza}</p>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">{mascota.colorManto}</span>
+            <div className={`p-2.5 rounded-xl border shadow-2xs ${clasesCarnet.cajaDato}`}>
+              <span className="text-[10px] uppercase font-semibold opacity-60 block">Raza & Manto</span>
+              <p className="font-bold text-xs truncate mt-0.5">{mascota.raza}</p>
+              <span className="text-[10px] opacity-75">{mascota.colorManto}</span>
             </div>
 
-            <div className="bg-white/80 dark:bg-[#162032] p-2.5 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-2xs">
-              <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-400 block">Biometría</span>
-              <p className="font-bold text-slate-800 dark:text-[#E8EDF5] text-xs">{mascota.pesoKg} kg &bull; {mascota.edadAnos} años</p>
-              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">Sangre: {mascota.grupoSanguineo}</span>
+            <div className={`p-2.5 rounded-xl border shadow-2xs ${clasesCarnet.cajaDato}`}>
+              <span className="text-[10px] uppercase font-semibold opacity-60 block">Biometría</span>
+              <p className="font-bold text-xs mt-0.5">{mascota.pesoKg} kg &bull; {mascota.edadAnos} años</p>
+              <span className="text-[10px] text-emerald-500 font-medium">Sangre: {mascota.grupoSanguineo}</span>
             </div>
           </div>
 
           {/* Microchip */}
-          <div className="bg-slate-50/90 dark:bg-[#162032] p-2.5 rounded-xl border border-slate-200/70 dark:border-white/10 flex items-center justify-between">
+          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${clasesCarnet.cajaMicrochip}`}>
             <div className="space-y-0.5">
-              <span className="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 block">Microchip Universal</span>
-              <span className="font-mono text-xs font-bold text-[#111827] dark:text-[#E8EDF5] tracking-wider">
+              <span className="text-[10px] uppercase font-semibold opacity-60 block">Microchip Universal</span>
+              <span className="font-mono text-xs font-bold tracking-wider">
                 {mascota.microchipId}
               </span>
             </div>
-            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <ShieldCheck className="w-5 h-5 text-emerald-500" />
           </div>
 
           {/* Póliza Médica */}
-          <div className="bg-[#FDF2F4] dark:bg-[#55152D]/20 p-3 rounded-xl border border-[#F9E2E8] dark:border-[#55152D]/40 space-y-1">
+          <div className={`p-3 rounded-xl border space-y-1 ${clasesCarnet.cajaPoliza}`}>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-[#501228] dark:text-[#F27B91] uppercase tracking-wide">
+              <span className={`text-[10px] font-bold uppercase tracking-wide ${esClaro ? 'text-[#501228]' : 'text-[#F27B91]'}`}>
                 {mascota.polizaMedica.aseguradora}
               </span>
-              <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded font-medium border border-transparent dark:border-emerald-800/40">
+              <span className="text-[10px] text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded font-medium border border-emerald-500/20">
                 Activa
               </span>
             </div>
-            <p className="text-[11px] text-[#6E1E3A] dark:text-[#E8EDF5]">
+            <p className="text-[11px] opacity-90">
               Póliza: <strong>{mascota.polizaMedica.numeroPoliza}</strong> &bull; Cobertura emergencias activa
             </p>
           </div>
 
           {/* Alergias / Alerta */}
-          <div className="carnet-alergias flex items-start gap-2 bg-amber-50/70 dark:bg-amber-950/25 p-2 rounded-xl border border-amber-200/50 dark:border-amber-700/40 text-[11px] text-amber-900 dark:text-amber-200">
-            <AlertCircle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className={`carnet-alergias flex items-start gap-2 p-2 rounded-xl border text-[11px] ${clasesCarnet.cajaAlergias}`}>
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 opacity-80" />
             <div>
-              <span className="font-semibold text-amber-900 dark:text-amber-300">Alergias registradas:</span> {mascota.alergias.join(', ')}.
+              <span className="font-semibold">Alergias registradas:</span> {mascota.alergias.join(', ')}.
             </div>
           </div>
         </div>
 
         {/* Footer del Carnet */}
-        <div className="pt-3 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 relative z-10">
+        <div className={`pt-3 border-t flex items-center justify-between text-[11px] relative z-10 ${clasesCarnet.bordeInterno} ${clasesCarnet.textoPie}`}>
           <div className="flex items-center gap-1.5">
-            <Phone className="w-3.5 h-3.5 text-[#501228] dark:text-[#F27B91]" />
+            <Phone className={`w-3.5 h-3.5 ${esClaro ? 'text-[#501228]' : 'text-[#F27B91]'}`} />
             <span>Tutor: <strong>{mascota.tutor.telefono}</strong></span>
           </div>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+          <span className="text-[10px] opacity-60">
             {interactivo ? 'Haz click para alternar' : 'Válido en red GAM'}
           </span>
         </div>

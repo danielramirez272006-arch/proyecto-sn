@@ -10,6 +10,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Tabla, Tr, Td } from '../components/ui/Tabla';
+import { ModeracionFotosPanel } from '../features/admin/ModeracionFotosPanel';
 import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
 import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useTelemetria } from '../hooks/useTelemetria';
@@ -40,7 +41,8 @@ import {
   XCircle,
   FileText,
   Radio,
-  Sparkles
+  Sparkles,
+  Camera
 } from 'lucide-react';
 
 // Datos iniciales de usuarios administrativos
@@ -139,6 +141,7 @@ export function Panel() {
   const tabsConfig = [
     { id: 'vitals', label: 'Resumen & Vitals', icon: Activity, badge: 'En vivo' },
     { id: 'locales', label: 'Establecimientos', icon: Building2, badge: `${locales.length}` },
+    { id: 'fotos', label: 'Fotos & Storage', icon: Camera, badge: 'Moderación' },
     { id: 'usuarios', label: 'Usuarios & Roles', icon: Users, badge: `${usuarios.length}` },
     { id: 'incidencias', label: 'Alertas & Incidencias', icon: AlertTriangle, badge: `${incidencias.filter(i => i.estado !== 'Resuelta').length}` },
     { id: 'auditoria', label: 'Pista de Auditoría', icon: ShieldCheck, badge: 'Inmutable' },
@@ -235,6 +238,7 @@ export function Panel() {
               <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#111827] dark:text-white tracking-tight">
                 {tabActiva === 'vitals' && 'Resumen Ejecutivo & Signos Vitales GAM'}
                 {tabActiva === 'locales' && 'Gestión de Establecimientos & Auditoría'}
+                {tabActiva === 'fotos' && 'Moderación de Fotografías en Supabase Storage'}
                 {tabActiva === 'usuarios' && 'Gestión de Usuarios, Operadores y Roles'}
                 {tabActiva === 'incidencias' && 'Bandeja de Incidencias & Triage Urbano'}
                 {tabActiva === 'auditoria' && 'Pista Criptográfica Inmutable (Ledger)'}
@@ -808,6 +812,8 @@ export function Panel() {
               </Card>
             </div>
           )}
+
+          {tabActiva === 'fotos' && <ModeracionFotosPanel />}
         </div>
       </LayoutPanel>
     </PageWrapper>

@@ -1,0 +1,2 @@
+place_id,branch_label,file,photo_type,author,attribution_text,license,license_url,source_page_url,captured_at,is_cover,alt_text
+EJEMPLO-PLACE-ID-1,Sucursal Escalante,ejemplo/fachada.jpg,fachada,Nombre Autor,"Foto por Nombre Autor (Autorización del propietario)",Autorización escrita del establecimiento,https://ejemplo.local/licencia,https://ejemplo.local/origen,2026-11-01,true,Fachada de ejemplo (plantilla sin imagen real)

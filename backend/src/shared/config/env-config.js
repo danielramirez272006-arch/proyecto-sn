@@ -37,11 +37,16 @@ const env = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',
-    model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
     freeTierDailyQuota: parseInt(process.env.GEMINI_DAILY_QUOTA || '1500', 10),
   },
   youtube: {
     apiKey: process.env.YOUTUBE_API_KEY || '',
+  },
+  elevenlabs: {
+    apiKey: process.env.ELEVENLABS_API_KEY || '',
+    voiceId: process.env.ELEVENLABS_VOICE_ID || '3mmJ2Z5SLZ9OkeZZcv5p',
+    modelId: process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2',
   },
   adminBootstrap: {
     email: process.env.ADMIN_EMAIL || '',

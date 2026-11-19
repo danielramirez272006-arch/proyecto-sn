@@ -14,6 +14,7 @@
     "photos:import": "node src/modules/places/photo-import-cli.js import",
     "photos:reconcile": "node src/modules/places/photo-import-cli.js reconcile",
     "photos:report": "node src/modules/places/photo-import-cli.js report",
+    "photos:draft-csv": "node src/modules/places/photo-ai-draft-cli.js",
     "test": "node --test test/**/*.test.js"
   },
   "keywords": [

@@ -58,11 +58,11 @@ export function ExplorarPage() {
     const cargar = async (lat, lng) => {
       setCargandoReales(true);
       try {
-        const res = await fetch(`/api/places/nearby-real?lat=${lat}&lng=${lng}&radius=2200&limit=12`);
+        const res = await fetch(`/api/places/multisource/search?lat=${lat}&lng=${lng}&radius=2200&limit=12`);
         if (!res.ok) return;
         const json = await res.json();
-        if (!cancelado && Array.isArray(json?.data?.restaurants)) {
-          setRestaurantesReales(json.data.restaurants);
+        if (!cancelado && Array.isArray(json?.data?.places)) {
+          setRestaurantesReales(json.data.places);
         }
       } catch (err) {
         // Ignorar error de red
@@ -545,44 +545,73 @@ export function ExplorarPage() {
           </div>
         ) : restaurantesReales.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {restaurantesReales.slice(0, 9).map((rest) => (
-              <div
-                key={rest.id}
-                className={`p-4 rounded-2xl border shadow-sm flex flex-col justify-between gap-3 ${
-                  esClaro
-                    ? 'bg-white border-slate-200'
-                    : esMorado
-                    ? 'bg-[#180A14] border-[#F27B91]/20'
-                    : 'bg-[#111827] border-white/10'
-                }`}
-              >
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 block">
-                    {rest.category === 'cafe' ? 'Cafetería Real' : 'Restaurante Real'}
-                  </span>
-                  <h3 className="font-serif font-bold text-base leading-snug">{rest.name}</h3>
-                  <p className="text-[11px] opacity-75 flex items-start gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
-                    <span className="line-clamp-2">{rest.address}</span>
-                  </p>
-                </div>
+            {restaurantesReales.slice(0, 9).map((rest) => {
+              const etiquetaPet =
+                rest.access_status === 'allowed'
+                  ? 'Mascotas: Permitido'
+                  : rest.access_status === 'not_allowed'
+                  ? 'Mascotas: No permitido'
+                  : rest.access_status === 'conflicting'
+                  ? 'Mascotas: Contradictorio'
+                  : 'Mascotas: Desconocido';
+              const fotoMeta = rest.photo
+                ? {
+                    status: 'resolved',
+                    provider: rest.photo.provider || 'gotox_owner',
+                    attributions: rest.photo.author
+                      ? [{ displayName: `${rest.photo.author}${rest.photo.license ? ` · ${rest.photo.license}` : ''}`, uri: rest.photo.source_page_url }]
+                      : [],
+                    sourceUrl: rest.photo.source_page_url || null
+                  }
+                : { status: 'no_photos', reason: rest.photo_reason || 'Sin fotografía disponible.' };
 
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-current/10 text-xs">
-                  <span className="text-[10px] opacity-70">
-                    {rest.pet_friendly === 'si' ? 'Mascotas: Sí' : 'Mascotas: Consultar'}
-                  </span>
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${rest.lat},${rest.lng}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-semibold transition-colors"
-                  >
-                    <span>Cómo llegar</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+              return (
+                <div
+                  key={rest.id}
+                  className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col justify-between ${
+                    esClaro
+                      ? 'bg-white border-slate-200'
+                      : esMorado
+                      ? 'bg-[#180A14] border-[#F27B91]/20'
+                      : 'bg-[#111827] border-white/10'
+                  }`}
+                >
+                  <div className="h-36 w-full overflow-hidden">
+                    <LugarFoto
+                      src={rest.photo?.url || null}
+                      alt={rest.photo?.alt_text || rest.name}
+                      photoMeta={fotoMeta}
+                      compacto
+                    />
+                  </div>
+                  <div className="p-4 flex-1 flex flex-col justify-between gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 block">
+                        {rest.category === 'cafe' ? 'Cafetería Real' : 'Restaurante Real'}
+                      </span>
+                      <h3 className="font-serif font-bold text-base leading-snug">{rest.name}</h3>
+                      <p className="text-[11px] opacity-75 flex items-start gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{rest.address || 'Dirección no especificada'}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-current/10 text-xs">
+                      <span className="text-[10px] opacity-80 font-medium">{etiquetaPet}</span>
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${rest.lat}&mlon=${rest.lng}#map=17/${rest.lat}/${rest.lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-semibold transition-colors"
+                      >
+                        <span>Ver mapa</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : null}
       </div>

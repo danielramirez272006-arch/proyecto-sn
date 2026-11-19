@@ -48,6 +48,56 @@ const env = {
     voiceId: process.env.ELEVENLABS_VOICE_ID || '3mmJ2Z5SLZ9OkeZZcv5p',
     modelId: process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2',
   },
+  googlePlaces: {
+    apiKey: process.env.GOOGLE_PLACES_API_KEY || '',
+    includeAtmosphereFields: process.env.GOOGLE_PLACES_INCLUDE_ATMOSPHERE === 'true',
+    timeoutMs: parseInt(process.env.GOOGLE_PLACES_TIMEOUT_MS || '7000', 10),
+  },
+  foursquare: {
+    enabled: process.env.FOURSQUARE_ENABLED === 'true',
+    allowPaidOperations: process.env.FOURSQUARE_ALLOW_PAID === 'true',
+    apiKey: process.env.FOURSQUARE_API_KEY || '',
+    apiVersion: process.env.FOURSQUARE_API_VERSION || '2025-06-17',
+    timeoutMs: parseInt(process.env.FOURSQUARE_TIMEOUT_MS || '7000', 10),
+    maxPerMinute: parseInt(process.env.FOURSQUARE_MAX_PER_MIN || '20', 10),
+    maxConcurrency: parseInt(process.env.FOURSQUARE_MAX_CONCURRENCY || '2', 10),
+    maxRetries: parseInt(process.env.FOURSQUARE_MAX_RETRIES || '1', 10),
+  },
+  geoapify: {
+    enabled: process.env.GEOAPIFY_ENABLED === 'true',
+    apiKey: process.env.GEOAPIFY_API_KEY || '',
+    timeoutMs: parseInt(process.env.GEOAPIFY_TIMEOUT_MS || '7000', 10),
+    maxPerMinute: parseInt(process.env.GEOAPIFY_MAX_PER_MIN || '30', 10),
+    maxConcurrency: parseInt(process.env.GEOAPIFY_MAX_CONCURRENCY || '2', 10),
+    maxRetries: parseInt(process.env.GEOAPIFY_MAX_RETRIES || '1', 10),
+  },
+  osmPlaces: {
+    enabled: process.env.OSM_PLACES_ENABLED !== 'false',
+    timeoutMs: parseInt(process.env.OSM_PLACES_TIMEOUT_MS || '8000', 10),
+    maxPerMinute: parseInt(process.env.OSM_PLACES_MAX_PER_MIN || '25', 10),
+    maxConcurrency: parseInt(process.env.OSM_PLACES_MAX_CONCURRENCY || '2', 10),
+    maxRetries: parseInt(process.env.OSM_PLACES_MAX_RETRIES || '1', 10),
+  },
+  wikimedia: {
+    enabled: process.env.WIKIMEDIA_PHOTOS_ENABLED !== 'false',
+    timeoutMs: parseInt(process.env.WIKIMEDIA_TIMEOUT_MS || '6000', 10),
+    maxPerMinute: parseInt(process.env.WIKIMEDIA_MAX_PER_MIN || '30', 10),
+    maxConcurrency: parseInt(process.env.WIKIMEDIA_MAX_CONCURRENCY || '2', 10),
+    maxRetries: parseInt(process.env.WIKIMEDIA_MAX_RETRIES || '1', 10),
+  },
+  photoPipeline: {
+    privateBucket: process.env.SUPABASE_PHOTO_PRIVATE_BUCKET || 'gotox-place-photos-private',
+    publicBucket: process.env.SUPABASE_PHOTO_PUBLIC_BUCKET || 'gotox-place-photos-public',
+    maxBytes: parseInt(process.env.PHOTO_MAX_BYTES || String(8 * 1024 * 1024), 10),
+    minWidth: parseInt(process.env.PHOTO_MIN_WIDTH || '400', 10),
+    minHeight: parseInt(process.env.PHOTO_MIN_HEIGHT || '300', 10),
+    batchConcurrency: parseInt(process.env.PHOTO_BATCH_CONCURRENCY || '2', 10),
+    signedUrlTtlSeconds: parseInt(process.env.PHOTO_SIGNED_URL_TTL_SEC || '300', 10),
+    allowedExternalHosts: (process.env.PHOTO_ALLOWED_EXTERNAL_HOSTS || 'upload.wikimedia.org,commons.wikimedia.org')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  },
   adminBootstrap: {
     email: process.env.ADMIN_EMAIL || '',
     password: process.env.ADMIN_PASSWORD || '',

@@ -8,6 +8,9 @@ import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { LUGARES_GOTOX, CATEGORIAS_DESCUBRIMIENTO, CONSULTAS_RAPIDAS_SUGERIDAS } from '../data/lugaresGoToX';
+import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { useLiveMultisourcePlaces } from '../shared/services/multisource-places-service';
+import { LugarFoto } from '../components/LugarFoto';
 import { esFavorito, alternarFavorito } from '../servicios/almacenamientoCliente';
 import { useTema } from '../context/TemaContext';
 import {
@@ -30,7 +33,8 @@ import {
   CloudRain,
   Heart,
   CalendarPlus,
-  Volume2
+  Volume2,
+  RefreshCw
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -106,9 +110,25 @@ export function Home() {
     );
   };
 
+  const { lugaresConFotos, cargandoFotos } = useResolvedPlacePhotos(LUGARES_GOTOX);
+  const { lugaresReales, cargandoReales, refrescarReales } = useLiveMultisourcePlaces({
+    lat: 9.9352,
+    lng: -84.0695,
+    radius: 2200,
+    limit: 10
+  });
+
+  const lugaresCombinados = useMemo(() => {
+    const nombresExistentes = new Set(lugaresConFotos.map((l) => l.nombre.trim().toLowerCase()));
+    const nuevosReales = lugaresReales.filter(
+      (r) => r?.nombre && !nombresExistentes.has(r.nombre.trim().toLowerCase())
+    );
+    return [...lugaresConFotos, ...nuevosReales];
+  }, [lugaresConFotos, lugaresReales]);
+
   // Procesamiento de consultas naturales y filtrado reactivo
   const lugaresFiltrados = useMemo(() => {
-    let res = [...LUGARES_GOTOX];
+    let res = [...lugaresCombinados];
     const q = consulta.toLowerCase().trim();
 
     // Filtro por categoría seleccionada
@@ -144,8 +164,13 @@ export function Home() {
       }
     }
 
-    return res;
-  }, [consulta, categoriaSeleccionada]);
+    return res.sort((a, b) => {
+      const aFoto = a.imagen ? 1 : 0;
+      const bFoto = b.imagen ? 1 : 0;
+      if (bFoto !== aFoto) return bFoto - aFoto;
+      return (b.puntuacion || 0) - (a.puntuacion || 0);
+    });
+  }, [lugaresCombinados, consulta, categoriaSeleccionada]);
 
   const mapIconoCategoria = (icono) => {
     switch (icono) {
@@ -281,12 +306,21 @@ export function Home() {
 
         {/* Resultados del Buscador Inteligente en Tiempo Real */}
         <div className="pt-4 border-t border-current/10 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-serif font-bold text-lg">
                 Recomendaciones ({lugaresFiltrados.length})
               </span>
-              <span className="text-xs opacity-60">filtradas por cercanía y preferencia</span>
+              <span className="text-xs opacity-60">lugares reales y verificables</span>
+              <button
+                type="button"
+                onClick={refrescarReales}
+                disabled={cargandoReales}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-current/15 text-[11px] font-semibold hover:bg-current/5 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${cargandoReales ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />
+                <span>{cargandoReales ? 'Actualizando...' : 'Actualizar en vivo'}</span>
+              </button>
             </div>
             <Link
               to="/explorar"
@@ -314,11 +348,15 @@ export function Home() {
                   {/* Foto de Portada */}
                   <div
                     onClick={() => setLugarSeleccionado(lugar)}
-                    className="relative h-44 w-full overflow-hidden cursor-pointer bg-slate-800"
+                    className={`relative h-44 w-full overflow-hidden cursor-pointer ${
+                      esClaro ? 'bg-[#FAF5F8]' : esMorado ? 'bg-[#251420]' : 'bg-[#162032]'
+                    }`}
                   >
-                    <img
+                    <LugarFoto
                       src={lugar.imagen}
                       alt={lugar.nombre}
+                      photoMeta={lugar.photoMeta}
+                      cargando={cargandoFotos}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />

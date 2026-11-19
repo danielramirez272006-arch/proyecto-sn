@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TERRAZAS } from '../data/terrazas';
 import { api } from '../shared/services/api-client';
+import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { LugarFoto } from '../components/LugarFoto';
 import { PageWrapper } from '../components/PageWrapper';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
@@ -36,6 +38,7 @@ export function TerrazasPage() {
   const [soloEspacioDisponible, setSoloEspacioDisponible] = useState(false);
   const [terrazaSeleccionada, setTerrazaSeleccionada] = useState(null);
   const [backendPlacesCount, setBackendPlacesCount] = useState(null);
+  const { lugaresConFotos: terrazasConFotos, cargandoFotos } = useResolvedPlacePhotos(TERRAZAS);
 
   // Simulación de carga inicial para stagger suave
   useEffect(() => {
@@ -68,7 +71,7 @@ export function TerrazasPage() {
 
   // Filtrado reactivo de terrazas
   const terrazasFiltradas = useMemo(() => {
-    return TERRAZAS.filter((t) => {
+    return terrazasConFotos.filter((t) => {
       if (filtroRuido !== 'todos') {
         if (filtroRuido === 'silencioso' && !t.nivelRuido.toLowerCase().includes('silencioso')) {
           return false;
@@ -95,8 +98,8 @@ export function TerrazasPage() {
         if (!coincide) return false;
       }
       return true;
-    });
-  }, [busqueda, filtroRuido, filtroZona, soloEspacioDisponible]);
+    }).sort((a, b) => (b.imagen ? 1 : 0) - (a.imagen ? 1 : 0));
+  }, [terrazasConFotos, busqueda, filtroRuido, filtroZona, soloEspacioDisponible]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -386,16 +389,16 @@ export function TerrazasPage() {
                   layout
                   className="rounded-3xl bg-[#111827] border border-white/10 overflow-hidden shadow-xl hover:shadow-2xl hover:border-[#F27B91]/30 transition-all flex flex-col group text-left"
                 >
-                  {/* Fotografía Grande con Zoom Suave y Badges */}
-                  <div className="relative h-60 sm:h-64 overflow-hidden bg-slate-900">
-                    <motion.img
+                  {/* Fotografía Real o marcador sin fotografía */}
+                  <div className="relative h-60 sm:h-64 overflow-hidden bg-[#FAF5F8]">
+                    <LugarFoto
                       src={terraza.imagen}
                       alt={terraza.nombre}
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.45, ease: "easeOut" }}
-                      className="w-full h-full object-cover object-center"
+                      photoMeta={terraza.photoMeta}
+                      cargando={cargandoFotos}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-black/30" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-black/30 pointer-events-none" />
 
                     {/* Insignia Superior */}
                     <div className="absolute top-3.5 left-3.5 flex flex-wrap gap-2">
@@ -589,12 +592,14 @@ export function TerrazasPage() {
             <div className="space-y-6 text-[#E8EDF5] text-left">
               {/* Foto Principal en el Modal */}
               <div className="relative h-48 sm:h-56 rounded-2xl overflow-hidden border border-white/10">
-                <img
+                <LugarFoto
                   src={terrazaSeleccionada.imagen}
                   alt={terrazaSeleccionada.nombre}
+                  photoMeta={terrazaSeleccionada.photoMeta}
+                  cargando={cargandoFotos}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                 <div className="absolute bottom-3 left-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#F27B91]">
                     {terrazaSeleccionada.categoria}

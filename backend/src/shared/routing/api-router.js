@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { checkHealth, query } = require('../config/database');
-const { success, badRequest } = require('../utils/http-response');
+const { success, badRequest, failure } = require('../utils/http-response');
 const deepSeekClient = require('../config/deepseek-config');
 const geminiClient = require('../config/gemini-config');
 const supabaseClient = require('../config/supabase-config');
@@ -178,8 +178,168 @@ router.get('/places/nearby-real', async (req, res, next) => {
     const result = await overpassService.findNearbyRestaurants({ lat, lng, radius, limit });
     return success(res, result);
   } catch (err) {
-    if (err.message === 'INVALID_COORDINATES') {
-      return badRequest(res, 'Coordenadas lat/lng inválidas');
+    if (['INVALID_COORDINATES', 'INVALID_RADIUS', 'INVALID_LIMIT'].includes(err.code || err.message)) {
+      return badRequest(res, err.message);
+    }
+    next(err);
+  }
+});
+
+router.get('/places/pet-friendly/search', async (req, res, next) => {
+  try {
+    const petFriendlyService = require('../../modules/places/pet-friendly-restaurants-service');
+    const result = await petFriendlyService.search(req.query);
+    return success(res, result);
+  } catch (err) {
+    if (err.status === 400 || String(err.code || '').startsWith('INVALID_')) {
+      return badRequest(res, err.message, { code: err.code });
+    }
+    next(err);
+  }
+});
+
+router.get('/places/multisource/search', async (req, res, next) => {
+  try {
+    const coordinator = require('../../modules/places/multisource-places-coordinator');
+    const result = await coordinator.search(req.query);
+    return success(res, result);
+  } catch (err) {
+    if (err.status === 400 || String(err.code || '').startsWith('INVALID_')) {
+      return badRequest(res, err.message, { code: err.code });
+    }
+    next(err);
+  }
+});
+
+router.post('/admin/places/multisource/resolve-identity', requireAdmin, async (req, res, next) => {
+  try {
+    const adminService = require('../../modules/places/multisource-admin-service');
+    const result = await adminService.resolveIdentity({
+      ...req.body,
+      admin_id: req.user?.id || req.user?.email || 'admin',
+    });
+    return success(res, result);
+  } catch (err) {
+    if (err.status === 400) return badRequest(res, err.message, { code: err.code });
+    next(err);
+  }
+});
+
+router.post('/admin/places/multisource/photos', requireAdmin, async (req, res, next) => {
+  try {
+    const adminService = require('../../modules/places/multisource-admin-service');
+    const result = await adminService.approveOrRegisterPhoto({
+      ...req.body,
+      admin_id: req.user?.id || req.user?.email || 'admin',
+    });
+    return success(res, result, {}, 201);
+  } catch (err) {
+    if (err.status === 400) return badRequest(res, err.message, { code: err.code });
+    next(err);
+  }
+});
+
+router.post('/admin/places/multisource/photos/:photoId/retract', requireAdmin, async (req, res, next) => {
+  try {
+    const adminService = require('../../modules/places/multisource-admin-service');
+    const result = await adminService.retractPhoto({
+      photo_id: req.params.photoId,
+      reason: req.body?.reason,
+      admin_id: req.user?.id || req.user?.email || 'admin',
+    });
+    return success(res, result);
+  } catch (err) {
+    if (err.status === 400) return badRequest(res, err.message, { code: err.code });
+    next(err);
+  }
+});
+
+router.get('/admin/places/multisource/automation-events', requireAdmin, async (req, res, next) => {
+  try {
+    const adminService = require('../../modules/places/multisource-admin-service');
+    const events = await adminService.listAutomationEvents(req.query);
+    return success(res, { events });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/admin/places/photos/pending', requireAdmin, async (req, res, next) => {
+  try {
+    const adminService = require('../../modules/places/multisource-admin-service');
+    const items = await adminService.listPendingPhotos({ limit: req.query.limit });
+    return success(res, { items });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/admin/places/photos/:photoId/approve', requireAdmin, async (req, res, next) => {
+  try {
+    const adminService = require('../../modules/places/multisource-admin-service');
+    const result = await adminService.approvePendingPhoto({
+      photo_id: req.params.photoId,
+      is_cover: req.body?.is_cover ?? null,
+      admin_id: req.user?.id || req.user?.email || 'admin',
+    });
+    return success(res, result);
+  } catch (err) {
+    if (err.status === 400 || err.status === 404) return failure(res, err.message, err.code, null, err.status);
+    next(err);
+  }
+});
+
+router.post('/admin/places/photos/:photoId/reject', requireAdmin, async (req, res, next) => {
+  try {
+    const adminService = require('../../modules/places/multisource-admin-service');
+    const result = await adminService.rejectOrRetractPhoto({
+      photo_id: req.params.photoId,
+      status: req.body?.status === 'retracted' ? 'retracted' : 'rejected',
+      reason: req.body?.reason,
+      admin_id: req.user?.id || req.user?.email || 'admin',
+    });
+    return success(res, result);
+  } catch (err) {
+    if (err.status === 400 || err.status === 404) return failure(res, err.message, err.code, null, err.status);
+    next(err);
+  }
+});
+
+router.post('/admin/places/photos/reconcile', requireAdmin, async (req, res, next) => {
+  try {
+    const photoBatchImporter = require('../../modules/places/photo-batch-importer');
+    const result = await photoBatchImporter.reconcileStorageAndDb();
+    return success(res, result);
+  } catch (err) {
+    if (err.status === 503) return failure(res, err.message, err.code, null, 503);
+    next(err);
+  }
+});
+
+router.get('/places/google-photo', async (req, res, next) => {
+  try {
+    const googlePlacesClient = require('../clients/google-places-client');
+    const result = await googlePlacesClient.getPhotoMedia({
+      photoName: req.query.name,
+      maxWidthPx: req.query.maxWidthPx,
+    });
+    return success(res, result);
+  } catch (err) {
+    if (err.code) {
+      return failure(res, err.message, err.code, null, err.status || 502);
+    }
+    next(err);
+  }
+});
+
+router.post('/places/resolve-photos', async (req, res, next) => {
+  try {
+    const photoResolver = require('../../modules/places/google-place-photo-resolver');
+    const result = await photoResolver.resolveBatchPlacePhotos(req.body?.places);
+    return success(res, result);
+  } catch (err) {
+    if (err.status === 400 || err.code === 'INVALID_PLACES_LIST') {
+      return badRequest(res, err.message, { code: err.code });
     }
     next(err);
   }

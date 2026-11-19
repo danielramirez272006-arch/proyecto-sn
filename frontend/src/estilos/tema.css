@@ -141,7 +141,8 @@
 
 :root[data-tema='claro'] input::placeholder,
 :root[data-tema='claro'] textarea::placeholder {
-  color: #94A3B8 !important;
+  color: #475569 !important;
+  opacity: 1 !important;
 }
 
 /* ============================================================
@@ -262,7 +263,13 @@
 :root[data-tema='oscuro'] textarea {
   background-color: #162032 !important;
   color: #FFFFFF !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+:root[data-tema='oscuro'] input::placeholder,
+:root[data-tema='oscuro'] textarea::placeholder {
+  color: #94A3B8 !important;
+  opacity: 1 !important;
 }
 
 /* ============================================================
@@ -425,7 +432,8 @@
 
 :root[data-tema='morado'] input::placeholder,
 :root[data-tema='morado'] textarea::placeholder {
-  color: #9C8290 !important;
+  color: #C4AEBA !important;
+  opacity: 1 !important;
 }
 
 /* ============================================================

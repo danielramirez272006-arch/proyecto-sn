@@ -274,7 +274,16 @@ async function runMigrations() {
         await client.query(stmt);
       }
     } else {
-      client.exec(sql);
+      const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
+      for (const stmt of statements) {
+        try {
+          client.exec(`${stmt};`);
+        } catch (err) {
+          if (!String(err?.message || '').includes('duplicate column name')) {
+            throw err;
+          }
+        }
+      }
     }
   }
   return { success: true, dialect, filesApplied: files };

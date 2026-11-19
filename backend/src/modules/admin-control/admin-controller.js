@@ -1,4 +1,5 @@
 const adminService = require('./admin-service');
+const petVerificationService = require('./pet-verification-service');
 const placesRepository = require('../places/places-repository');
 const notificationService = require('../notifications/notification-service');
 const deepSeekClient = require('../../shared/config/deepseek-config');
@@ -168,6 +169,110 @@ class AdminController {
       if (err.message === 'USER_NOT_FOUND') {
         return notFound(res, 'Usuario no encontrado');
       }
+      next(err);
+    }
+  }
+
+  async upsertPlacePetPolicy(req, res, next) {
+    try {
+      const result = await petVerificationService.upsertPetPolicy(
+        req.params.id,
+        req.body,
+        req.user?.id || 'usr_admin_1',
+        req
+      );
+      return success(res, result);
+    } catch (err) {
+      if (err.status === 404) return notFound(res, err.message);
+      if (err.status === 400) return badRequest(res, err.message);
+      next(err);
+    }
+  }
+
+  async confirmPlacePetPolicy(req, res, next) {
+    try {
+      const result = await petVerificationService.confirmVerification(
+        req.params.id,
+        req.body,
+        req.user?.id || 'usr_admin_1',
+        req
+      );
+      return success(res, result);
+    } catch (err) {
+      if (err.status === 404) return notFound(res, err.message);
+      if (err.status === 400) return badRequest(res, err.message);
+      next(err);
+    }
+  }
+
+  async markPlacePetOutdated(req, res, next) {
+    try {
+      const result = await petVerificationService.markOutdated(
+        req.params.id,
+        req.body,
+        req.user?.id || 'usr_admin_1',
+        req
+      );
+      return success(res, result);
+    } catch (err) {
+      if (err.status === 404) return notFound(res, err.message);
+      next(err);
+    }
+  }
+
+  async resolvePlacePetConflict(req, res, next) {
+    try {
+      const result = await petVerificationService.resolveConflict(
+        req.params.id,
+        req.body,
+        req.user?.id || 'usr_admin_1',
+        req
+      );
+      return success(res, result);
+    } catch (err) {
+      if (err.status === 404) return notFound(res, err.message);
+      if (err.status === 400) return badRequest(res, err.message);
+      next(err);
+    }
+  }
+
+  async withdrawPlacePetConfirmation(req, res, next) {
+    try {
+      const result = await petVerificationService.withdrawConfirmation(
+        req.params.id,
+        req.body,
+        req.user?.id || 'usr_admin_1',
+        req
+      );
+      return success(res, result);
+    } catch (err) {
+      if (err.status === 404) return notFound(res, err.message);
+      next(err);
+    }
+  }
+
+  async scanPetAutomationEvents(req, res, next) {
+    try {
+      const result = await petVerificationService.scanAndEmitAutomationEvents({
+        expiringWithinDays: req.query.expiring_within_days,
+      });
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async recordPetAutomationConfirmation(req, res, next) {
+    try {
+      const result = await petVerificationService.recordConfirmationFromWorkflow(
+        req.body,
+        req.user?.id || 'n8n_workflow',
+        req
+      );
+      return success(res, result);
+    } catch (err) {
+      if (err.status === 404) return notFound(res, err.message);
+      if (err.status === 400) return badRequest(res, err.message);
       next(err);
     }
   }

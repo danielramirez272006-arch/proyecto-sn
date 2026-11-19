@@ -41,4 +41,13 @@ router.get('/audit-logs', (req, res, next) => adminController.getAuditLogs(req, 
 router.get('/users', (req, res, next) => adminController.listUsers(req, res, next));
 router.patch('/users/:id/role', (req, res, next) => adminController.updateUserRole(req, res, next));
 
+// Verificación pet-friendly de establecimientos y automatización n8n
+router.put('/places/:id/pet-policy', (req, res, next) => adminController.upsertPlacePetPolicy(req, res, next));
+router.post('/places/:id/pet-confirm', (req, res, next) => adminController.confirmPlacePetPolicy(req, res, next));
+router.post('/places/:id/pet-outdated', (req, res, next) => adminController.markPlacePetOutdated(req, res, next));
+router.post('/places/:id/pet-resolve-conflict', (req, res, next) => adminController.resolvePlacePetConflict(req, res, next));
+router.delete('/places/:id/pet-confirm', (req, res, next) => adminController.withdrawPlacePetConfirmation(req, res, next));
+router.get('/pet-automation/events', (req, res, next) => adminController.scanPetAutomationEvents(req, res, next));
+router.post('/pet-automation/confirmations', (req, res, next) => adminController.recordPetAutomationConfirmation(req, res, next));
+
 module.exports = router;

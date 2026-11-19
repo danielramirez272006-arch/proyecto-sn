@@ -5,6 +5,7 @@ const autoBackupJson = require('./maintenance-agent/auto-backup-json');
 const holidayFuelSyncJob = require('./weather-editor-agent/holiday-fuel-sync-job');
 const dailyBriefingJob = require('./weather-editor-agent/daily-briefing-job');
 const hypeScoreCalculator = require('./maintenance-agent/hype-score-calculator');
+const placesFreshnessJob = require('./maintenance-agent/places-freshness-job');
 const { emailWorker } = require('../modules/notifications');
 
 class AgentScheduler {
@@ -73,6 +74,15 @@ class AgentScheduler {
         lastResult: null,
         runCount: 0,
         handler: async () => hypeScoreCalculator.recalculateAllScores(),
+      },
+      'places-freshness-monitor': {
+        name: 'places-freshness-monitor',
+        description: 'Revisión periódica de vigencia de evidencia pet-friendly y emisión de eventos n8n',
+        intervalMs: 15 * 60 * 1000, // Cada 15 minutos
+        lastRun: null,
+        lastResult: null,
+        runCount: 0,
+        handler: async () => placesFreshnessJob.checkExpiringEvidence(),
       }
     };
     this.isRunning = false;

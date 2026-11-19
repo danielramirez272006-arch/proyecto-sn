@@ -4,7 +4,7 @@ const metricsCollector = require('../telemetry/metrics-collector');
 class GeminiSafeClient {
   constructor() {
     this.apiKey = env.gemini?.apiKey || process.env.GEMINI_API_KEY || '';
-    this.model = env.gemini?.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+    this.model = env.gemini?.model || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
     this.dailyLimit = env.gemini?.freeTierDailyQuota || 1500;
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
     this.currentDate = new Date().toISOString().slice(0, 10);
@@ -120,8 +120,8 @@ class GeminiSafeClient {
       this.requestCountToday++;
       metricsCollector.recordGeminiCall(false);
 
-      const activeModel = model || this.model;
-      const endpoint = `${this.baseUrl}/models/${activeModel}:generateContent?key=${this.apiKey}`;
+      let activeModel = model || this.model;
+      let endpoint = `${this.baseUrl}/models/${activeModel}:generateContent?key=${this.apiKey}`;
 
       const contents = history.map(item => ({
         role: item.role === 'assistant' || item.role === 'model' ? 'model' : 'user',
@@ -147,11 +147,21 @@ class GeminiSafeClient {
         };
       }
 
-      const response = await fetch(endpoint, {
+      let response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bodyPayload)
       });
+
+      if ((response.status === 404 || response.status === 503 || response.status === 429) && activeModel !== 'gemini-flash-latest') {
+        activeModel = 'gemini-flash-latest';
+        endpoint = `${this.baseUrl}/models/${activeModel}:generateContent?key=${this.apiKey}`;
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyPayload)
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`Gemini Chat error (${response.status})`);

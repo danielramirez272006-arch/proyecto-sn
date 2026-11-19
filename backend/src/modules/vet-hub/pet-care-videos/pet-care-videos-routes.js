@@ -4,6 +4,7 @@ const controller = require('./pet-care-videos-controller');
 
 // Rutas Públicas del Catálogo «Videos para cuidar a tu mascota»
 router.get('/', (req, res, next) => controller.listApprovedVideos(req, res, next));
+router.get('/live', (req, res, next) => controller.listLiveVideos(req, res, next));
 
 // Buscador Inteligente de Videos con IA Gemini (Cliente)
 router.get('/search', (req, res, next) => controller.smartSearch(req, res, next));

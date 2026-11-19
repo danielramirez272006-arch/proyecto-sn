@@ -18,10 +18,26 @@ import {
   MessageSquare,
   HelpCircle,
   RefreshCw,
-  CornerDownLeft
+  CornerDownLeft,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Square,
+  Heart
 } from 'lucide-react';
 import { useTelemetria } from '../hooks/useTelemetria';
+import { useSesion } from '../hooks/useSesion';
 import { api } from '../shared/services/api-client';
+import {
+  hablarComoBruno,
+  detenerVozBruno,
+  iniciarEscuchaVoz,
+  soportaVozEntrada,
+  soportaVozSalida,
+  construirConsultaChequeo,
+  generarRespuestaFallbackBruno
+} from '../utils/brunoAsistente';
 
 const RAZAS = [
   { id: 'golden', nombre: 'Golden Retriever', categoria: 'Grande / Manto Doble', factorTermico: 1.1, pesoPromedio: 30, sensibilidadAsfalto: 'Media' },
@@ -33,18 +49,34 @@ const RAZAS = [
 ];
 
 const PREGUNTAS_SUGERIDAS = [
+  "¿Cómo está mi mascota hoy? Dame recomendaciones",
+  "Mi perro está un poco decaído y casi no quiere comer",
   "¿Es seguro el asfalto para pasear ahora en San José?",
-  "¿Cuánto tiempo de ventana seca queda antes de lluvia?",
-  "¿Qué terraza recomendás para un perro reactivo al ruido?",
   "¿Cuánta agua debo llevar para un paseo de 45 minutos?"
 ];
 
 export function CopilotoBruno() {
   const telemetria = useTelemetria();
+  const { mascota } = useSesion();
   const [vistaActiva, setVistaActiva] = useState('asistente'); // 'asistente' | 'calculador'
   const [consultaTexto, setConsultaTexto] = useState('');
   const [escribiendo, setEscribiendo] = useState(false);
+  const [vozActiva, setVozActiva] = useState(true);
+  const [hablando, setHablando] = useState(false);
+  const [escuchando, setEscuchando] = useState(false);
+  const [chequeoAbierto, setChequeoAbierto] = useState(false);
+  const [energia, setEnergia] = useState('Activo');
+  const [apetito, setApetito] = useState('Normal');
+  const [hidratacion, setHidratacion] = useState('Hidratado');
   const finHistorialRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      detenerVozBruno();
+      recognitionRef.current?.stop?.();
+    };
+  }, []);
 
   // Historial de conversación inicial
   const [mensajes, setMensajes] = useState([
@@ -119,10 +151,23 @@ export function CopilotoBruno() {
     let recomendaciones = [];
 
     try {
-      // 1. Intento con backend real (/api/concierge/chat)
+      // 1. Intento con backend real (/api/concierge/chat) con perfil de mascota y telemetría
       const data = await api.post('/concierge/chat', {
         session_id: 'gotox_bruno_web',
-        message: texto
+        message: texto,
+        pet_profile: {
+          nombre: mascota?.nombre,
+          raza: mascota?.raza,
+          pesoKg: mascota?.pesoKg,
+          edadAnos: mascota?.edadAnos,
+          alergias: mascota?.alergias
+        },
+        telemetry: {
+          temperaturaAsfalto: telemetria.temperaturaAsfalto,
+          temperaturaAmbiente: telemetria.temperaturaAmbiente,
+          ventanaSecaMinutos: telemetria.ventanaSecaMinutos,
+          aforoAcusticoDb: telemetria.aforoAcusticoDb
+        }
       });
 
       const respuestaBackend = data?.response || data?.reply || data?.message || data?.text || data?.answer;
@@ -136,37 +181,9 @@ export function CopilotoBruno() {
         throw new Error('Formato no reconocido');
       }
     } catch {
-      // 2. Fallback heurístico inteligente basado en telemetría real y validada de GoToX
-      const q = texto.toLowerCase();
-      if (q.includes('asfalto') || q.includes('pavimento') || q.includes('quemadur') || q.includes('suelo')) {
-        respuestaTexto = `La temperatura actual del pavimento en San José Este es de ${telemetria.temperaturaAsfalto} °C (${telemetria.nivelRiesgoAsfalto}). Las almohadillas pueden soportar hasta 26 °C sin riesgo. Te recomiendo caminar por aceras con al menos 70% de sombra.`;
-        recomendaciones = [
-          { tipo: 'asfalto', texto: `Pavimento en ${telemetria.temperaturaAsfalto} °C` },
-          { tipo: 'ruta', texto: 'Corredor Parque Francia - Escalante' }
-        ];
-      } else if (q.includes('lluvia') || q.includes('agua') || q.includes('clima') || q.includes('seco') || q.includes('minuto')) {
-        respuestaTexto = `El radar estima una ventana seca de ${telemetria.ventanaSecaMinutos} minutos con condición de "${telemetria.condicionClimatica}" y humedad del ${telemetria.humedadRelativa}%. Es un momento ideal para un paseo medio antes de que se intensifique la nubosidad.`;
-        recomendaciones = [
-          { tipo: 'clima', texto: `Ventana seca: ${telemetria.ventanaSecaMinutos} min` },
-          { tipo: 'alerta', texto: 'Comenzar retorno en 25 min' }
-        ];
-      } else if (q.includes('terraza') || q.includes('cafe') || q.includes('local') || q.includes('franco') || q.includes('arbol') || q.includes('ruido')) {
-        respuestaTexto = `Para perritos sensibles o reactivos al bullicio, recomiendo "El Árbol de Seda" (42 dB, Ultra silencioso) o "Franco Café" (46 dB, con bebederos térmicos y piso de 21.8 °C en sombra). Ambos locales cuentan con certificación vigente en el GAM.`;
-        recomendaciones = [
-          { tipo: 'terraza', texto: 'Franco Café (4 cupos libres)' },
-          { tipo: 'terraza', texto: 'El Árbol de Seda (42 dB)' }
-        ];
-      } else if (q.includes('agua') || q.includes('hidrat') || q.includes('cuanta') || q.includes('beber')) {
-        respuestaTexto = `Con el ambiente a ${telemetria.temperaturaAmbiente} °C, la cuota base de hidratación recomendada es de aproximadamente 12 a 15 ml por cada kilogramo de peso corporal por cada 30 minutos de actividad moderada. Recuerda llevar siempre bebedero portátil.`;
-        recomendaciones = [
-          { tipo: 'hidratacion', texto: 'Pausas de hidratación cada 15 min' }
-        ];
-      } else {
-        respuestaTexto = `He analizado tu consulta tomando en cuenta los sensores del GAM: asfalto en ${telemetria.temperaturaAsfalto} °C, ${telemetria.aforoAcusticoDb} dB de ruido ambiental y ${telemetria.ventanaSecaMinutos} min de ventana seca. Te sugiero explorar nuestras terrazas verificadas o configurar el calculador por raza para un veredicto a la medida.`;
-        recomendaciones = [
-          { tipo: 'general', texto: 'Condiciones generales estables' }
-        ];
-      }
+      const fallback = generarRespuestaFallbackBruno(texto, { telemetria, mascota });
+      respuestaTexto = fallback.respuestaTexto;
+      recomendaciones = fallback.recomendaciones;
     }
 
     setEscribiendo(false);
@@ -180,6 +197,39 @@ export function CopilotoBruno() {
         recomendaciones
       }
     ]);
+
+    if (vozActiva && soportaVozSalida()) {
+      hablarComoBruno(respuestaTexto, {
+        onStart: () => setHablando(true),
+        onEnd: () => setHablando(false),
+        onError: () => setHablando(false)
+      });
+    }
+  };
+
+  const toggleMicrofono = () => {
+    if (escuchando) {
+      recognitionRef.current?.stop?.();
+      setEscuchando(false);
+      return;
+    }
+    detenerVozBruno();
+    setHablando(false);
+    recognitionRef.current = iniciarEscuchaVoz({
+      onStart: () => setEscuchando(true),
+      onEnd: () => setEscuchando(false),
+      onError: () => setEscuchando(false),
+      onTranscript: (textoHablado) => {
+        setConsultaTexto(textoHablado);
+        handleEnviarConsulta(textoHablado);
+      }
+    });
+  };
+
+  const enviarChequeoMascota = () => {
+    const prompt = construirConsultaChequeo({ energia, apetito, hidratacion }, mascota);
+    setChequeoAbierto(false);
+    handleEnviarConsulta(prompt);
   };
 
   return (
@@ -289,7 +339,7 @@ export function CopilotoBruno() {
             <div className="lg:col-span-8">
               <Card className="p-0 bg-[#111827] border-white/10 rounded-3xl overflow-hidden flex flex-col h-[580px] shadow-xl">
                 {/* Cabecera del chat */}
-                <div className="p-4 sm:p-5 border-b border-white/5 bg-[#162032]/60 flex items-center justify-between">
+                <div className="p-4 sm:p-5 border-b border-white/5 bg-[#162032]/60 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl overflow-hidden bg-[#55152D] flex items-center justify-center">
                       <img
@@ -300,17 +350,122 @@ export function CopilotoBruno() {
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-[#E8EDF5] flex items-center gap-1.5">
-                        Canal Asistido de Paseo
+                        Canal Asistido de Paseo & Bienestar
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       </h4>
-                      <p className="text-[11px] text-[#94A3B8]">Telemetría activa en San José Este</p>
+                      <p className="text-[11px] text-[#94A3B8]">
+                        Mascota: {mascota?.nombre || 'Tu mascota'} &bull; No reemplaza a un veterinario
+                      </p>
                     </div>
                   </div>
 
-                  <span className="text-[11px] text-[#94A3B8] font-mono tabular-nums">
-                    Asfalto: {telemetria.temperaturaAsfalto} °C
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setChequeoAbierto((v) => !v)}
+                      className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition-colors flex items-center gap-1 ${
+                        chequeoAbierto
+                          ? 'bg-[#55152D] text-white border-[#F27B91]/50'
+                          : 'bg-[#111827] text-[#F27B91] border-white/10 hover:border-[#F27B91]/40'
+                      }`}
+                    >
+                      <Heart className="w-3.5 h-3.5" />
+                      <span>Chequeo {mascota?.nombre || 'Mascota'}</span>
+                    </button>
+
+                    {soportaVozSalida() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (hablando) {
+                            detenerVozBruno();
+                            setHablando(false);
+                          } else {
+                            setVozActiva((v) => !v);
+                          }
+                        }}
+                        title={hablando ? 'Detener voz' : vozActiva ? 'Silenciar voz de Bruno' : 'Activar voz de Bruno'}
+                        className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition-colors flex items-center gap-1 ${
+                          hablando
+                            ? 'bg-emerald-600 text-white border-emerald-400'
+                            : vozActiva
+                            ? 'bg-[#111827] text-emerald-300 border-emerald-500/30'
+                            : 'bg-[#111827] text-[#94A3B8] border-white/10'
+                        }`}
+                      >
+                        {hablando ? (
+                          <>
+                            <Square className="w-3 h-3 fill-current" />
+                            <span>Detener</span>
+                          </>
+                        ) : vozActiva ? (
+                          <>
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Voz activa</span>
+                          </>
+                        ) : (
+                          <>
+                            <VolumeX className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Sin voz</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Chequeo rápido de bienestar */}
+                {chequeoAbierto && (
+                  <div className="p-3.5 sm:px-5 border-b border-white/10 bg-[#162032]/90 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[#E8EDF5]">
+                        ¿Cómo está {mascota?.nombre || 'tu mascota'} hoy?
+                      </span>
+                      <span className="text-[10px] text-[#94A3B8]">Orientación informativa (no veterinaria)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <select
+                        value={energia}
+                        onChange={(e) => setEnergia(e.target.value)}
+                        aria-label="Nivel de energía"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#111827] border border-white/10 text-[#E8EDF5]"
+                      >
+                        <option value="Activo">Energía: Activo</option>
+                        <option value="Cansado">Energía: Cansado</option>
+                        <option value="Decaído">Energía: Decaído</option>
+                      </select>
+                      <select
+                        value={apetito}
+                        onChange={(e) => setApetito(e.target.value)}
+                        aria-label="Apetito"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#111827] border border-white/10 text-[#E8EDF5]"
+                      >
+                        <option value="Normal">Apetito: Normal</option>
+                        <option value="Poco apetito">Apetito: Poco</option>
+                        <option value="No quiere comer">Apetito: No come</option>
+                      </select>
+                      <select
+                        value={hidratacion}
+                        onChange={(e) => setHidratacion(e.target.value)}
+                        aria-label="Hidratación"
+                        className="px-2.5 py-1.5 rounded-xl bg-[#111827] border border-white/10 text-[#E8EDF5]"
+                      >
+                        <option value="Hidratado">Agua: Hidratado</option>
+                        <option value="Sediento">Agua: Sediento</option>
+                        <option value="Toma poca agua">Agua: Toma poca</option>
+                      </select>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={enviarChequeoMascota}
+                        className="px-3.5 py-1.5 rounded-xl bg-[#55152D] hover:bg-[#6E1E3A] text-white font-semibold border border-[#F27B91]/40"
+                      >
+                        Consultar estado con Bruno
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Historial de Mensajes */}
                 <div className="flex-1 p-4 sm:p-6 overflow-y-auto gotox-scrollbar space-y-4">
@@ -362,7 +517,25 @@ export function CopilotoBruno() {
                               </div>
                             )}
                           </div>
-                          <span className="text-[10px] text-slate-500 block px-1">{msg.hora}</span>
+                          <div className="flex items-center gap-2 px-1">
+                            <span className="text-[10px] text-slate-500">{msg.hora}</span>
+                            {esBruno && soportaVozSalida() && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  hablarComoBruno(msg.texto, {
+                                    onStart: () => setHablando(true),
+                                    onEnd: () => setHablando(false),
+                                    onError: () => setHablando(false)
+                                  })
+                                }
+                                className="inline-flex items-center gap-1 text-[10px] text-[#F27B91] hover:underline"
+                              >
+                                <Volume2 className="w-3 h-3" />
+                                <span>Escuchar</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -402,9 +575,24 @@ export function CopilotoBruno() {
                     type="text"
                     value={consultaTexto}
                     onChange={(e) => setConsultaTexto(e.target.value)}
-                    placeholder="Escribe tu consulta sobre asfalto, terrazas, clima o razas..."
+                    placeholder={escuchando ? 'Escuchando tu voz...' : `Pregunta por el clima o cómo está ${mascota?.nombre || 'tu mascota'}...`}
                     className="flex-1 bg-[#111827] text-xs sm:text-sm text-[#E8EDF5] placeholder-[#94A3B8]/60 px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-[#F27B91] transition-colors"
                   />
+                  {soportaVozEntrada() && (
+                    <button
+                      type="button"
+                      onClick={toggleMicrofono}
+                      disabled={escribiendo}
+                      title={escuchando ? 'Detener micrófono' : 'Hablar con Bruno'}
+                      className={`shrink-0 px-3 py-3 rounded-xl border transition-colors ${
+                        escuchando
+                          ? 'bg-rose-600 text-white border-rose-400 animate-pulse'
+                          : 'bg-[#111827] text-[#F27B91] border-white/10 hover:border-[#F27B91]/50'
+                      }`}
+                    >
+                      {escuchando ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    </button>
+                  )}
                   <Button
                     type="submit"
                     variant="primary"

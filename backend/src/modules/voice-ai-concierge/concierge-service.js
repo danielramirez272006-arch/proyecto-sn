@@ -1,4 +1,5 @@
 const geminiClient = require('../../shared/config/gemini-config');
+const env = require('../../shared/config/env-config');
 const placesRepository = require('../places/places-repository');
 
 class ConciergeService {
@@ -27,8 +28,63 @@ Devuelve exclusivamente un JSON con los campos:
     return aiResult;
   }
 
-  async chat({ sessionId = 'default', message }) {
-    return geminiClient.generateChat({ sessionId, message });
+  async chat({ sessionId = 'default', message, petProfile = null, telemetry = null }) {
+    const contextParts = [];
+    if (petProfile && typeof petProfile === 'object') {
+      const parts = [
+        petProfile.nombre ? `Nombre: ${petProfile.nombre}` : null,
+        petProfile.raza ? `Raza: ${petProfile.raza}` : null,
+        petProfile.pesoKg ? `Peso: ${petProfile.pesoKg} kg` : null,
+        petProfile.edadAnos ? `Edad: ${petProfile.edadAnos} años` : null,
+        Array.isArray(petProfile.alergias) && petProfile.alergias.length > 0
+          ? `Alergias/Notas: ${petProfile.alergias.join(', ')}`
+          : null,
+      ].filter(Boolean);
+      if (parts.length > 0) contextParts.push(`Perfil de la mascota -> ${parts.join(' | ')}`);
+    }
+
+    if (telemetry && typeof telemetry === 'object') {
+      const tParts = [
+        telemetry.temperaturaAsfalto !== undefined ? `Asfalto: ${telemetry.temperaturaAsfalto} °C` : null,
+        telemetry.temperaturaAmbiente !== undefined ? `Ambiente: ${telemetry.temperaturaAmbiente} °C` : null,
+        telemetry.ventanaSecaMinutos !== undefined ? `Ventana seca: ${telemetry.ventanaSecaMinutos} min` : null,
+        telemetry.aforoAcusticoDb !== undefined ? `Ruido: ${telemetry.aforoAcusticoDb} dB` : null,
+      ].filter(Boolean);
+      if (tParts.length > 0) contextParts.push(`Telemetría GAM actual -> ${tParts.join(' | ')}`);
+    }
+
+    const enrichedMessage = contextParts.length > 0
+      ? `${contextParts.join('\n')}\n\nConsulta del usuario: ${message}`
+      : message;
+
+    const systemInstruction = `Eres Bruno, el copiloto inteligente de GoToX Pet OS en Costa Rica.
+Ayudas al usuario con:
+1. Clima urbano, temperatura del asfalto, rutas seguras y terrazas pet-friendly.
+2. Seguimiento cotidiano del bienestar de su mascota (energía, hidratación, apetito, estrés por calor o ruido, cuidado de almohadillas y hábitos diarios).
+REGLA OBLIGATORIA:
+- Siempre deja claro de forma natural que NO eres médico veterinario ni das diagnósticos clínicos.
+- Si el usuario describe signos de alarma (vómitos frecuentes, diarrea con sangre, convulsiones, dificultad para respirar, intoxicación, golpe de calor o dolor fuerte), recomienda acudir de inmediato a un veterinario de urgencias (Hospital UNA 2277-3600 o 9-1-1).
+- Responde en español costarricense cálido ("¡Pura vida!"), en máximo 3 o 4 oraciones claras para que suene natural si se lee con voz.`;
+
+    const result = await geminiClient.generateChat({
+      sessionId,
+      message: enrichedMessage,
+      systemInstruction,
+    });
+
+    const lowerMsg = String(message || '').toLowerCase();
+    const esConsultaSalud = /(salud|enferm|vomit|diarre|fiebre|deca[ií]d|apetito|come|dolor|cojea|herida|patas|chequeo|estado|mascota|perro|gato|bienestar|estres|respir)/.test(lowerMsg);
+    const textoRespuesta = result?.response || result?.reply || '';
+    if (result && typeof textoRespuesta === 'string' && esConsultaSalud && !/veterinari/i.test(textoRespuesta)) {
+      const actualizado = `${textoRespuesta.trim()} Recuerda que no soy médico veterinario; si notas síntomas persistentes o señales de alarma, llévalo a revisión profesional.`;
+      if (result.response !== undefined) result.response = actualizado;
+      else result.reply = actualizado;
+    }
+
+    return {
+      ...result,
+      disclaimer: 'Orientación informativa: Bruno no es médico veterinario.',
+    };
   }
 
   async deepReason({ contextDescription, objective, constraints = [] }) {
@@ -301,6 +357,72 @@ Catálogo de lugares: ${JSON.stringify(places.map(p => ({ id: p.id, name: p.name
     };
 
     return draft;
+  }
+
+  async synthesizeSpeech({ text, voiceId = null } = {}) {
+    const cleanText = String(text || '').trim().slice(0, 900);
+    if (!cleanText) {
+      throw new Error('TEXT_REQUIRED');
+    }
+
+    const apiKey = env.elevenlabs?.apiKey || process.env.ELEVENLABS_API_KEY || '';
+    const targetVoiceId = String(voiceId || env.elevenlabs?.voiceId || '3mmJ2Z5SLZ9OkeZZcv5p').trim();
+    const fallbackPremadeVoiceId = 'JBFqnCBsd6RMkjVDRZzb';
+    const modelId = env.elevenlabs?.modelId || 'eleven_multilingual_v2';
+
+    if (!apiKey) {
+      const err = new Error('ELEVENLABS_NOT_CONFIGURED');
+      err.voiceId = targetVoiceId;
+      throw err;
+    }
+
+    const callElevenLabs = async (vId) =>
+      fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vId)}`, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json',
+          Accept: 'audio/mpeg',
+        },
+        body: JSON.stringify({
+          text: cleanText,
+          model_id: modelId,
+          voice_settings: {
+            stability: 0.45,
+            similarity_boost: 0.78,
+          },
+        }),
+        signal: AbortSignal.timeout(12000),
+      });
+
+    let usedVoiceId = targetVoiceId;
+    let resp;
+    try {
+      resp = await callElevenLabs(usedVoiceId);
+
+      // Si la voz de librería requiere plan pago (HTTP 402), usar voz premade incluida en el plan gratuito
+      if (resp.status === 402 && usedVoiceId !== fallbackPremadeVoiceId) {
+        usedVoiceId = fallbackPremadeVoiceId;
+        resp = await callElevenLabs(usedVoiceId);
+      }
+    } catch (netErr) {
+      const err = new Error('ELEVENLABS_NETWORK_ERROR');
+      err.voiceId = usedVoiceId;
+      throw err;
+    }
+
+    if (!resp.ok) {
+      const err = new Error(`ELEVENLABS_HTTP_${resp.status}`);
+      err.voiceId = usedVoiceId;
+      throw err;
+    }
+
+    const arrayBuf = await resp.arrayBuffer();
+    return {
+      audioBuffer: Buffer.from(arrayBuf),
+      voiceId: usedVoiceId,
+      contentType: 'audio/mpeg',
+    };
   }
 }
 

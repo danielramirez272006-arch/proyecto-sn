@@ -347,4 +347,34 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
     assert.equal(nearbyRes.body.data.source, 'openstreetmap');
     assert.ok(Array.isArray(nearbyRes.body.data.restaurants));
   });
+
+  await suite.test('POST /api/concierge/chat acepta pet_profile y aclara que Bruno no es veterinario', async () => {
+    const chatRes = await executeMockRequest('POST', '/api/concierge/chat', {
+      body: {
+        session_id: 'test_bruno_pet',
+        message: 'Mi perro está decaído y no quiere comer, ¿cómo está mi mascota?',
+        pet_profile: { nombre: 'Bruno Jr', raza: 'Golden', pesoKg: 28 },
+        telemetry: { temperaturaAsfalto: 24.5, ventanaSecaMinutos: 40 }
+      }
+    });
+    assert.equal(chatRes.status, 200);
+    assert.equal(chatRes.body.ok, true);
+    assert.ok(typeof chatRes.body.data.response === 'string' && chatRes.body.data.response.length > 0);
+    assert.match(chatRes.body.data.response, /veterinari/i);
+    assert.match(chatRes.body.data.disclaimer, /veterinario/i);
+  });
+
+  await suite.test('POST /api/concierge/tts valida texto y usa voice_id de ElevenLabs', async () => {
+    const emptyRes = await executeMockRequest('POST', '/api/concierge/tts', { body: {} });
+    assert.equal(emptyRes.status, 400);
+
+    const ttsRes = await executeMockRequest('POST', '/api/concierge/tts', {
+      body: { text: 'Pura vida, soy Bruno.' }
+    });
+    assert.ok(ttsRes.status === 200 || ttsRes.status === 503);
+    if (ttsRes.status === 503) {
+      assert.equal(ttsRes.body.fallback, 'browser_tts');
+      assert.ok(ttsRes.body.voice_id);
+    }
+  });
 });

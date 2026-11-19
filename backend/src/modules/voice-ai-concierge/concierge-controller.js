@@ -16,12 +16,14 @@ class ConciergeController {
 
   async handleChat(req, res, next) {
     try {
-      const { session_id, message } = req.body;
+      const { session_id, message, pet_profile, telemetry } = req.body;
       if (!message) return badRequest(res, 'El mensaje para el copiloto es obligatorio');
 
       const result = await conciergeService.chat({
         sessionId: session_id || 'default_user',
-        message
+        message,
+        petProfile: pet_profile || null,
+        telemetry: telemetry || null,
       });
       return success(res, result);
     } catch (err) {
@@ -99,6 +101,37 @@ class ConciergeController {
         hidden_taxes_detected: '+23% (13% IVA + 10% Servicio) ya calculado'
       });
     } catch (err) {
+      next(err);
+    }
+  }
+
+  async handleTextToSpeech(req, res, next) {
+    try {
+      const { text, voice_id } = req.body || {};
+      if (!text || !String(text).trim()) {
+        return badRequest(res, 'El campo text es obligatorio para sintetizar voz');
+      }
+
+      const { audioBuffer, voiceId, contentType } = await conciergeService.synthesizeSpeech({
+        text,
+        voiceId: voice_id || null,
+      });
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('X-ElevenLabs-Voice-Id', voiceId);
+      return res.status(200).send(audioBuffer);
+    } catch (err) {
+      if (err.message === 'TEXT_REQUIRED') {
+        return badRequest(res, 'El campo text es obligatorio');
+      }
+      if (err.message === 'ELEVENLABS_NOT_CONFIGURED' || String(err.message || '').startsWith('ELEVENLABS_')) {
+        return res.status(503).json({
+          ok: false,
+          fallback: 'browser_tts',
+          voice_id: err.voiceId || '3mmJ2Z5SLZ9OkeZZcv5p',
+          error: 'ElevenLabs no configurado o no disponible; usando síntesis del navegador.',
+        });
+      }
       next(err);
     }
   }

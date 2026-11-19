@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { PageWrapper } from '../components/PageWrapper';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { LUGARES_GOTOX } from '../data/lugaresGoToX';
+import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { LugarFoto } from '../components/LugarFoto';
 import { esFavorito, alternarFavorito } from '../servicios/almacenamientoCliente';
 import { useTema } from '../context/TemaContext';
 import {
@@ -49,6 +51,7 @@ export function ExplorarPage() {
   const [favoritosTrigger, setFavoritosTrigger] = useState(0);
   const [restaurantesReales, setRestaurantesReales] = useState([]);
   const [cargandoReales, setCargandoReales] = useState(false);
+  const { lugaresConFotos, cargandoFotos } = useResolvedPlacePhotos(LUGARES_GOTOX);
 
   useEffect(() => {
     let cancelado = false;
@@ -91,7 +94,7 @@ export function ExplorarPage() {
 
   // Filtrado compuesto
   const lugaresFiltrados = useMemo(() => {
-    return LUGARES_GOTOX.filter(lugar => {
+    return lugaresConFotos.filter(lugar => {
       // Búsqueda por texto
       if (busqueda.trim()) {
         const q = busqueda.toLowerCase();
@@ -138,7 +141,7 @@ export function ExplorarPage() {
 
       return true;
     });
-  }, [busqueda, filtroZona, filtroPrecio, filtroTiempo, filtroTipo, filtroClima, filtroPet, filtroAccesibilidad]);
+  }, [lugaresConFotos, busqueda, filtroZona, filtroPrecio, filtroTiempo, filtroTipo, filtroClima, filtroPet, filtroAccesibilidad]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -420,9 +423,11 @@ export function ExplorarPage() {
                     onClick={() => setLugarSeleccionado(lugar)}
                     className="relative h-48 w-full overflow-hidden cursor-pointer bg-slate-900 group"
                   >
-                    <img
+                    <LugarFoto
                       src={lugar.imagen}
                       alt={lugar.nombre}
+                      photoMeta={lugar.photoMeta}
+                      cargando={cargandoFotos}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />

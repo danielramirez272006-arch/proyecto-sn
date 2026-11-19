@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useTema } from '../context/TemaContext';
 import { esFavorito, alternarFavorito, obtenerPlanes, agregarParadaAPlan } from '../servicios/almacenamientoCliente';
+import { LugarFoto } from './LugarFoto';
 
 export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
   if (!lugar) return null;
@@ -27,7 +28,11 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
   const [modalPlanAbierto, setModalPlanAbierto] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('');
 
-  const galeria = lugar.galeria && lugar.galeria.length > 0 ? lugar.galeria : [lugar.imagen];
+  const galeria = Array.isArray(lugar.galeria) && lugar.galeria.length > 0
+    ? lugar.galeria.filter(Boolean)
+    : lugar.imagen
+    ? [lugar.imagen]
+    : [];
 
   const handleToggleFavorito = () => {
     const nuevos = alternarFavorito(lugar.id);
@@ -77,9 +82,10 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
 
         {/* Galería Superior */}
         <div className="relative h-64 sm:h-80 w-full overflow-hidden bg-slate-900 rounded-t-3xl">
-          <img
-            src={galeria[fotoActiva]}
+          <LugarFoto
+            src={galeria[fotoActiva] || null}
             alt={lugar.nombre}
+            photoMeta={lugar.photoMeta}
             className="w-full h-full object-cover transition-all duration-300"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />

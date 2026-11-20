@@ -300,6 +300,8 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
         name: 'Tutor Prueba',
         email: `tutor_${Date.now()}@gotox.cr`,
         password: 'TutorPassword123!',
+        acceptTerms: true,
+        acceptPrivacy: true,
       }
     });
     assert.equal(regClient.status, 201);

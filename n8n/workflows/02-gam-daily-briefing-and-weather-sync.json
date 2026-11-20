@@ -1,0 +1,76 @@
+{
+  "name": "GoToX WF-02: Boletín Diario GAM, Clima Podal e Indicadores",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 6 }]
+        }
+      },
+      "id": "node-cron-02",
+      "name": "Trigger Cada 6 Horas (GAM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/weather/comfort-index?lat=9.9355&lng=-84.0652"
+      },
+      "id": "node-weather-02",
+      "name": "Consultar Confort Climático GAM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/agents/daily-briefing/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"weather_snapshot\": $json.data }"
+      },
+      "id": "node-agent-02",
+      "name": "Ejecutar Agente IA Daily Briefing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/notifications/outbox/process",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"batch_size\": 25 }"
+      },
+      "id": "node-outbox-02",
+      "name": "Despachar Cola Outbox de Alertas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 300]
+    }
+  ],
+  "connections": {
+    "Trigger Cada 6 Horas (GAM)": { "main": [[{ "node": "Consultar Confort Climático GAM", "type": "main", "index": 0 }]] },
+    "Consultar Confort Climático GAM": { "main": [[{ "node": "Ejecutar Agente IA Daily Briefing", "type": "main", "index": 0 }]] },
+    "Ejecutar Agente IA Daily Briefing": { "main": [[{ "node": "Despachar Cola Outbox de Alertas", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "timezone": "America/Costa_Rica" },
+  "meta": { "project": "GoToX Pet OS", "rubric_workflow": 2 }
+}

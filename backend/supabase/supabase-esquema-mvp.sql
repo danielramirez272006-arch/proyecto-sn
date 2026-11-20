@@ -546,5 +546,89 @@ CREATE TRIGGER trg_audit_chain_ledger_immutable
     BEFORE UPDATE OR DELETE ON app_private.audit_chain_ledger
     FOR EACH ROW EXECUTE FUNCTION app_private.prevent_audit_mutation();
 
+-- ============================================================================
+-- 12. Roles Relacionales (3FN), Gobernanza Ley 8968, Reset Password y Logs IA
+--     (Sincronizado con migración 012)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS app_private.roles (
+    id VARCHAR(64) PRIMARY KEY,
+    name VARCHAR(64) NOT NULL UNIQUE,
+    description TEXT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.user_roles (
+    user_id VARCHAR(64) NOT NULL REFERENCES app_private.users(id) ON DELETE CASCADE,
+    role_id VARCHAR(64) NOT NULL REFERENCES app_private.roles(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, role_id)
+);
+
+CREATE TABLE IF NOT EXISTS app_private.user_consents (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL REFERENCES app_private.users(id) ON DELETE CASCADE,
+    terms_version VARCHAR(64) NOT NULL DEFAULT '2026-11-v2',
+    privacy_accepted BOOLEAN NOT NULL DEFAULT TRUE,
+    cookies_preferences_json TEXT NULL,
+    ip_address VARCHAR(64) NULL,
+    user_agent TEXT NULL,
+    accepted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.data_deletion_requests (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    reason TEXT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'completed',
+    retained_legal_summary TEXT NULL,
+    requested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP WITH TIME ZONE NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_private.password_reset_tokens (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL REFERENCES app_private.users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(128) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    used_at TIMESTAMP WITH TIME ZONE NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.ai_interaction_logs (
+    id VARCHAR(64) PRIMARY KEY,
+    agent_name VARCHAR(96) NOT NULL,
+    invoked_by VARCHAR(64) NULL,
+    invoked_role VARCHAR(32) NOT NULL DEFAULT 'system',
+    input_summary TEXT NULL,
+    output_summary TEXT NULL,
+    provider VARCHAR(64) NOT NULL DEFAULT 'local',
+    model VARCHAR(96) NULL,
+    latency_ms INTEGER NOT NULL DEFAULT 0,
+    status VARCHAR(32) NOT NULL DEFAULT 'success',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO app_private.roles (id, name, description) VALUES
+    ('role_admin', 'admin', 'Administrador general del sistema'),
+    ('role_organizer', 'organizer', 'Organizador de eventos y salidas grupales'),
+    ('role_merchant', 'merchant', 'Comercio aliado verificado'),
+    ('role_business_owner', 'business_owner', 'Propietario de establecimiento pet-friendly'),
+    ('role_client', 'client', 'Tutor o usuario registrado'),
+    ('role_guest', 'guest', 'Visitante temporal con acceso limitado')
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE app_private.roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.user_consents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.data_deletion_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.password_reset_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.ai_interaction_logs ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private FROM PUBLIC, anon, authenticated;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private TO postgres, service_role;
+
+
 
 

@@ -43,8 +43,8 @@ export const authService = {
    * Registra una nueva cuenta en el backend y guarda los tokens JWT devueltos.
    * @param {{ name: string, email: string, password: string }} payload
    */
-  async register({ name, email, password }) {
-    const data = await api.post('/auth/register', { name, email, password });
+  async register({ name, email, password, acceptTerms = true, acceptPrivacy = true }) {
+    const data = await api.post('/auth/register', { name, email, password, acceptTerms, acceptPrivacy });
     saveAuthTokens(data);
     return data;
   },

@@ -1,0 +1,109 @@
+{
+  "name": "GoToX WF-01: Escaneo y Revalidación de Políticas Pet-Friendly",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 24 }]
+        }
+      },
+      "id": "node-cron-01",
+      "name": "Trigger Diario (08:00 CR)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/admin/places/pet-automation/scan?expiring_within_days=14",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
+          ]
+        }
+      },
+      "id": "node-scan-01",
+      "name": "Escanear Políticas por Vencer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            { "value1": "={{ $json.data.emitted_count || 0 }}", "operation": "larger", "value2": 0 }
+          ]
+        }
+      },
+      "id": "node-if-01",
+      "name": "¿Hay Políticas por Vencer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/notifications/queue",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"channel\": \"email\", \"recipient\": \"comercios@gotox.cr\", \"type\": \"pet_policy_expiring_soon\", \"title\": \"Revalidación semestral de política Pet-Friendly\", \"payload\": { \"events\": $json.data.events } }"
+      },
+      "id": "node-notify-01",
+      "name": "Encolar Alerta a Comercio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 220]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gotox-pet-policy-confirm",
+        "responseMode": "onReceived"
+      },
+      "id": "node-webhook-01",
+      "name": "Webhook Respuesta Comercio",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [480, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/admin/places/pet-automation/webhook-confirm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"place_id\": $json.body.place_id, \"access_status\": $json.body.access_status, \"evidence_ref\": $json.body.evidence_ref, \"notes\": $json.body.notes }"
+      },
+      "id": "node-confirm-01",
+      "name": "Registrar Confirmación en GoToX",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 520]
+    }
+  ],
+  "connections": {
+    "Trigger Diario (08:00 CR)": { "main": [[{ "node": "Escanear Políticas por Vencer", "type": "main", "index": 0 }]] },
+    "Escanear Políticas por Vencer": { "main": [[{ "node": "¿Hay Políticas por Vencer?", "type": "main", "index": 0 }]] },
+    "¿Hay Políticas por Vencer?": { "main": [[{ "node": "Encolar Alerta a Comercio", "type": "main", "index": 0 }]] },
+    "Webhook Respuesta Comercio": { "main": [[{ "node": "Registrar Confirmación en GoToX", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "timezone": "America/Costa_Rica" },
+  "meta": { "project": "GoToX Pet OS", "rubric_workflow": 1 }
+}

@@ -1,0 +1,82 @@
+{
+  "name": "GoToX WF-03: Gobernanza Ley 8968 (Baja de Datos) y Auditoría de Cadena",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gotox-ley8968-deletion-hook",
+        "responseMode": "onReceived"
+      },
+      "id": "node-webhook-03",
+      "name": "Webhook Solicitud Ley 8968",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/audit/verify-chain",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
+          ]
+        }
+      },
+      "id": "node-verify-03",
+      "name": "Verificar Integridad Hash Chain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/agents/report-consensus/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"source\": \"n8n_ley8968_audit\", \"chain_valid\": $json.data.valid }"
+      },
+      "id": "node-consensus-03",
+      "name": "Registrar Revisión con Agente Moderador",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/notifications/outbox/process",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"batch_size\": 20 }"
+      },
+      "id": "node-dispatch-03",
+      "name": "Enviar Confirmación al Titular",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Solicitud Ley 8968": { "main": [[{ "node": "Verificar Integridad Hash Chain", "type": "main", "index": 0 }]] },
+    "Verificar Integridad Hash Chain": { "main": [[{ "node": "Registrar Revisión con Agente Moderador", "type": "main", "index": 0 }]] },
+    "Registrar Revisión con Agente Moderador": { "main": [[{ "node": "Enviar Confirmación al Titular", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "timezone": "America/Costa_Rica" },
+  "meta": { "project": "GoToX Pet OS", "rubric_workflow": 3 }
+}

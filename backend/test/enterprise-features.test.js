@@ -126,10 +126,13 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(check.length, 0, 'El rollback debe haber revertido el insert');
   });
 
-  await suite.test('4. Seguridad: PBKDF2 Password Hashing con Sal Aleatoria', () => {
+  await suite.test('4. Seguridad: Bcrypt Password Hashing con Sal Aleatoria', () => {
     const rawPass = 'PuraVida2026!';
     const hash = authService.hashPassword(rawPass);
-    assert.ok(hash.includes(':'), 'El hash debe contener formato salt:hash');
+    assert.ok(
+      hash.startsWith('$2a$') || hash.startsWith('$2b$'),
+      'El hash debe usar formato estándar bcrypt ($2a$/$2b$)'
+    );
     
     const isValid = authService.verifyPassword(rawPass, hash);
     assert.equal(isValid, true, 'La contraseña válida debe verificarse correctamente');
@@ -141,7 +144,7 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
   await suite.test('5. Rotación de Refresh Tokens y Renovación de Sesión (/api/auth/refresh)', async () => {
     const email = `test_${Date.now()}@cr.dev`;
     const regRes = await executeMockRequest('POST', '/api/auth/register', {
-      body: { name: 'Usuario Prueba', email, password: 'password123' }
+      body: { name: 'Usuario Prueba', email, password: 'password123', acceptTerms: true, acceptPrivacy: true }
     });
     assert.equal(regRes.status, 201);
     const refreshToken = regRes.body.data.refresh_token;
@@ -965,7 +968,7 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
 
     // 2. Registro exitoso (ignora role='admin' y asigna 'client')
     const regRes = await executeMockRequest('POST', '/api/auth/register', {
-      body: { name: 'Ana Test', email: 'Ana.Test@GoToX.cr', password: 'Password123!', role: 'admin' }
+      body: { name: 'Ana Test', email: 'Ana.Test@GoToX.cr', password: 'Password123!', role: 'admin', acceptTerms: true, acceptPrivacy: true }
     });
     assert.equal(regRes.status, 201);
     assert.equal(regRes.body.data.user.role, 'client');
@@ -975,7 +978,7 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
 
     // 3. Correo duplicado devuelve 409 Conflict
     const dupRes = await executeMockRequest('POST', '/api/auth/register', {
-      body: { name: 'Ana 2', email: 'ana.test@gotox.cr', password: 'Password123!' }
+      body: { name: 'Ana 2', email: 'ana.test@gotox.cr', password: 'Password123!', acceptTerms: true, acceptPrivacy: true }
     });
     assert.equal(dupRes.status, 409);
 

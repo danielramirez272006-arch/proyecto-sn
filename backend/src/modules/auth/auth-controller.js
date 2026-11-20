@@ -22,12 +22,18 @@ class AuthController {
 
   async register(req, res, next) {
     try {
-      const { name, email, password } = req.body;
+      const { name, email, password, acceptTerms, acceptPrivacy, termsVersion, cookiesPreferences } = req.body || {};
       if (!name || !email || !password) return badRequest(res, 'name, email y password son requeridos');
       if (!EMAIL_REGEX.test(String(email).trim())) return badRequest(res, 'El formato del correo electrónico no es válido');
       if (String(password).length < 6) return badRequest(res, 'La contraseña debe tener al menos 6 caracteres');
+      if (acceptTerms !== true || acceptPrivacy !== true) {
+        return badRequest(res, 'Debes aceptar los Términos y Condiciones (acceptTerms: true) y la Política de Privacidad (acceptPrivacy: true) según la Ley N.º 8968.');
+      }
 
-      const result = await authService.register({ name, email, password, role: 'client' }, req);
+      const result = await authService.register(
+        { name, email, password, role: 'client', termsVersion, cookiesPreferences },
+        req
+      );
       return created(res, result);
     } catch (err) {
       if (err.message === 'EMAIL_ALREADY_REGISTERED') {
@@ -97,6 +103,60 @@ class AuthController {
       guest_token: req.headers['x-guest-token'] || 'tok_anonymous_guest',
       timestamp: new Date().toISOString()
     });
+  }
+
+  async forgotPassword(req, res, next) {
+    try {
+      const { email } = req.body || {};
+      if (!email || !EMAIL_REGEX.test(String(email).trim())) {
+        return badRequest(res, 'Debes proporcionar un correo electrónico válido.');
+      }
+      const result = await authService.forgotPassword(email, req);
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async resetPassword(req, res, next) {
+    try {
+      const { email, token, newPassword } = req.body || {};
+      if (!email || !token || !newPassword) {
+        return badRequest(res, 'email, token y newPassword son requeridos.');
+      }
+      if (!EMAIL_REGEX.test(String(email).trim())) {
+        return badRequest(res, 'El formato del correo electrónico no es válido.');
+      }
+      if (String(newPassword).length < 6) {
+        return badRequest(res, 'La nueva contraseña debe tener al menos 6 caracteres.');
+      }
+      const result = await authService.resetPassword({ email, token, newPassword }, req);
+      return success(res, result);
+    } catch (err) {
+      if (err.message === 'INVALID_RESET_TOKEN' || err.message === 'EXPIRED_RESET_TOKEN') {
+        return badRequest(res, 'El código de recuperación es inválido o ha expirado.');
+      }
+      next(err);
+    }
+  }
+
+  async deleteAccount(req, res, next) {
+    try {
+      const { password, reason } = req.body || {};
+      if (!password) {
+        return badRequest(res, 'Debes confirmar tu contraseña actual (password) para eliminar tu cuenta.');
+      }
+      const result = await authService.deleteAccount(req.user.id, { password, reason }, req);
+      return success(res, result);
+    } catch (err) {
+      if (err.message === 'INVALID_CREDENTIALS') {
+        return unauthorized(res, 'La contraseña de confirmación es incorrecta.');
+      }
+      if (err.message === 'USER_NOT_FOUND') {
+        return badRequest(res, 'Cuenta no encontrada.');
+      }
+      next(err);
+    }
   }
 }
 

@@ -1,5 +1,18 @@
 const { formatError } = require('../utils/http-response');
 
+/**
+ * IP del cliente. Solo se confía en X-Forwarded-For cuando el despliegue está detrás de un
+ * proxy de confianza (TRUST_PROXY=true); de lo contrario un atacante podría falsificar el
+ * encabezado para evadir los límites de intentos.
+ */
+function clientIp(req) {
+  if (process.env.TRUST_PROXY === 'true') {
+    const forwarded = req.headers && req.headers['x-forwarded-for'];
+    if (forwarded) return String(forwarded).split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || '127.0.0.1';
+}
+
 class RateLimiterRegistry {
   constructor() {
     this.buckets = new Map();
@@ -10,18 +23,16 @@ class RateLimiterRegistry {
     maxRequests = 120, 
     windowMs = 60 * 1000,
     message = 'Demasiadas solicitudes. Límite de tasa excedido.',
-    skipInTest = true
+    skipInTest = true,
+    keyFn = null
   } = {}) {
     return (req, res, next) => {
       if (skipInTest && process.env.NODE_ENV === 'test' && !req.headers['x-test-rate-limit']) {
         return next();
       }
 
-      const forwarded = req.headers['x-forwarded-for'];
-      const ip = forwarded
-        ? String(forwarded).split(',')[0].trim()
-        : (req.socket?.remoteAddress || '127.0.0.1');
-      const key = `${name}:${ip}`;
+      const identity = keyFn ? String(keyFn(req) || clientIp(req)) : clientIp(req);
+      const key = `${name}:${identity}`;
       const now = Date.now();
 
       if (this.buckets.size > 1000) {
@@ -85,6 +96,15 @@ const aiLimiter = registry.createLimiter({
   message: 'Cuota de consultas al Copiloto DeepSeek temporalmente agotada por este minuto.'
 });
 
+// Límite por cuenta (correo) para frenar fuerza bruta aunque cambie la IP
+const loginEmailLimiter = registry.createLimiter({
+  name: 'login-email',
+  maxRequests: 5,
+  windowMs: 15 * 60 * 1000,
+  message: 'Demasiados intentos para esta cuenta. Intenta nuevamente en 15 minutos.',
+  keyFn: (req) => String(req.body?.email || '').trim().toLowerCase()
+});
+
 const voteLimiter = registry.createLimiter({
   name: 'voting',
   maxRequests: 60,
@@ -101,6 +121,7 @@ rateLimiter.registry = registry;
 rateLimiter.globalLimiter = globalLimiter;
 rateLimiter.authLimiter = authLimiter;
 rateLimiter.aiLimiter = aiLimiter;
+rateLimiter.loginEmailLimiter = loginEmailLimiter;
 rateLimiter.voteLimiter = voteLimiter;
 
 module.exports = rateLimiter;

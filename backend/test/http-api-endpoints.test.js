@@ -7,7 +7,14 @@ process.env.DB_DIALECT = 'sqlite';
 const app = require('../src/app');
 const { generateToken } = require('../src/shared/middlewares/auth-role-guard');
 
+// Rutas operativas que ahora exigen administrador: los tests existentes envían un token admin de prueba
+const TOKEN_ADMIN_PRUEBA = generateToken({ id: 'usr_admin_1', role: 'admin', name: 'Admin Test' });
+const RUTAS_SOLO_ADMIN = /^\/api\/(health\/(deep|system)|cache\/stats|audit\/(chain|verify-chain)|notifications\/(queue|outbox)|merchants\/webhooks)/;
+
 function executeMockRequest(method, url, { headers = {}, body = null } = {}) {
+  if (!headers.authorization && RUTAS_SOLO_ADMIN.test(url)) {
+    headers = { ...headers, authorization: `Bearer ${TOKEN_ADMIN_PRUEBA}` };
+  }
   return new Promise((resolve) => {
     const req = {
       method,

@@ -277,6 +277,15 @@ class AuthService {
       throw new Error('INVALID_CREDENTIALS');
     }
 
+    // Auto-upgrade transparente de hashes legacy (SHA-256 sin sal) a PBKDF2-SHA512 con sal aleatoria
+    if (user.password_hash && !String(user.password_hash).includes(':')) {
+      const upgradedHash = this.hashPassword(password);
+      await execute(
+        'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [upgradedHash, user.id]
+      ).catch(() => {});
+    }
+
     const tokenPayload = {
       id: user.id,
       email: user.email,
@@ -444,6 +453,15 @@ class AuthService {
     }
 
     return { success: true, message: 'Sesión cerrada correctamente' };
+  }
+
+  async purgeExpiredRefreshTokens() {
+    const nowSql = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    await execute(
+      `DELETE FROM refresh_tokens WHERE revoked = TRUE OR expires_at < ?`,
+      [nowSql]
+    );
+    return { purged_at: nowSql };
   }
 
   async createGuestSession(alias = '') {

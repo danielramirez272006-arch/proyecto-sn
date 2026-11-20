@@ -31,6 +31,7 @@ import {
 import { ListaLugaresMapa } from '../features/mapa/ListaLugaresMapa';
 import { PanelDetalleLugar } from '../features/mapa/PanelDetalleLugar';
 import { PanelInferiorMovil } from '../features/mapa/PanelInferiorMovil';
+import { geolocalizacionPermitida } from '../shared/utils/cookie-consent';
 
 const CENTRO_GAM = { lat: 9.9352, lng: -84.0695 };
 
@@ -250,6 +251,10 @@ export function MapaPage() {
 
   const centrarEnUsuario = useCallback(
     (silentIfDenied = false) => {
+      if (!geolocalizacionPermitida({ accionExplicita: !silentIfDenied })) {
+        if (!silentIfDenied) setEstadoGps('denied');
+        return;
+      }
       if (typeof navigator === 'undefined' || !navigator.geolocation) {
         if (!silentIfDenied) setEstadoGps('denied');
         return;
@@ -534,13 +539,14 @@ export function MapaPage() {
 
     try {
       const resp = await fetch(
-        `/api/places/nearby-real?lat=${center.lat}&lng=${center.lng}&radius=2200&limit=25`,
+        `/api/places/multisource/search?lat=${center.lat}&lng=${center.lng}&radius=2200&limit=25`,
         { signal: controller.signal }
       );
       if (resp.ok) {
         const json = await resp.json();
-        if (Array.isArray(json?.data?.restaurants)) {
-          setLugaresExternosRaw(json.data.restaurants);
+        const items = json?.data?.places || json?.data?.restaurants;
+        if (Array.isArray(items)) {
+          setLugaresExternosRaw(items);
         }
       }
       setMensajeZona('Área actualizada.');

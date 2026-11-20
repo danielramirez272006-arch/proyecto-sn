@@ -1,6 +1,6 @@
 const app = require('./app');
 const env = require('./shared/config/env-config');
-const { initDatabase, runMigrations, runSeeds } = require('./shared/config/database');
+const { initDatabase, closeDatabase, runMigrations, runSeeds } = require('./shared/config/database');
 const { authService } = require('./modules/auth');
 const { emailWorker } = require('./modules/notifications');
 const { orchestrator } = require('./autonomous-agents');
@@ -44,12 +44,13 @@ async function bootstrap() {
     orchestrator.init();
 
     // 5. Cierre limpio (Graceful shutdown)
-    const shutdown = () => {
-      console.log('[Server] Deteniendo servicios y workers...');
+    const shutdown = async () => {
+      console.log('[Server] Deteniendo servicios, workers y pool de base de datos...');
       emailWorker.stop();
       orchestrator.stop();
-      server.close(() => {
-        console.log('[Server] Servidor HTTP cerrado correctamente.');
+      server.close(async () => {
+        await closeDatabase();
+        console.log('[Server] Servidor HTTP y conexiones BD cerrados correctamente.');
         process.exit(0);
       });
     };

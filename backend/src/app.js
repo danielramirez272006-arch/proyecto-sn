@@ -12,6 +12,12 @@ const errorHandler = require('./shared/middlewares/error-handler');
 
 const app = express();
 
+// No revelar el framework y confiar en proxies solo si el despliegue lo declara
+app.disable('x-powered-by');
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
 // 0. Observabilidad y Trazabilidad de Peticiones (x-request-id)
 app.use(requestTracer);
 
@@ -29,7 +35,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-guest-token', 'x-request-id', 'x-language', 'accept-language', 'X-RateLimit-Limit', 'X-RateLimit-Remaining']
 }));
 
-// 3. Parsers de cuerpo con límite de tamaño
+// 3. Parsers de cuerpo con límite de tamaño (12 MB solo para la subida de fotografías admin)
+app.use('/api/admin/places/photos/upload', express.json({ limit: '12mb' }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 

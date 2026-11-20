@@ -100,3 +100,31 @@ test('filtrarLugares y ordenarLugares filtran y ordenan de forma determinista', 
     ['permitido', 'desconocido', 'no_permitido']
   );
 });
+
+test('adaptarLugarExterno integra datos del coordinador multifuente (foto aprobada, condiciones y verificación)', () => {
+  const lugar = adaptarLugarExterno({
+    id: 'LOC-001',
+    name: 'Franco Café',
+    lat: 9.9355,
+    lng: -84.0652,
+    access_status: 'allowed',
+    verification_level: 'business_confirmation',
+    explanation: 'Confirmado por el establecimiento: terraza cubierta.',
+    known_conditions: {
+      seating_access: 'outdoor',
+      notes: 'Agua fresca disponible',
+    },
+    photo: {
+      url: 'https://cdn.gotox.cr/public/places/LOC-001/cover.jpg',
+      author: 'Prensa Franco',
+      license: 'CC BY 4.0',
+    },
+  });
+
+  assert.equal(lugar.petStatus, 'permitido');
+  assert.equal(lugar.terraza, 'disponible');
+  assert.equal(lugar.confirmadoPorEstablecimiento, true);
+  assert.equal(lugar.imagen, 'https://cdn.gotox.cr/public/places/LOC-001/cover.jpg');
+  assert.equal(lugar.fotoCredito, 'Prensa Franco (CC BY 4.0)');
+  assert.match(lugar.condicionesMascotas, /Confirmado por el establecimiento/);
+});

@@ -38,6 +38,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { geolocalizacionPermitida } from '../shared/utils/cookie-consent';
 
 export function Home() {
   const navigate = useNavigate();
@@ -96,6 +97,10 @@ export function Home() {
   const detectarUbicacionReal = () => {
     if (!navigator.geolocation) {
       alert('Tu navegador no permite geolocalización.');
+      return;
+    }
+    if (!geolocalizacionPermitida({ accionExplicita: true })) {
+      alert('Desactivaste la geolocalización en «Preferencias de Cookies». Actívala allí para usar tu ubicación.');
       return;
     }
     setDetectandoGps(true);

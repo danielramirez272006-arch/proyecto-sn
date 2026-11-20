@@ -206,8 +206,8 @@ export function Acceso() {
           foto: incluirMascota ? fotoPerro : null,
           tutor: {
             ...mascota.tutor,
-            nombre: nombreUsuario || 'Nuevo Usuario GoToX',
-            correo: correoRegistro || 'usuario@gotox.cr',
+            nombre: nombreUsuario || 'Nuevo Usuario Synodos',
+            correo: correoRegistro || 'usuario@synodos.cr',
             telefono: telefonoRegistro || '+506 0000-0000'
           }
         }
@@ -219,7 +219,7 @@ export function Acceso() {
           microchipId: mascota?.microchipId || 'CRC-756-092-882',
           tutor: {
             ...mascota.tutor,
-            nombre: correoLogin || 'Usuario GoToX'
+            nombre: correoLogin || 'Usuario Synodos'
           }
         };
 
@@ -586,6 +586,22 @@ export function Acceso() {
                 </div>
               )}
 
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Al continuar, confirmas que conoces nuestros{' '}
+                <a
+                  href="/terminos"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate('/terminos');
+                  }}
+                  className="font-semibold underline text-[#501228] dark:text-[#F27B91]"
+                >
+                  Términos, Condiciones y Política de Privacidad (Ley N° 8968 CR)
+                </a>
+                .
+              </p>
+
+              {/* Botón Prominente de Iniciar Sesión */}
               <Button
                 type="submit"
                 variant="primary"

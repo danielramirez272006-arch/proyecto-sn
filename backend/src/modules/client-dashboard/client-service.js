@@ -1,6 +1,16 @@
 const crypto = require('node:crypto');
 const { query, execute } = require('../../shared/config/database');
 
+function safeJsonParse(raw, fallback) {
+  if (raw === null || raw === undefined) return fallback;
+  if (typeof raw === 'object') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
 class ClientDashboardService {
   constructor() {
     this.vaults = new Map();
@@ -12,6 +22,48 @@ class ClientDashboardService {
       await execute('ALTER TABLE user_pets ADD COLUMN photo_url TEXT').catch(() => {});
     } catch (_) {}
     this._photoColChecked = true;
+  }
+
+  async _saveToDb(vault) {
+    const now = vault.updated_at || new Date().toISOString();
+    try {
+      const existing = await query('SELECT user_id FROM user_vaults WHERE user_id = ? LIMIT 1', [vault.user_id]);
+      if (existing && existing.length > 0) {
+        await execute(
+          `UPDATE user_vaults
+           SET pets_json = ?, vehicle_plate_digit = ?, saved_routes_json = ?,
+               expenses_total_crc = ?, badges_json = ?, updated_at = ?
+           WHERE user_id = ?`,
+          [
+            JSON.stringify(vault.pets || []),
+            vault.vehicle_plate_digit ?? null,
+            JSON.stringify(vault.saved_routes || []),
+            Number(vault.expenses_total_crc) || 0,
+            JSON.stringify(vault.badges || []),
+            now,
+            vault.user_id
+          ]
+        ).catch(() => {});
+      } else {
+        await execute(
+          `INSERT INTO user_vaults
+           (user_id, pets_json, vehicle_plate_digit, saved_routes_json, expenses_total_crc, badges_json, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            vault.user_id,
+            JSON.stringify(vault.pets || []),
+            vault.vehicle_plate_digit ?? null,
+            JSON.stringify(vault.saved_routes || []),
+            Number(vault.expenses_total_crc) || 0,
+            JSON.stringify(vault.badges || []),
+            now,
+            now
+          ]
+        ).catch(() => {});
+      }
+    } catch {
+      // Respaldo silencioso en memoria si las columnas opcionales no existen
+    }
   }
 
   async getVault(userId) {
@@ -29,7 +81,7 @@ class ClientDashboardService {
         realBadges.push('ciudadano_registrado');
       }
 
-      const vRows = await query('SELECT * FROM user_vaults WHERE user_id = ?', [userId]).catch(() => []);
+      const vRows = await query('SELECT * FROM user_vaults WHERE user_id = ? LIMIT 1', [userId]).catch(() => []);
       vaultRow = vRows?.[0] || null;
 
       petRows = await query('SELECT * FROM user_pets WHERE user_id = ? ORDER BY created_at ASC', [userId]).catch(() => []);
@@ -38,16 +90,16 @@ class ClientDashboardService {
         'SELECT count(*) as total_plans FROM plans WHERE organizer_id = ? AND status = ?',
         [userId, 'confirmed']
       ).catch(() => []);
-      if (plansRows && plansRows[0]?.total_plans > 0) {
+      if (plansRows && Number(plansRows[0]?.total_plans) > 0) {
         realBadges.push('organizador_activo');
-        realExpenses = plansRows[0].total_plans * 8500;
+        realExpenses = Number(plansRows[0].total_plans) * 8500;
       }
 
       const votesRows = await query(
         'SELECT count(*) as total_votes FROM plan_votes WHERE guest_id = ?',
         [userId]
       ).catch(() => []);
-      if (votesRows && votesRows[0]?.total_votes > 0) {
+      if (votesRows && Number(votesRows[0]?.total_votes) > 0) {
         realBadges.push('votante_comunitario');
       }
     } catch (_) {
@@ -58,7 +110,7 @@ class ClientDashboardService {
 
     let interests = ['Cafeterías de especialidad', 'Terrazas al aire libre'];
     if (vaultRow?.interests_json) {
-      try { interests = JSON.parse(vaultRow.interests_json); } catch (_) {}
+      interests = safeJsonParse(vaultRow.interests_json, interests);
     } else if (memCached?.interests) {
       interests = memCached.interests;
     }
@@ -70,7 +122,7 @@ class ClientDashboardService {
       compartirUbicacion: true
     };
     if (vaultRow?.preferences_json) {
-      try { preferences = { ...preferences, ...JSON.parse(vaultRow.preferences_json) }; } catch (_) {}
+      preferences = { ...preferences, ...safeJsonParse(vaultRow.preferences_json, {}) };
     } else if (memCached?.preferences) {
       preferences = { ...preferences, ...memCached.preferences };
     }
@@ -91,8 +143,43 @@ class ClientDashboardService {
         : []
     }));
 
-    const finalPets = mappedPets.length > 0 ? mappedPets : (memCached?.pets || []);
-    const hasPet = vaultRow !== null ? Boolean(vaultRow.has_pet) : (finalPets.length > 0);
+    const jsonPets = vaultRow?.pets_json ? safeJsonParse(vaultRow.pets_json, []) : [];
+    const finalPets =
+      mappedPets.length > 0
+        ? mappedPets
+        : jsonPets.length > 0
+        ? jsonPets
+        : memCached?.pets || [];
+
+    const hasPet =
+      vaultRow?.has_pet !== undefined && vaultRow?.has_pet !== null
+        ? Boolean(vaultRow.has_pet)
+        : finalPets.length > 0;
+
+    const plateDigit =
+      vaultRow?.vehicle_plate_digit !== null && vaultRow?.vehicle_plate_digit !== undefined
+        ? Number(vaultRow.vehicle_plate_digit)
+        : memCached?.vehicle_plate_digit ?? null;
+
+    const savedRoutes = vaultRow?.saved_routes_json
+      ? safeJsonParse(vaultRow.saved_routes_json, [])
+      : memCached?.saved_routes || [];
+
+    const persistedBadges = vaultRow?.badges_json
+      ? safeJsonParse(vaultRow.badges_json, [])
+      : [];
+
+    const finalBadges =
+      persistedBadges.length > 0
+        ? persistedBadges
+        : memCached?.badges?.length > 0
+        ? memCached.badges
+        : realBadges;
+
+    const finalExpenses =
+      vaultRow?.expenses_total_crc !== undefined && vaultRow?.expenses_total_crc !== null && Number(vaultRow.expenses_total_crc) > 0
+        ? Number(vaultRow.expenses_total_crc)
+        : memCached?.expenses_total_crc ?? realExpenses;
 
     const result = {
       user_id: userId,
@@ -112,11 +199,11 @@ class ClientDashboardService {
       budget_level: vaultRow?.budget_level || memCached?.budget_level || 'medio',
       interests,
       preferences,
-      vehicle_plate_digit: vaultRow?.vehicle_plate_digit ?? memCached?.vehicle_plate_digit ?? null,
-      saved_routes: memCached?.saved_routes || [],
-      expenses_total_crc: realExpenses || memCached?.expenses_total_crc || 0,
-      badges: realBadges.length > 0 ? realBadges : (memCached?.badges || []),
-      updated_at: vaultRow?.updated_at || new Date().toISOString()
+      vehicle_plate_digit: plateDigit,
+      saved_routes: savedRoutes,
+      expenses_total_crc: finalExpenses,
+      badges: finalBadges,
+      updated_at: vaultRow?.updated_at || memCached?.updated_at || new Date().toISOString()
     };
 
     this.vaults.set(userId, result);
@@ -136,6 +223,9 @@ class ClientDashboardService {
     const nextInterests = Array.isArray(updates.interests) ? updates.interests : current.interests;
     const nextPrefs = updates.preferences ? { ...current.preferences, ...updates.preferences } : current.preferences;
     const nextPlateDigit = updates.vehicle_plate_digit !== undefined ? updates.vehicle_plate_digit : current.vehicle_plate_digit;
+    const nextSavedRoutes = Array.isArray(updates.saved_routes) ? updates.saved_routes : current.saved_routes;
+    const nextExpenses = updates.expenses_total_crc !== undefined ? Number(updates.expenses_total_crc) : current.expenses_total_crc;
+    const nextBadges = Array.isArray(updates.badges) ? updates.badges : current.badges;
 
     try {
       if (nextName) {
@@ -161,7 +251,7 @@ class ClientDashboardService {
             nextPlateDigit,
             userId
           ]
-        );
+        ).catch(() => {});
       } else {
         await execute(
           `INSERT INTO user_vaults (user_id, phone, zone, has_pet, budget_level, interests_json, preferences_json, vehicle_plate_digit)
@@ -176,10 +266,10 @@ class ClientDashboardService {
             JSON.stringify(nextPrefs || {}),
             nextPlateDigit
           ]
-        );
+        ).catch(() => {});
       }
 
-      // Si viene información de mascota, guardarla o actualizarla
+      // Si viene información de mascota individual desde el frontend, guardarla o actualizarla
       const incomingPet = updates.pet;
       if (incomingPet && (incomingPet.nombre || incomingPet.name)) {
         await this._ensurePetPhotoColumn();
@@ -209,7 +299,7 @@ class ClientDashboardService {
               finalPhoto,
               existingPets[0].id
             ]
-          );
+          ).catch(() => {});
         } else {
           const petId = `pet_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
           await execute(
@@ -228,16 +318,44 @@ class ClientDashboardService {
               allergiesStr,
               incomingPhoto
             ]
-          );
+          ).catch(() => {});
         }
       }
     } catch (_) {
       // Fallback en memoria abajo
     }
 
-    const updated = await this.getVault(userId);
-    this.vaults.set(userId, updated);
-    return updated;
+    const memNext = {
+      ...current,
+      ...updates,
+      user_id: userId,
+      has_pet: nextHasPet,
+      pets: Array.isArray(updates.pets) ? updates.pets : current.pets,
+      budget_level: nextBudget,
+      interests: nextInterests,
+      preferences: nextPrefs,
+      vehicle_plate_digit: nextPlateDigit,
+      saved_routes: nextSavedRoutes,
+      expenses_total_crc: nextExpenses,
+      badges: nextBadges,
+      updated_at: new Date().toISOString()
+    };
+    this.vaults.set(userId, memNext);
+    await this._saveToDb(memNext);
+
+    const refreshed = await this.getVault(userId);
+    const mergedFinal = {
+      ...refreshed,
+      pets: Array.isArray(updates.pets) ? updates.pets : refreshed.pets,
+      pet: (Array.isArray(updates.pets) ? updates.pets[0] : refreshed.pet) || null,
+      vehicle_plate_digit: nextPlateDigit,
+      saved_routes: nextSavedRoutes,
+      expenses_total_crc: nextExpenses,
+      badges: nextBadges,
+      updated_at: memNext.updated_at
+    };
+    this.vaults.set(userId, mergedFinal);
+    return mergedFinal;
   }
 
   async getOverview(userId) {
@@ -253,7 +371,7 @@ class ClientDashboardService {
       2: [3, 4],
       3: [5, 6],
       4: [7, 8],
-      5: [9, 0],
+      5: [9, 0]
     };
 
     const hasPlate = vault.vehicle_plate_digit !== null && vault.vehicle_plate_digit !== undefined;

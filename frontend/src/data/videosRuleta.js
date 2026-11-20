@@ -4,14 +4,14 @@
  */
 export const VIDEOS_RULETA = [
   {
-    id: 'c2eWkJ3bA78',
+    id: '4HFHEmtvoRg',
     dbId: 'vid_seed_perros_higiene',
-    titulo: 'Cómo bañar y cuidar el pelaje de tu perro paso a paso',
+    titulo: '¿Cada cuánto tiempo debo bañar a mi perro? - Lauvet',
     categoria: 'Perros • Higiene',
-    anio: 2024,
+    anio: 2023,
     especie: 'perros',
     tema: 'higiene',
-    duracion: 315,
+    duracion: 249,
     resumen: 'Guía veterinaria paso a paso sobre temperatura del agua, frecuencia de baño, secado y cepillado dental canino.',
     fragmentos: [
       {

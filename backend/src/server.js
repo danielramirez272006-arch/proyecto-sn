@@ -1,7 +1,7 @@
 const app = require('./app');
 const env = require('./shared/config/env-config');
 const { initDatabase, runMigrations, runSeeds } = require('./shared/config/database');
-const authService = require('./modules/auth/auth-service');
+const { authService } = require('./modules/auth');
 const { emailWorker } = require('./modules/notifications');
 const { orchestrator } = require('./autonomous-agents');
 
@@ -21,6 +21,16 @@ async function bootstrap() {
       } catch (dbErr) {
         console.warn('[Server] Aviso al auto-aplicar migraciones/seeds:', dbErr.message);
       }
+    }
+
+    // 2.1 Bootstrap opcional de administrador inicial desde variables ADMIN_EMAIL / ADMIN_PASSWORD
+    try {
+      const bootstrapResult = await authService.ensureBootstrapAdmin();
+      if (bootstrapResult.created || bootstrapResult.updated) {
+        console.log(`[Server] Cuenta admin lista: ${bootstrapResult.email}`);
+      }
+    } catch (adminErr) {
+      console.warn('[Server] Aviso al verificar admin bootstrap:', adminErr.message);
     }
 
     // 3. Iniciar Worker de Correo y Orquestador de Agentes

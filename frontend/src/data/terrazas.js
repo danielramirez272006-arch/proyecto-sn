@@ -18,7 +18,10 @@ export const TERRAZAS = [
     condicionesMascotas: "Perros de todos los tamaños con correa. Se admiten hasta 2 por mesa.",
     horarioRecomendado: "08:00 - 11:30 | 15:30 - 18:00",
     temperaturaPiso: "21.8 °C",
-    imagen: "/imagenes/terrazas-verificadas.jpg"
+    lat: 9.9355,
+    lng: -84.0652,
+    imagen: null,
+    galeria: []
   },
   {
     id: "arbol-de-seda",
@@ -39,7 +42,10 @@ export const TERRAZAS = [
     condicionesMascotas: "Especialmente adaptado para caninos sensibles a detonaciones o bullicio.",
     horarioRecomendado: "11:30 - 16:00",
     temperaturaPiso: "22.2 °C",
-    imagen: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80"
+    lat: 9.9371,
+    lng: -84.0631,
+    imagen: null,
+    galeria: []
   },
   {
     id: "apotecario",
@@ -60,7 +66,10 @@ export const TERRAZAS = [
     condicionesMascotas: "Ideal para caninos sociables. Espacios amplios con ventilación cruzada.",
     horarioRecomendado: "16:00 - 19:30",
     temperaturaPiso: "23.4 °C",
-    imagen: "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=800&q=80"
+    lat: 9.9324,
+    lng: -84.0706,
+    imagen: null,
+    galeria: []
   },
   {
     id: "cafe-miel",
@@ -81,6 +90,81 @@ export const TERRAZAS = [
     condicionesMascotas: "Se admite un perro por mesa con reserva sugerida para terrazas exteriores.",
     horarioRecomendado: "09:00 - 13:00",
     temperaturaPiso: "22.0 °C",
-    imagen: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80"
+    lat: 9.9383,
+    lng: -84.0757,
+    imagen: null,
+    galeria: []
+  },
+  {
+    id: "cafe-teatro-nacional",
+    nombre: "Café del Teatro Nacional",
+    categoria: "Cafetería Histórica & Galería",
+    zona: "San José Centro, Avenida 2",
+    descripcion: "Cafetería clásica junto al Teatro Nacional de Costa Rica con mesas exteriores tranquilas y ambiente arquitectónico patrimonial.",
+    decibelios: 44,
+    nivelRuido: "Silencioso",
+    aforoCaninoActual: 2,
+    aforoCaninoMax: 6,
+    sombraPorcentaje: 90,
+    puntuacionPet: 4.8,
+    verificado: true,
+    insignia: "Patrimonio & Café",
+    procedenciaVerificacion: "Referencia Cultural GAM",
+    servicios: ["Mesas exteriores", "Sombra arquitectónica", "Agua fresca"],
+    condicionesMascotas: "Mascotas con correa en área exterior permitida.",
+    horarioRecomendado: "09:00 - 18:00",
+    temperaturaPiso: "21.5 °C",
+    lat: 9.9332,
+    lng: -84.0770,
+    imagen: null,
+    galeria: []
+  },
+  {
+    id: "parque-espana-san-jose",
+    nombre: "Parque España",
+    categoria: "Corredor Arbolado & Descanso Pet",
+    zona: "Barrio Amón / Otoya, San José",
+    descripcion: "Espacio arbolado fresco con sombra densa conectado con las terrazas pet-friendly de Barrio Amón y Otoya.",
+    decibelios: 45,
+    nivelRuido: "Silencioso",
+    aforoCaninoActual: 4,
+    aforoCaninoMax: 20,
+    sombraPorcentaje: 94,
+    puntuacionPet: 4.8,
+    verificado: true,
+    insignia: "Corredor Arbolado",
+    procedenciaVerificacion: "Referencia Urbana GAM",
+    servicios: ["Sombra 90%+", "Senderos frescos", "Bancas de descanso"],
+    condicionesMascotas: "Acceso libre para perros con correa.",
+    horarioRecomendado: "06:00 - 19:00",
+    temperaturaPiso: "20.8 °C",
+    lat: 9.9360,
+    lng: -84.0754,
+    imagen: null,
+    galeria: []
+  },
+  {
+    id: "circuito-la-sabana",
+    nombre: "Parque Metropolitano La Sabana",
+    categoria: "Zona Verde & Terrazas Abiertas",
+    zona: "La Sabana, San José Oeste",
+    descripcion: "Amplias áreas verdes sombreadas alrededor del lago central ideales para caminatas tranquilas y descanso con mascotas.",
+    decibelios: 48,
+    nivelRuido: "Silencioso",
+    aforoCaninoActual: 8,
+    aforoCaninoMax: 40,
+    sombraPorcentaje: 85,
+    puntuacionPet: 4.9,
+    verificado: true,
+    insignia: "Pulmón Verde GAM",
+    procedenciaVerificacion: "Referencia Urbana GAM",
+    servicios: ["Senderos amplios", "Áreas de sombra", "Puntos de hidratación"],
+    condicionesMascotas: "Mascotas con correa en senderos habilitados.",
+    horarioRecomendado: "06:00 - 17:30",
+    temperaturaPiso: "21.0 °C",
+    lat: 9.9360,
+    lng: -84.1040,
+    imagen: null,
+    galeria: []
   }
 ];

@@ -1,7 +1,10 @@
 const { query, execute } = require('../../shared/config/database');
 const placesRepository = require('../places/places-repository');
 const eventsService = require('../events/events-service');
+const auditService = require('../../shared/audit/audit-service');
 const { stringSimilarityFuzzy } = require('../../shared/utils/geo-math');
+
+const VALID_USER_ROLES = ['admin', 'organizer', 'merchant', 'business_owner', 'client'];
 
 class AdminService {
   async updateEventStatus(eventId, status, startTime = null, endTime = null) {
@@ -85,6 +88,67 @@ class AdminService {
       try { snap = JSON.parse(h.snapshot); } catch {}
       return { ...h, snapshot: snap };
     });
+  }
+
+  async listUsers({ role, search } = {}) {
+    const clauses = [];
+    const params = [];
+
+    if (role && VALID_USER_ROLES.includes(String(role).trim())) {
+      clauses.push('role = ?');
+      params.push(String(role).trim());
+    }
+
+    if (search && String(search).trim()) {
+      const pattern = `%${String(search).trim().toLowerCase()}%`;
+      clauses.push('(LOWER(name) LIKE ? OR LOWER(email) LIKE ?)');
+      params.push(pattern, pattern);
+    }
+
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+    return await query(
+      `SELECT id, name, email, role, gps_trust_score, created_at, updated_at
+       FROM users ${where}
+       ORDER BY created_at DESC`,
+      params
+    );
+  }
+
+  async updateUserRole(targetUserId, newRole, actorUserId = null, req = null) {
+    const cleanRole = String(newRole || '').trim();
+    if (!VALID_USER_ROLES.includes(cleanRole)) {
+      throw new Error('INVALID_ROLE');
+    }
+
+    const rows = await query('SELECT id, name, email, role, gps_trust_score FROM users WHERE id = ?', [targetUserId]);
+    if (!rows || rows.length === 0) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    const existing = rows[0];
+    if (actorUserId && actorUserId === targetUserId && cleanRole !== 'admin') {
+      throw new Error('CANNOT_DEMOTE_SELF');
+    }
+
+    await execute(
+      'UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [cleanRole, targetUserId]
+    );
+
+    await auditService.record({
+      userId: actorUserId,
+      action: 'USER_ROLE_UPDATED',
+      resource: 'users',
+      resourceId: targetUserId,
+      details: { previous_role: existing.role, new_role: cleanRole },
+      req,
+    });
+
+    const updated = await query(
+      'SELECT id, name, email, role, gps_trust_score, created_at, updated_at FROM users WHERE id = ?',
+      [targetUserId]
+    );
+    return updated[0];
   }
 }
 

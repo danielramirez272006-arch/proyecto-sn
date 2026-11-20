@@ -198,6 +198,8 @@ export function RuletaVideos() {
   const [catalogoBase, setCatalogoBase] = useState(VIDEOS_RULETA);
   const [videosLista, setVideosLista] = useState(VIDEOS_RULETA);
   const totalVideos = videosLista.length;
+  const [actualizandoVideos, setActualizandoVideos] = useState(false);
+  const pasoActualizacionRef = useRef(0);
 
   // Estado del chat de búsqueda (PetSearch)
   const [consultaGemini, setConsultaGemini] = useState('');
@@ -228,44 +230,113 @@ export function RuletaVideos() {
     });
   }, []);
 
-  // Sincroniza el catálogo aprobado desde el backend si está disponible
+  const mapearVideosBackend = useCallback((videos, baseAnterior = VIDEOS_RULETA) => {
+    const mapa = new Map(baseAnterior.map((v) => [v.id, v]));
+    const nuevos = [];
+    for (const v of videos) {
+      if (!v.youtube_id) continue;
+      const existente = mapa.get(v.youtube_id) || {};
+      const item = {
+        ...existente,
+        id: v.youtube_id,
+        dbId: v.id || existente.dbId,
+        titulo: v.title || existente.titulo,
+        categoria: v.category || existente.categoria || `${v.species || 'general'} • ${v.topic || 'cuidado'}`,
+        anio: v.year || existente.anio || (v.approved_at ? new Date(v.approved_at).getFullYear() : 2026),
+        especie: v.species || existente.especie,
+        tema: v.topic || existente.tema,
+        duracion: Number(v.duration_seconds) || existente.duracion || 240,
+        resumen: v.summary || existente.resumen,
+        poster: v.thumbnail_url || existente.poster,
+        fragmentos: existente.fragmentos || []
+      };
+      mapa.set(v.youtube_id, item);
+      nuevos.push(item);
+    }
+    return { mapa, nuevos };
+  }, []);
+
+  // Sincroniza el catálogo aprobado y recomendaciones en vivo desde YouTube al iniciar
   useEffect(() => {
     let activo = true;
-    api.get('/pet-videos?limit=20')
-      .then((videos) => {
-        if (!activo || !Array.isArray(videos) || videos.length === 0) return;
-        setCatalogoBase((prev) => {
-          const mapa = new Map(prev.map((v) => [v.id, v]));
-          for (const v of videos) {
-            if (!v.youtube_id) continue;
-            const existente = mapa.get(v.youtube_id) || {};
-            mapa.set(v.youtube_id, {
-              ...existente,
-              id: v.youtube_id,
-              dbId: v.id || existente.dbId,
-              titulo: v.title || existente.titulo,
-              categoria: existente.categoria || `${v.species || 'general'} • ${v.topic || 'cuidado'}`,
-              anio: existente.anio || (v.approved_at ? new Date(v.approved_at).getFullYear() : 2026),
-              especie: v.species || existente.especie,
-              tema: v.topic || existente.tema,
-              duracion: Number(v.duration_seconds) || existente.duracion || 240,
-              resumen: v.summary || existente.resumen,
-              poster: v.thumbnail_url || existente.poster,
-              fragmentos: existente.fragmentos || []
-            });
-          }
-          const combinado = Array.from(mapa.values());
-          setVideosLista((curr) => (curr === prev ? combinado : curr));
-          return combinado;
-        });
-      })
-      .catch(() => {
-        // Permanece en modo Demostración con los datos locales verificados
+    Promise.allSettled([
+      api.get('/pet-videos?limit=20'),
+      api.get('/pet-videos/live?limit=6')
+    ]).then(([aprobadosRes, liveRes]) => {
+      if (!activo) return;
+      const aprobados = aprobadosRes.status === 'fulfilled' && Array.isArray(aprobadosRes.value)
+        ? aprobadosRes.value
+        : [];
+      const liveData = liveRes.status === 'fulfilled' && liveRes.value?.is_live && Array.isArray(liveRes.value.videos)
+        ? liveRes.value.videos
+        : [];
+
+      const entrantes = [...liveData, ...aprobados];
+      if (entrantes.length === 0) return;
+
+      setCatalogoBase((prev) => {
+        const { mapa, nuevos } = mapearVideosBackend(entrantes, prev);
+        const combinado = liveData.length > 0
+          ? [...nuevos, ...Array.from(mapa.values()).filter((v) => !nuevos.some((n) => n.id === v.id))]
+          : Array.from(mapa.values());
+        setVideosLista((curr) => (curr === prev ? combinado : curr));
+        return combinado;
       });
+    });
+
     return () => {
       activo = false;
     };
-  }, []);
+  }, [mapearVideosBackend]);
+
+  const actualizarVideosEnVivo = useCallback(async ({ automatico = false } = {}) => {
+    if (actualizandoVideos) return;
+    setActualizandoVideos(true);
+    pasoActualizacionRef.current += 1;
+    try {
+      const resp = await api.get(`/pet-videos/live?limit=6&refresh=1&step=${pasoActualizacionRef.current}`);
+      const listaLive = Array.isArray(resp?.videos) ? resp.videos : [];
+      if (listaLive.length > 0) {
+        setCatalogoBase((prev) => {
+          const { nuevos } = mapearVideosBackend(listaLive, prev);
+          const mapa = new Map(prev.map((v) => [v.id, v]));
+          for (const n of nuevos) mapa.set(n.id, n);
+
+          // En actualización automática cada 10 min, no interrumpir si hay video abierto o búsqueda activa
+          if (!automatico || (!reproductorRef.current && !busquedaActiva)) {
+            posRef.current = 0;
+            targetRef.current = 0;
+            activoRef.current = null;
+            setVideoActivo(null);
+            setFrameListo(null);
+            setFallidos({});
+            setVideoCaido({});
+            setInfo({ cur: 0, prev: null, front: 0 });
+            if (!automatico) {
+              setBusquedaActiva(false);
+              setUltimoTema(null);
+            }
+            setVideosLista(nuevos);
+          }
+
+          return Array.from(mapa.values());
+        });
+      }
+    } catch {
+      // Mantiene la selección actual si falla la red
+    } finally {
+      setActualizandoVideos(false);
+    }
+  }, [actualizandoVideos, busquedaActiva, mapearVideosBackend]);
+
+  // Actualización automática del carrusel cada 10 minutos
+  useEffect(() => {
+    const INTERVALO_MS = 10 * 60 * 1000;
+    const timer = setInterval(() => {
+      actualizarVideosEnVivo({ automatico: true });
+    }, INTERVALO_MS);
+    return () => clearInterval(timer);
+  }, [actualizarVideosEnVivo]);
 
   const aplicarResultadosAlCarrusel = (nuevaLista) => {
     posRef.current = 0;
@@ -1102,6 +1173,15 @@ export function RuletaVideos() {
               List
             </button>
           </div>
+          <button
+            type="button"
+            className="gxw__refresh"
+            onClick={actualizarVideosEnVivo}
+            disabled={actualizandoVideos}
+            aria-label="Actualizar videos desde YouTube"
+          >
+            {actualizandoVideos ? 'Actualizando…' : '↻ Actualizar videos'}
+          </button>
         </div>
         <h2 className="gxw__mark" id="gxw-titulo">
           Recomendación

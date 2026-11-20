@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PageWrapper } from '../components/PageWrapper';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { LUGARES_GOTOX } from '../data/lugaresGoToX';
+import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { LugarFoto } from '../components/LugarFoto';
 import { esFavorito, alternarFavorito } from '../servicios/almacenamientoCliente';
 import { useTema } from '../context/TemaContext';
 import {
@@ -21,7 +23,9 @@ import {
   CloudRain,
   Sun,
   Accessibility,
-  ArrowRight
+  ArrowRight,
+  Utensils,
+  ExternalLink
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -45,6 +49,42 @@ export function ExplorarPage() {
   const [mostrarMapaComplementario, setMostrarMapaComplementario] = useState(false);
   const [lugarSeleccionado, setLugarSeleccionado] = useState(null);
   const [favoritosTrigger, setFavoritosTrigger] = useState(0);
+  const [restaurantesReales, setRestaurantesReales] = useState([]);
+  const [cargandoReales, setCargandoReales] = useState(false);
+  const { lugaresConFotos, cargandoFotos } = useResolvedPlacePhotos(LUGARES_GOTOX);
+
+  useEffect(() => {
+    let cancelado = false;
+    const cargar = async (lat, lng) => {
+      setCargandoReales(true);
+      try {
+        const res = await fetch(`/api/places/multisource/search?lat=${lat}&lng=${lng}&radius=2200&limit=12`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!cancelado && Array.isArray(json?.data?.places)) {
+          setRestaurantesReales(json.data.places);
+        }
+      } catch (err) {
+        // Ignorar error de red
+      } finally {
+        if (!cancelado) setCargandoReales(false);
+      }
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => cargar(pos.coords.latitude, pos.coords.longitude),
+        () => cargar(9.9352, -84.0695),
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
+      );
+    } else {
+      cargar(9.9352, -84.0695);
+    }
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   // Zonas únicas disponibles
   const zonasDisponibles = useMemo(() => {
@@ -54,7 +94,7 @@ export function ExplorarPage() {
 
   // Filtrado compuesto
   const lugaresFiltrados = useMemo(() => {
-    return LUGARES_GOTOX.filter(lugar => {
+    return lugaresConFotos.filter(lugar => {
       // Búsqueda por texto
       if (busqueda.trim()) {
         const q = busqueda.toLowerCase();
@@ -101,7 +141,7 @@ export function ExplorarPage() {
 
       return true;
     });
-  }, [busqueda, filtroZona, filtroPrecio, filtroTiempo, filtroTipo, filtroClima, filtroPet, filtroAccesibilidad]);
+  }, [lugaresConFotos, busqueda, filtroZona, filtroPrecio, filtroTiempo, filtroTipo, filtroClima, filtroPet, filtroAccesibilidad]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -383,9 +423,11 @@ export function ExplorarPage() {
                     onClick={() => setLugarSeleccionado(lugar)}
                     className="relative h-48 w-full overflow-hidden cursor-pointer bg-slate-900 group"
                   >
-                    <img
+                    <LugarFoto
                       src={lugar.imagen}
                       alt={lugar.nombre}
+                      photoMeta={lugar.photoMeta}
+                      cargando={cargandoFotos}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
@@ -474,6 +516,104 @@ export function ExplorarPage() {
             })}
           </div>
         )}
+      </div>
+
+      {/* Restaurantes y Cafés Reales cercanos (OpenStreetMap) */}
+      <div className="space-y-4 pt-4 border-t border-current/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="font-serif text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Utensils className="w-5 h-5 text-orange-400" />
+              <span>Restaurantes Reales cerca de ti ({restaurantesReales.length})</span>
+            </h2>
+            <p className="text-xs opacity-70">
+              Lugares reales consultados en OpenStreetMap según tu ubicación actual.
+            </p>
+          </div>
+          <Link
+            to="/mapa"
+            className="text-xs font-bold text-[#F27B91] hover:underline flex items-center gap-1"
+          >
+            <span>Ver todos en el Mapa Interactivo</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {cargandoReales && restaurantesReales.length === 0 ? (
+          <div className="p-6 rounded-2xl border border-current/10 text-center text-xs opacity-70">
+            Cargando restaurantes reales cercanos...
+          </div>
+        ) : restaurantesReales.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {restaurantesReales.slice(0, 9).map((rest) => {
+              const etiquetaPet =
+                rest.access_status === 'allowed'
+                  ? 'Mascotas: Permitido'
+                  : rest.access_status === 'not_allowed'
+                  ? 'Mascotas: No permitido'
+                  : rest.access_status === 'conflicting'
+                  ? 'Mascotas: Contradictorio'
+                  : 'Mascotas: Desconocido';
+              const fotoMeta = rest.photo
+                ? {
+                    status: 'resolved',
+                    provider: rest.photo.provider || 'gotox_owner',
+                    attributions: rest.photo.author
+                      ? [{ displayName: `${rest.photo.author}${rest.photo.license ? ` · ${rest.photo.license}` : ''}`, uri: rest.photo.source_page_url }]
+                      : [],
+                    sourceUrl: rest.photo.source_page_url || null
+                  }
+                : { status: 'no_photos', reason: rest.photo_reason || 'Sin fotografía disponible.' };
+
+              return (
+                <div
+                  key={rest.id}
+                  className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col justify-between ${
+                    esClaro
+                      ? 'bg-white border-slate-200'
+                      : esMorado
+                      ? 'bg-[#180A14] border-[#F27B91]/20'
+                      : 'bg-[#111827] border-white/10'
+                  }`}
+                >
+                  <div className="h-36 w-full overflow-hidden">
+                    <LugarFoto
+                      src={rest.photo?.url || null}
+                      alt={rest.photo?.alt_text || rest.name}
+                      photoMeta={fotoMeta}
+                      compacto
+                    />
+                  </div>
+                  <div className="p-4 flex-1 flex flex-col justify-between gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 block">
+                        {rest.category === 'cafe' ? 'Cafetería Real' : 'Restaurante Real'}
+                      </span>
+                      <h3 className="font-serif font-bold text-base leading-snug">{rest.name}</h3>
+                      <p className="text-[11px] opacity-75 flex items-start gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{rest.address || 'Dirección no especificada'}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-current/10 text-xs">
+                      <span className="text-[10px] opacity-80 font-medium">{etiquetaPet}</span>
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${rest.lat}&mlon=${rest.lng}#map=17/${rest.lat}/${rest.lng}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-semibold transition-colors"
+                      >
+                        <span>Ver mapa</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       {/* Modal Interactivo de Ficha de Establecimiento */}

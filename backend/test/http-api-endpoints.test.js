@@ -247,4 +247,134 @@ test('Suite de Endpoints HTTP y Contrato de API en Memoria', async (suite) => {
     assert.equal(res.body.ok, true);
     assert.equal(res.body.data.job, 'affected-plans-monitor');
   });
+
+  await suite.test('GET /api/auth/me devuelve rol y permissions para admin y guest', async () => {
+    const resAdmin = await executeMockRequest('GET', '/api/auth/me', {
+      headers: { 'authorization': `Bearer ${adminToken}` }
+    });
+    assert.equal(resAdmin.status, 200);
+    assert.equal(resAdmin.body.data.authenticated, true);
+    assert.equal(resAdmin.body.data.user.role, 'admin');
+    assert.ok(resAdmin.body.data.user.permissions.includes('admin:telemetry'));
+
+    const resGuest = await executeMockRequest('GET', '/api/auth/me', {
+      headers: { 'x-guest-token': 'gst_test_token_1' }
+    });
+    assert.equal(resGuest.status, 200);
+    assert.equal(resGuest.body.data.type, 'guest_session');
+    assert.equal(resGuest.body.data.user.role, 'guest');
+    assert.deepEqual(resGuest.body.data.user.permissions, ['plans:vote']);
+  });
+
+  await suite.test('Bootstrap admin + GET /api/admin/users y PATCH /api/admin/users/:id/role', async () => {
+    const { authService } = require('../src/modules/auth');
+    const skipRes = await authService.ensureBootstrapAdmin({ email: '', password: '' });
+    assert.equal(skipRes.skipped, true);
+
+    const adminEmail = `boot_admin_${Date.now()}@gotox.cr`;
+    const bootRes = await authService.ensureBootstrapAdmin({
+      email: adminEmail,
+      password: 'AdminBootPassword123!',
+      name: 'Admin Bootstrap',
+    });
+    assert.equal(bootRes.created, true);
+    assert.equal(bootRes.role, 'admin');
+
+    const loginAdmin = await executeMockRequest('POST', '/api/auth/login', {
+      body: { email: adminEmail, password: 'AdminBootPassword123!' }
+    });
+    assert.equal(loginAdmin.status, 200);
+    assert.equal(loginAdmin.body.data.user.role, 'admin');
+    assert.ok(loginAdmin.body.data.user.permissions.includes('admin:agents'));
+    const realAdminToken = loginAdmin.body.data.token;
+
+    const regClient = await executeMockRequest('POST', '/api/auth/register', {
+      body: {
+        name: 'Tutor Prueba',
+        email: `tutor_${Date.now()}@gotox.cr`,
+        password: 'TutorPassword123!',
+      }
+    });
+    assert.equal(regClient.status, 201);
+    const clientUser = regClient.body.data.user;
+    const clientToken = regClient.body.data.token;
+    assert.equal(clientUser.role, 'client');
+
+    // Un cliente normal no puede acceder a /api/admin/users
+    const forbiddenUsers = await executeMockRequest('GET', '/api/admin/users', {
+      headers: { 'authorization': `Bearer ${clientToken}` }
+    });
+    assert.equal(forbiddenUsers.status, 403);
+
+    // El admin sí puede listar usuarios y nunca recibe password_hash
+    const listUsersRes = await executeMockRequest('GET', '/api/admin/users', {
+      headers: { 'authorization': `Bearer ${realAdminToken}` }
+    });
+    assert.equal(listUsersRes.status, 200);
+    assert.ok(listUsersRes.body.data.users.some(u => u.id === clientUser.id));
+    assert.equal(listUsersRes.body.data.users[0].password_hash, undefined);
+
+    // El admin no puede quitarse su propio rol admin
+    const selfDemote = await executeMockRequest('PATCH', `/api/admin/users/${bootRes.id}/role`, {
+      headers: { 'authorization': `Bearer ${realAdminToken}` },
+      body: { role: 'client' }
+    });
+    assert.equal(selfDemote.status, 400);
+
+    // El admin puede promover al tutor a organizer y /api/auth/me refleja el cambio en DB
+    const promoteRes = await executeMockRequest('PATCH', `/api/admin/users/${clientUser.id}/role`, {
+      headers: { 'authorization': `Bearer ${realAdminToken}` },
+      body: { role: 'organizer' }
+    });
+    assert.equal(promoteRes.status, 200);
+    assert.equal(promoteRes.body.data.user.role, 'organizer');
+
+    const clientMeAfter = await executeMockRequest('GET', '/api/auth/me', {
+      headers: { 'authorization': `Bearer ${clientToken}` }
+    });
+    assert.equal(clientMeAfter.status, 200);
+    assert.equal(clientMeAfter.body.data.user.role, 'organizer');
+    assert.ok(clientMeAfter.body.data.user.permissions.includes('plans:confirm'));
+  });
+
+  await suite.test('GET /api/places/nearby-real valida coordenadas y responde estructura OSM', async () => {
+    const missingRes = await executeMockRequest('GET', '/api/places/nearby-real');
+    assert.equal(missingRes.status, 400);
+
+    const nearbyRes = await executeMockRequest('GET', '/api/places/nearby-real?lat=9.9352&lng=-84.0695&radius=800');
+    assert.equal(nearbyRes.status, 200);
+    assert.equal(nearbyRes.body.ok, true);
+    assert.equal(nearbyRes.body.data.source, 'openstreetmap');
+    assert.ok(Array.isArray(nearbyRes.body.data.restaurants));
+  });
+
+  await suite.test('POST /api/concierge/chat acepta pet_profile y aclara que Bruno no es veterinario', async () => {
+    const chatRes = await executeMockRequest('POST', '/api/concierge/chat', {
+      body: {
+        session_id: 'test_bruno_pet',
+        message: 'Mi perro está decaído y no quiere comer, ¿cómo está mi mascota?',
+        pet_profile: { nombre: 'Bruno Jr', raza: 'Golden', pesoKg: 28 },
+        telemetry: { temperaturaAsfalto: 24.5, ventanaSecaMinutos: 40 }
+      }
+    });
+    assert.equal(chatRes.status, 200);
+    assert.equal(chatRes.body.ok, true);
+    assert.ok(typeof chatRes.body.data.response === 'string' && chatRes.body.data.response.length > 0);
+    assert.match(chatRes.body.data.response, /veterinari/i);
+    assert.match(chatRes.body.data.disclaimer, /veterinario/i);
+  });
+
+  await suite.test('POST /api/concierge/tts valida texto y usa voice_id de ElevenLabs', async () => {
+    const emptyRes = await executeMockRequest('POST', '/api/concierge/tts', { body: {} });
+    assert.equal(emptyRes.status, 400);
+
+    const ttsRes = await executeMockRequest('POST', '/api/concierge/tts', {
+      body: { text: 'Pura vida, soy Bruno.' }
+    });
+    assert.ok(ttsRes.status === 200 || ttsRes.status === 503);
+    if (ttsRes.status === 503) {
+      assert.equal(ttsRes.body.fallback, 'browser_tts');
+      assert.ok(ttsRes.body.voice_id);
+    }
+  });
 });

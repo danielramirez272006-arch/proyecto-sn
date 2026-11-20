@@ -1,0 +1,19 @@
+{
+  "_nota": "Plantilla de ejemplo para importación por lotes. Reemplazar place_id y rutas con fotografías reales antes de ejecutar --commit.",
+  "items": [
+    {
+      "place_id": "EJEMPLO-PLACE-ID-1",
+      "branch_label": "Sucursal Escalante",
+      "file": "ejemplo/terraza.jpg",
+      "photo_type": "terraza",
+      "author": "Nombre Autor",
+      "attribution_text": "Foto por Nombre Autor (CC BY-SA 4.0)",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Ejemplo.jpg",
+      "captured_at": "2026-11-01",
+      "is_cover": true,
+      "alt_text": "Terraza de ejemplo (plantilla)"
+    }
+  ]
+}

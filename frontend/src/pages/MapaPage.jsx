@@ -1,551 +1,910 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { useReducedMotion } from 'motion/react';
 import { TERRAZAS } from '../data/terrazas';
 import { PageWrapper } from '../components/PageWrapper';
-import { Modal } from '../components/ui/Modal';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
 import { useTelemetria } from '../hooks/useTelemetria';
+import { useTema } from '../context/TemaContext';
 import {
   MapPin,
   Volume2,
   Thermometer,
-  ShieldCheck,
-  Search,
-  Layers,
   Compass,
-  Users,
-  Clock,
-  Droplets,
-  CheckCircle2,
-  AlertTriangle,
   ZoomIn,
   ZoomOut,
-  Maximize2,
   RotateCcw,
-  Sparkles,
-  ArrowRight,
+  Crosshair,
+  Search,
+  Layers,
   Navigation,
-  Coffee
+  AlertTriangle,
+  X
 } from 'lucide-react';
-import { TRANSICION_SUAVE } from '../estilos/animaciones';
+import { obtenerTokensMapa } from '../features/mapa/temaMapa';
+import {
+  adaptarTerrazaDemo,
+  adaptarLugarExterno,
+  filtrarLugares,
+  ordenarLugares
+} from '../features/mapa/adaptadorLugares';
+import { ListaLugaresMapa } from '../features/mapa/ListaLugaresMapa';
+import { PanelDetalleLugar } from '../features/mapa/PanelDetalleLugar';
+import { PanelInferiorMovil } from '../features/mapa/PanelInferiorMovil';
 
-// Coordenadas relativas en la retícula urbana del GAM (San José Este / Centro)
+const CENTRO_GAM = { lat: 9.9352, lng: -84.0695 };
+
 const COORDENADAS_TERRAZAS = {
-  'franco-cafe': { x: 68, y: 44, barrio: 'Barrio Escalante' },
-  'arbol-de-seda': { x: 74, y: 53, barrio: 'Barrio Escalante Sur' },
-  'apotecario': { x: 50, y: 64, barrio: 'Barrio California' },
-  'cafe-miel': { x: 34, y: 35, barrio: 'Barrio Amón / Otoya' }
+  'franco-cafe': { lat: 9.9355, lng: -84.0652, barrio: 'Barrio Escalante' },
+  'arbol-de-seda': { lat: 9.9371, lng: -84.0631, barrio: 'Barrio Escalante' },
+  apotecario: { lat: 9.9324, lng: -84.0706, barrio: 'Barrio California' },
+  'cafe-miel': { lat: 9.9383, lng: -84.0757, barrio: 'Barrio Amón / Otoya' }
 };
 
-// Corredores acústicamente seguros (parques con arboleda densa y bajo bullicio)
 const CORREDORES_VERDES = [
-  { id: 'corredor-francia', nombre: 'Paseo Parque Francia - Escalante', x: 70, y: 48, decibelios: 42, sombra: '95%' },
-  { id: 'corredor-nacional', nombre: 'Circuito Parque Nacional - Estación', x: 56, y: 40, decibelios: 48, sombra: '88%' },
-  { id: 'corredor-espana', nombre: 'Arboleda Parque España - Amón', x: 38, y: 38, decibelios: 45, sombra: '90%' }
+  {
+    id: 'corredor-espana',
+    nombre: 'Arboleda Parque España',
+    zona: 'Barrio Amón / Otoya (Demo)',
+    lat: 9.936,
+    lng: -84.0754,
+    decibelios: 45,
+    sombra: '90%',
+    detalle: 'Sendero arbolado de referencia en el prototipo.'
+  },
+  {
+    id: 'corredor-nacional',
+    nombre: 'Circuito Parque Nacional',
+    zona: 'Estación / California (Demo)',
+    lat: 9.9333,
+    lng: -84.0701,
+    decibelios: 48,
+    sombra: '88%',
+    detalle: 'Caminos amplios sombreados de referencia en el prototipo.'
+  },
+  {
+    id: 'corredor-francia',
+    nombre: 'Paseo Parque Francia',
+    zona: 'Barrio Escalante (Demo)',
+    lat: 9.9358,
+    lng: -84.066,
+    decibelios: 42,
+    sombra: '95%',
+    detalle: 'Corredor peatonal tranquilo de referencia en el prototipo.'
+  }
 ];
 
-// Zonas con pavimento térmico crítico (> 28 °C en horas pico sin sombra)
 const PUNTOS_CALIENTES = [
-  { id: 'hot-avenida2', nombre: 'Cruce Avenida 2 / Calle 23 (Asfalto Expuesto)', x: 58, y: 72, temp: '32.4 °C', alerta: 'Evitar entre 11:30 y 14:00' },
-  { id: 'hot-calle33', nombre: 'Intersección Rotonda Roosevelt', x: 82, y: 68, temp: '29.8 °C', alerta: 'Caminar por calzada este con arbolado' }
+  {
+    id: 'hot-avenida2',
+    nombre: 'Cruce Av. 2 / Calle 23',
+    zona: 'Asfalto Expuesto (Demo)',
+    lat: 9.9311,
+    lng: -84.0714,
+    temp: '32.4 °C',
+    alerta: 'Referencia demo: evitar horas pico sin sombra por calor en acera.'
+  },
+  {
+    id: 'hot-calle33',
+    nombre: 'Rotonda Fuente de la Hispanidad',
+    zona: 'San Pedro / Escalante (Demo)',
+    lat: 9.9325,
+    lng: -84.0545,
+    temp: '29.8 °C',
+    alerta: 'Referencia demo: preferir acera con cobertura de árboles.'
+  }
 ];
+
+const FILTROS_INICIALES = {
+  soloPermitidos: false,
+  conTerraza: false,
+  soloTranquilos: false,
+  incluirDesconocidos: true
+};
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function crearPinLugarHtml(lugar, seleccionado, esClaro, reducedMotion) {
+  const bg = seleccionado ? '#501228' : esClaro ? '#FFFFFF' : '#111827';
+  const text = seleccionado ? '#FFFFFF' : esClaro ? '#0F172A' : '#F8FAFC';
+  const border = seleccionado ? '#F9A8B8' : esClaro ? '#64748B' : '#94A3B8';
+  const dot =
+    lugar.petStatus === 'permitido'
+      ? '#10B981'
+      : lugar.petStatus === 'no_permitido'
+      ? '#F43F5E'
+      : '#F59E0B';
+  const halo = seleccionado
+    ? '0 0 0 4px rgba(242,123,145,0.35), 0 8px 18px rgba(0,0,0,0.3)'
+    : '0 4px 12px rgba(0,0,0,0.22)';
+  const scale = seleccionado && !reducedMotion ? 'scale(1.07)' : 'scale(1)';
+
+  return `
+    <div style="
+      display:inline-flex;align-items:center;gap:6px;
+      padding:5px 10px;border-radius:9999px;
+      background:${bg};color:${text};
+      border:1.5px solid ${border};
+      box-shadow:${halo};
+      font-family:system-ui,-apple-system,sans-serif;
+      white-space:nowrap;transform:translate(-50%,-50%) ${scale};
+      transition:${reducedMotion ? 'none' : 'transform 160ms ease, box-shadow 160ms ease'};
+      cursor:pointer;
+    ">
+      <span style="width:8px;height:8px;border-radius:9999px;background:${dot};flex-shrink:0;"></span>
+      <span style="font-size:11px;font-weight:700;">${escapeHtml(lugar.nombre)}</span>
+    </div>
+  `;
+}
 
 export function MapaPage() {
   const telemetria = useTelemetria();
+  const { tema } = useTema();
+  const tokens = useMemo(() => obtenerTokensMapa(tema), [tema]);
+  const prefersReducedMotion = useReducedMotion();
 
-  const [capaActiva, setCapaActiva] = useState('todas'); // 'todas' | 'silencioso' | 'corredores' | 'asfalto'
-  const [busqueda, setBusqueda] = useState('');
-  const [terrazaSeleccionada, setTerrazaSeleccionada] = useState(null);
-  const [modalAuditoria, setModalAuditoria] = useState(null);
-  const [zoom, setZoom] = useState(1);
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const tileLayerRef = useRef(null);
+  const markersLayerRef = useRef(null);
+  const userLayerRef = useRef(null);
+  const triggerDetalleRef = useRef(null);
+  const programmaticMoveRef = useRef(false);
+  const userInteractingRef = useRef(false);
+  const abortControllerRef = useRef(null);
 
-  // Filtrado de terrazas en el mapa
-  const terrazasVisibles = useMemo(() => {
-    return TERRAZAS.filter((t) => {
-      if (capaActiva === 'silencioso' && !t.nivelRuido.toLowerCase().includes('silencioso')) {
-        return false;
+  const [esEscritorio, setEsEscritorio] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+  const [busquedaInput, setBusquedaInput] = useState('');
+  const [busquedaDebounced, setBusquedaDebounced] = useState('');
+  const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
+  const [filtros, setFiltros] = useState(FILTROS_INICIALES);
+  const [orden, setOrden] = useState('relevancia');
+
+  // Capas independientes del mapa (separadas de filtros de restaurantes)
+  const [mostrarRutasVerdes, setMostrarRutasVerdes] = useState(true);
+  const [mostrarRiesgoPodal, setMostrarRiesgoPodal] = useState(true);
+
+  const [lugarSeleccionado, setLugarSeleccionado] = useState(null);
+  const [elementoInfo, setElementoInfo] = useState(null);
+  const [panelMovilExpandido, setPanelMovilExpandido] = useState(false);
+  const [leyendaMovilAbierta, setLeyendaMovilAbierta] = useState(false);
+
+  const [lugaresExternosRaw, setLugaresExternosRaw] = useState([]);
+  const [zonaModificadaPorUsuario, setZonaModificadaPorUsuario] = useState(false);
+  const [mensajeZona, setMensajeZona] = useState('');
+
+  const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
+  const [estadoGps, setEstadoGps] = useState('idle');
+  const [zoomActual, setZoomActual] = useState(15);
+
+  // Debounce en la búsqueda para no procesar ni consultar por cada tecla
+  useEffect(() => {
+    if (busquedaInput === busquedaDebounced) {
+      setCargandoBusqueda(false);
+      return undefined;
+    }
+    setCargandoBusqueda(true);
+    const timer = window.setTimeout(() => {
+      setBusquedaDebounced(busquedaInput);
+      setCargandoBusqueda(false);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [busquedaInput, busquedaDebounced]);
+
+  useEffect(() => {
+    const onResize = () => {
+      setEsEscritorio(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const moverMapa = useCallback(
+    (lat, lng, zoom = 15) => {
+      const map = mapRef.current;
+      if (!map) return;
+      programmaticMoveRef.current = true;
+      if (prefersReducedMotion) {
+        map.setView([lat, lng], zoom, { animate: false });
+      } else {
+        map.flyTo([lat, lng], zoom, { duration: 0.55 });
       }
-      if (busqueda.trim()) {
-        const q = busqueda.toLowerCase();
-        return (
-          t.nombre.toLowerCase().includes(q) ||
-          t.zona.toLowerCase().includes(q) ||
-          t.categoria.toLowerCase().includes(q)
-        );
-      }
-      return true;
+      window.setTimeout(() => {
+        programmaticMoveRef.current = false;
+      }, 650);
+    },
+    [prefersReducedMotion]
+  );
+
+  // Cargar lugares de demostración y señales externas ya existentes (si las hay)
+  const lugaresAdaptados = useMemo(() => {
+    const demos = TERRAZAS.map((t) =>
+      adaptarTerrazaDemo(t, COORDENADAS_TERRAZAS[t.id], ubicacionUsuario)
+    ).filter((item) => Number.isFinite(item.lat) && Number.isFinite(item.lng));
+
+    const externos = lugaresExternosRaw
+      .map((item) => adaptarLugarExterno(item, ubicacionUsuario))
+      .filter((item) => Number.isFinite(item.lat) && Number.isFinite(item.lng));
+
+    return [...demos, ...externos];
+  }, [lugaresExternosRaw, ubicacionUsuario]);
+
+  const lugaresVisibles = useMemo(() => {
+    const filtrados = filtrarLugares(lugaresAdaptados, {
+      busqueda: busquedaDebounced,
+      soloPermitidos: filtros.soloPermitidos,
+      conTerraza: filtros.conTerraza,
+      soloTranquilos: filtros.soloTranquilos,
+      incluirDesconocidos: filtros.incluirDesconocidos
     });
-  }, [capaActiva, busqueda]);
+    return ordenarLugares(filtrados, orden);
+  }, [lugaresAdaptados, busquedaDebounced, filtros, orden]);
 
-  const resetearVista = () => {
-    setZoom(1);
-    setTerrazaSeleccionada(null);
-    setBusqueda('');
-    setCapaActiva('todas');
-  };
+  const centrarEnUsuario = useCallback(
+    (silentIfDenied = false) => {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        if (!silentIfDenied) setEstadoGps('denied');
+        return;
+      }
+
+      setEstadoGps('locating');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: Math.round(pos.coords.accuracy || 40)
+          };
+          setUbicacionUsuario(coords);
+          setEstadoGps('ready');
+          moverMapa(coords.lat, coords.lng, 15);
+        },
+        () => {
+          setEstadoGps('denied');
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      );
+    },
+    [moverMapa]
+  );
+
+  // Inicializar Leaflet una sola vez (no se reinicia al contraer la sidebar)
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: [CENTRO_GAM.lat, CENTRO_GAM.lng],
+      zoom: 15,
+      zoomControl: false,
+      attributionControl: true
+    });
+
+    tileLayerRef.current = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    markersLayerRef.current = L.layerGroup().addTo(map);
+    userLayerRef.current = L.layerGroup().addTo(map);
+
+    const markUserInteraction = () => {
+      if (!programmaticMoveRef.current) {
+        userInteractingRef.current = true;
+      }
+    };
+
+    map.on('dragstart', markUserInteraction);
+    map.on('zoomstart', markUserInteraction);
+
+    map.on('zoomend', () => {
+      setZoomActual(map.getZoom());
+    });
+
+    map.on('moveend', () => {
+      if (userInteractingRef.current && !programmaticMoveRef.current) {
+        setZonaModificadaPorUsuario(true);
+        setMensajeZona('');
+      }
+      userInteractingRef.current = false;
+    });
+
+    mapRef.current = map;
+
+    return () => {
+      abortControllerRef.current?.abort();
+      map.remove();
+      mapRef.current = null;
+      tileLayerRef.current = null;
+      markersLayerRef.current = null;
+      userLayerRef.current = null;
+    };
+  }, []);
+
+  // Recalcular tamaño del mapa tras cambios de distribución (incluyendo sidebar contraíble)
+  useEffect(() => {
+    const map = mapRef.current;
+    const container = mapContainerRef.current;
+    if (!map || !container) return undefined;
+
+    const recalcular = () => {
+      programmaticMoveRef.current = true;
+      map.invalidateSize({ animate: false });
+      window.setTimeout(() => {
+        programmaticMoveRef.current = false;
+      }, 120);
+    };
+
+    const timer = window.setTimeout(recalcular, 270);
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => {
+        recalcular();
+      });
+      observer.observe(container);
+    }
+
+    return () => {
+      window.clearTimeout(timer);
+      observer?.disconnect();
+    };
+  }, [esEscritorio, panelMovilExpandido, lugarSeleccionado]);
+
+  // Mantener teselas OSM sin oscurecimiento por filtros CSS
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const tilePane = map.getPane('tilePane');
+    if (tilePane) {
+      tilePane.style.filter = 'none';
+    }
+  }, [tema]);
+
+  // Marcador de usuario
+  useEffect(() => {
+    const layer = userLayerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!ubicacionUsuario) return;
+
+    L.circle([ubicacionUsuario.lat, ubicacionUsuario.lng], {
+      radius: Math.min(ubicacionUsuario.accuracy || 50, 180),
+      color: '#0284C7',
+      fillColor: '#38BDF8',
+      fillOpacity: 0.16,
+      weight: 1.5
+    }).addTo(layer);
+
+    const userIcon = L.divIcon({
+      className: 'gotox-user-marker',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+      html: `<div style="width:14px;height:14px;border-radius:9999px;background:#0284C7;border:2.5px solid #FFFFFF;box-shadow:0 2px 8px rgba(0,0,0,0.45);"></div>`
+    });
+
+    L.marker([ubicacionUsuario.lat, ubicacionUsuario.lng], { icon: userIcon })
+      .bindTooltip('Tu ubicación aproximada', { direction: 'top', offset: [0, -10] })
+      .addTo(layer);
+  }, [ubicacionUsuario]);
+
+  // Marcadores de lugares + capas independientes
+  useEffect(() => {
+    const layer = markersLayerRef.current;
+    const map = mapRef.current;
+    if (!layer || !map) return;
+
+    layer.clearLayers();
+
+    if (mostrarRutasVerdes) {
+      CORREDORES_VERDES.forEach((corredor) => {
+        L.circle([corredor.lat, corredor.lng], {
+          radius: 90,
+          color: '#10B981',
+          fillColor: '#10B981',
+          fillOpacity: 0.14,
+          weight: 1.5,
+          dashArray: '4 4'
+        }).addTo(layer);
+
+        const icon = L.divIcon({
+          className: 'gotox-corridor-marker',
+          iconSize: [0, 0],
+          html: `
+            <div style="
+              display:inline-flex;align-items:center;gap:5px;
+              padding:4px 9px;border-radius:9999px;
+              background:${tokens.esClaro ? '#ECFDF5' : '#064E3B'};
+              color:${tokens.esClaro ? '#065F46' : '#ECFDF5'};
+              border:1.5px solid #10B981;
+              font-size:10px;font-weight:700;white-space:nowrap;
+              box-shadow:0 4px 12px rgba(0,0,0,0.22);
+              transform:translate(-50%,-50%);cursor:pointer;
+            ">
+              <span>${escapeHtml(corredor.nombre)}</span>
+            </div>
+          `
+        });
+
+        const marker = L.marker([corredor.lat, corredor.lng], { icon }).addTo(layer);
+        marker.on('click', () => {
+          setLugarSeleccionado(null);
+          setElementoInfo({ tipo: 'corredor', data: corredor });
+          moverMapa(corredor.lat, corredor.lng, map.getZoom());
+        });
+      });
+    }
+
+    if (mostrarRiesgoPodal) {
+      PUNTOS_CALIENTES.forEach((hot) => {
+        L.circle([hot.lat, hot.lng], {
+          radius: 75,
+          color: '#D97706',
+          fillColor: '#F59E0B',
+          fillOpacity: 0.16,
+          weight: 1.5
+        }).addTo(layer);
+
+        const icon = L.divIcon({
+          className: 'gotox-hot-marker',
+          iconSize: [0, 0],
+          html: `
+            <div style="
+              display:inline-flex;align-items:center;gap:5px;
+              padding:4px 9px;border-radius:9999px;
+              background:${tokens.esClaro ? '#FFFBEB' : '#78350F'};
+              color:${tokens.esClaro ? '#92400E' : '#FEF3C7'};
+              border:1.5px solid #F59E0B;
+              font-size:10px;font-weight:700;white-space:nowrap;
+              box-shadow:0 4px 12px rgba(0,0,0,0.22);
+              transform:translate(-50%,-50%);cursor:pointer;
+            ">
+              <span>${escapeHtml(hot.temp)} · ${escapeHtml(hot.nombre)}</span>
+            </div>
+          `
+        });
+
+        const marker = L.marker([hot.lat, hot.lng], { icon }).addTo(layer);
+        marker.on('click', () => {
+          setLugarSeleccionado(null);
+          setElementoInfo({ tipo: 'asfalto', data: hot });
+          moverMapa(hot.lat, hot.lng, map.getZoom());
+        });
+      });
+    }
+
+    lugaresVisibles.forEach((lugar) => {
+      const seleccionado = lugarSeleccionado?.id === lugar.id;
+      const icon = L.divIcon({
+        className: 'gotox-place-marker',
+        iconSize: [0, 0],
+        html: crearPinLugarHtml(lugar, seleccionado, tokens.esClaro, prefersReducedMotion)
+      });
+
+      const marker = L.marker([lugar.lat, lugar.lng], {
+        icon,
+        zIndexOffset: seleccionado ? 1000 : 400
+      }).addTo(layer);
+
+      marker.on('click', () => {
+        setElementoInfo(null);
+        setLugarSeleccionado(lugar);
+        moverMapa(lugar.lat, lugar.lng, Math.max(map.getZoom(), 15));
+      });
+    });
+  }, [
+    mostrarRutasVerdes,
+    mostrarRiesgoPodal,
+    lugaresVisibles,
+    lugarSeleccionado,
+    tokens.esClaro,
+    prefersReducedMotion,
+    moverMapa
+  ]);
+
+  const handleSeleccionarLugar = useCallback(
+    (lugar, triggerEl = null) => {
+      if (triggerEl) {
+        triggerDetalleRef.current = triggerEl;
+      }
+      setElementoInfo(null);
+      setLugarSeleccionado(lugar);
+      moverMapa(lugar.lat, lugar.lng, Math.max(mapRef.current?.getZoom() || 15, 15));
+    },
+    [moverMapa]
+  );
+
+  // Buscar en esta zona con cancelación de solicitudes obsoletas
+  const handleBuscarEnEstaZona = useCallback(async () => {
+    if (!mapRef.current) return;
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const center = mapRef.current.getCenter();
+    setCargandoBusqueda(true);
+    setZonaModificadaPorUsuario(false);
+
+    try {
+      const resp = await fetch(
+        `/api/places/nearby-real?lat=${center.lat}&lng=${center.lng}&radius=2200&limit=25`,
+        { signal: controller.signal }
+      );
+      if (resp.ok) {
+        const json = await resp.json();
+        if (Array.isArray(json?.data?.restaurants)) {
+          setLugaresExternosRaw(json.data.restaurants);
+        }
+      }
+      setMensajeZona('Área actualizada.');
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        setMensajeZona('Mostrando lugares disponibles en el prototipo.');
+      }
+    } finally {
+      if (abortControllerRef.current === controller) {
+        setCargandoBusqueda(false);
+      }
+    }
+  }, []);
+
+  const handleLimpiarFiltros = useCallback(() => {
+    setBusquedaInput('');
+    setBusquedaDebounced('');
+    setFiltros(FILTROS_INICIALES);
+    setOrden('relevancia');
+  }, []);
+
+  const resetearVista = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setLugarSeleccionado(null);
+    setElementoInfo(null);
+    handleLimpiarFiltros();
+    setMostrarRutasVerdes(true);
+    setMostrarRiesgoPodal(true);
+    setZonaModificadaPorUsuario(false);
+    setMensajeZona('');
+    setLugaresExternosRaw([]);
+    moverMapa(CENTRO_GAM.lat, CENTRO_GAM.lng, 15);
+  }, [handleLimpiarFiltros, moverMapa]);
 
   return (
-    <PageWrapper className="w-full space-y-6 pb-20">
-      {/* ============================================================
-          ENCABEZADO EDITORIAL DEL MAPA GAM
-          ============================================================ */}
-      <section className="gotox-hero-section relative overflow-hidden pt-8 pb-6 border-b border-white/5 bg-gradient-to-b from-[#111827] via-[#090D14] to-[#090D14]">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-left">
-            <div className="space-y-1.5 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#55152D]/35 text-[#F27B91] border border-[#F27B91]/30 text-xs font-semibold">
-                <Compass className="w-3.5 h-3.5" />
-                <span>Cartografía Urbana Satelital &bull; San José</span>
+    <PageWrapper className="w-full space-y-3 pb-10 overflow-x-hidden">
+      {/* Encabezado editorial compacto */}
+      <section className={`gotox-hero-section relative pt-4 pb-3.5 border-b ${tokens.bordeSuave}`}>
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-left">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 min-w-0">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold ${tokens.badgeDemo}`}
+                >
+                  <Compass className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Demo GAM</span>
+                </span>
+                <h1 className={`font-serif text-xl sm:text-2xl font-bold tracking-tight ${tokens.textoTitulo}`}>
+                  Mapa Interactivo
+                </h1>
               </div>
-              <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#E8EDF5] tracking-tight">
-                Mapa Interactivo GAM
-              </h1>
-              <p className="text-xs sm:text-sm text-[#94A3B8]">
-                Navega las terrazas pet-friendly verificadas, corredores verdes libres de sobrecarga acústica y monitoreo de asfalto en tiempo real.
+              <p className={`text-xs ${tokens.textoMuted}`}>
+                Estados y distancias ilustrativas (no confirmadas por los locales).
               </p>
             </div>
 
-            {/* Telemetría Mini Flotante */}
-            <div className="flex flex-wrap items-center gap-2.5 text-xs">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#111827] border border-white/10 text-[#E8EDF5]">
-                <Thermometer className="w-3.5 h-3.5 text-[#F27B91]" />
-                <span>Asfalto: <strong className="text-white">{telemetria.temperaturaAsfalto} °C</strong></span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#111827] border border-white/10 text-[#E8EDF5]">
-                <Volume2 className="w-3.5 h-3.5 text-blue-400" />
-                <span>Ruido: <strong className="text-white">{telemetria.aforoAcusticoDb} dB</strong></span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#111827] border border-white/10 text-emerald-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 gotox-radar-dot" />
-                <span>{telemetria.ventanaSecaMinutos} min secos</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================
-          BARRA DE CONTROL Y CAPAS DEL MAPA
-          ============================================================ */}
-      <section className="max-w-[1240px] mx-auto px-4 sm:px-6">
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-[#111827] border border-white/10 shadow-lg flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
-          {/* Buscador Rápido en el Mapa */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
-            <input
-              type="text"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar terraza o barrio en el mapa..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#162032] border border-white/10 text-xs text-[#E8EDF5] placeholder-[#64748b] focus:outline-none focus:border-[#F27B91]/50 focus:ring-1 focus:ring-[#F27B91]/30"
-            />
-            {busqueda && (
-              <button
-                type="button"
-                onClick={() => setBusqueda('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-white"
-              >
-                &times;
-              </button>
-            )}
-          </div>
-
-          {/* Selector de Capas de Cartografía */}
-          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[#162032] rounded-xl border border-white/10">
-            <button
-              type="button"
-              onClick={() => setCapaActiva('todas')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-                capaActiva === 'todas'
-                  ? 'bg-[#55152D] text-white shadow-xs'
-                  : 'text-[#94A3B8] hover:text-white'
-              }`}
-            >
-              <Coffee className="w-3.5 h-3.5 text-[#F27B91]" />
-              <span>Terrazas ({TERRAZAS.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCapaActiva('silencioso')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-                capaActiva === 'silencioso'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-[#94A3B8] hover:text-white'
-              }`}
-            >
-              <Volume2 className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Silenciosas (&lt; 48 dB)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCapaActiva('corredores')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-                capaActiva === 'corredores'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-[#94A3B8] hover:text-white'
-              }`}
-            >
-              <Navigation className="w-3.5 h-3.5 text-blue-300" />
-              <span>Rutas Verdes</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCapaActiva('asfalto')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-                capaActiva === 'asfalto'
-                  ? 'bg-amber-600 text-white shadow-xs'
-                  : 'text-[#94A3B8] hover:text-white'
-              }`}
-            >
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />
-              <span>Riesgo Podal</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================
-          LIENZO DE CARTOGRAFÍA INTERACTIVA (MAPA URBANO GAM)
-          ============================================================ */}
-      <section className="max-w-[1240px] mx-auto px-4 sm:px-6">
-        <div className="relative w-full h-[520px] sm:h-[600px] lg:h-[660px] rounded-3xl bg-[#090D14] border border-white/10 overflow-hidden shadow-2xl">
-          {/* Controles de Zoom en Esquina Superior Derecha */}
-          <div className="absolute top-4 right-4 z-20 flex flex-col gap-1.5 bg-[#111827]/90 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 shadow-lg">
-            <button
-              type="button"
-              onClick={() => setZoom((z) => Math.min(z + 0.2, 1.8))}
-              title="Acercar mapa"
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-[#E8EDF5] hover:bg-white/10 transition-colors"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setZoom((z) => Math.max(z - 0.2, 0.8))}
-              title="Alejar mapa"
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-[#E8EDF5] hover:bg-white/10 transition-colors"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={resetearVista}
-              title="Restablecer vista"
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-[#F27B91] hover:bg-white/10 transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Leyenda en Esquina Superior Izquierda */}
-          <div className="absolute top-4 left-4 z-20 bg-[#111827]/90 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-white/10 shadow-lg hidden sm:flex items-center gap-4 text-[11px] text-[#94A3B8]">
-            <span className="flex items-center gap-1.5 font-bold text-[#E8EDF5]">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#F27B91]" />
-              Terrazas Auditadas
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              Corredor Acústico
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-              Pavimento Caliente
-            </span>
-          </div>
-
-          {/* Contenedor Escalable del Mapa (Vectorial Urbano) */}
-          <motion.div
-            animate={{ scale: zoom }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="w-full h-full relative cursor-grab active:cursor-grabbing select-none"
-          >
-            {/* SVG Base: Calles, Avenidas y Áreas Verdes del GAM */}
-            <svg
-              viewBox="0 0 1000 700"
-              className="w-full h-full object-cover pointer-events-none opacity-80"
-              preserveAspectRatio="xMidYMid slice"
-            >
-              <defs>
-                <pattern id="gridUrbana" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255, 255, 255, 0.04)" strokeWidth="1" />
-                </pattern>
-                <radialGradient id="haloCentral" cx="60%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#55152D" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="#090D14" stopOpacity="0" />
-                </radialGradient>
-              </defs>
-
-              {/* Fondo y Retícula */}
-              <rect width="1000" height="700" fill="#090D14" />
-              <rect width="1000" height="700" fill="url(#haloCentral)" />
-              <rect width="1000" height="700" fill="url(#gridUrbana)" />
-
-              {/* Trazado de Vías Principales (Paseo Colón, Avenida Segunda, Calle 33 Escalante) */}
-              {/* Eje Este-Oeste: Avenida Segunda / Los Yoses */}
-              <path d="M 50 360 Q 400 370 950 340" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="8" fill="none" />
-              <path d="M 50 360 Q 400 370 950 340" stroke="rgba(242, 123, 145, 0.3)" strokeWidth="2" strokeDasharray="6 6" fill="none" />
-
-              {/* Eje Norte-Sur: Calle 33 (Paseo Gastronómico Escalante) */}
-              <path d="M 680 100 L 710 650" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="6" fill="none" />
-              <path d="M 740 120 L 760 620" stroke="rgba(255, 255, 255, 0.1)" strokeWidth="4" fill="none" />
-
-              {/* Conexión Barrio California / La California */}
-              <path d="M 460 200 L 530 650" stroke="rgba(255, 255, 255, 0.14)" strokeWidth="5" fill="none" />
-              <path d="M 320 150 L 370 600" stroke="rgba(255, 255, 255, 0.14)" strokeWidth="5" fill="none" />
-
-              {/* Calles secundarias de la cuadrícula */}
-              <path d="M 200 220 L 900 210" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="3" fill="none" />
-              <path d="M 220 480 L 920 460" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="3" fill="none" />
-              <path d="M 240 580 L 880 560" stroke="rgba(255, 255, 255, 0.06)" strokeWidth="2" fill="none" />
-
-              {/* Polígonos de Parques Sombreados (Parque Francia, Parque Nacional) */}
-              {/* Parque Francia */}
-              <rect x="670" y="320" width="60" height="45" rx="12" fill="rgba(16, 185, 129, 0.18)" stroke="rgba(16, 185, 129, 0.4)" strokeWidth="1.5" />
-              <text x="700" y="347" fill="#6ee7b7" fontSize="10" textAnchor="middle" fontWeight="bold">Parque Francia</text>
-
-              {/* Parque Nacional */}
-              <rect x="530" y="270" width="75" height="55" rx="14" fill="rgba(16, 185, 129, 0.15)" stroke="rgba(16, 185, 129, 0.35)" strokeWidth="1.5" />
-              <text x="567" y="302" fill="#6ee7b7" fontSize="10" textAnchor="middle" fontWeight="bold">Parque Nacional</text>
-
-              {/* Parque España / Morazán */}
-              <rect x="350" y="240" width="65" height="50" rx="12" fill="rgba(16, 185, 129, 0.14)" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="1.5" />
-              <text x="382" y="270" fill="#6ee7b7" fontSize="9" textAnchor="middle" fontWeight="bold">Parque España</text>
-
-              {/* Etiquetas de Barrios */}
-              <text x="750" y="180" fill="rgba(232, 237, 245, 0.4)" fontSize="13" fontWeight="bold" letterSpacing="2">BARRIO ESCALANTE</text>
-              <text x="470" y="160" fill="rgba(232, 237, 245, 0.35)" fontSize="12" fontWeight="bold" letterSpacing="2">BARRIO CALIFORNIA</text>
-              <text x="300" y="130" fill="rgba(232, 237, 245, 0.35)" fontSize="12" fontWeight="bold" letterSpacing="2">BARRIO AMÓN / OTOYA</text>
-            </svg>
-
-            {/* PINES INTERACTIVOS DE TERRAZAS VERIFICADAS */}
-            {(capaActiva === 'todas' || capaActiva === 'silencioso') &&
-              terrazasVisibles.map((terraza) => {
-                const coord = COORDENADAS_TERRAZAS[terraza.id] || { x: 50, y: 50 };
-                const seleccionada = terrazaSeleccionada?.id === terraza.id;
-
-                return (
-                  <motion.div
-                    key={terraza.id}
-                    style={{ left: `${coord.x}%`, top: `${coord.y}%` }}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 z-30 cursor-pointer"
-                    whileHover={{ scale: 1.15 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setTerrazaSeleccionada(terraza)}
-                  >
-                    {/* Halo de pulso */}
-                    <span className="absolute -inset-2 rounded-full bg-[#F27B91]/30 animate-ping opacity-60" />
-
-                    {/* Botón Pin */}
-                    <div
-                      className={`relative px-3 py-1.5 rounded-2xl flex items-center gap-1.5 shadow-xl border transition-all ${
-                        seleccionada
-                          ? 'bg-[#55152D] text-white border-[#F27B91] ring-2 ring-[#F27B91]/50 scale-110'
-                          : 'bg-[#111827] text-[#E8EDF5] border-white/20 hover:border-[#F27B91]'
-                      }`}
-                    >
-                      <MapPin className={`w-3.5 h-3.5 ${seleccionada ? 'text-white' : 'text-[#F27B91]'}`} />
-                      <span className="text-xs font-bold whitespace-nowrap">{terraza.nombre}</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 font-mono">
-                        {terraza.decibelios}dB
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              })}
-
-            {/* PINES DE CORREDORES VERDES SEGUROS */}
-            {(capaActiva === 'todas' || capaActiva === 'corredores') &&
-              CORREDORES_VERDES.map((corredor) => (
-                <div
-                  key={corredor.id}
-                  style={{ left: `${corredor.x}%`, top: `${corredor.y}%` }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 z-25 pointer-events-auto"
-                >
-                  <div className="px-2.5 py-1 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-semibold flex items-center gap-1 shadow-lg backdrop-blur-xs">
-                    <Navigation className="w-3 h-3 text-emerald-400" />
-                    <span>{corredor.nombre}</span>
-                    <span className="text-white/60">({corredor.sombra})</span>
-                  </div>
-                </div>
-              ))}
-
-            {/* PINES DE ADVERTENCIA DE ASFALTO TÉRMICO */}
-            {(capaActiva === 'todas' || capaActiva === 'asfalto') &&
-              PUNTOS_CALIENTES.map((hot) => (
-                <div
-                  key={hot.id}
-                  style={{ left: `${hot.x}%`, top: `${hot.y}%` }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 z-25 pointer-events-auto"
-                >
-                  <div className="px-2.5 py-1 rounded-xl bg-amber-950/80 border border-amber-500/50 text-amber-300 text-[10px] font-semibold flex items-center gap-1 shadow-lg backdrop-blur-xs">
-                    <AlertTriangle className="w-3 h-3 text-amber-400" />
-                    <span>{hot.temp}</span>
-                    <span className="text-white/60 truncate max-w-[120px]">{hot.nombre}</span>
-                  </div>
-                </div>
-              ))}
-          </motion.div>
-
-          {/* TARJETA FLOTANTE DETALLE DE TERRAZA SELECCIONADA */}
-          <AnimatePresence>
-            {terrazaSeleccionada && (
-              <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                transition={TRANSICION_SUAVE}
-                className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 z-40 bg-[#111827]/95 backdrop-blur-xl border border-white/15 rounded-3xl p-5 shadow-2xl text-left space-y-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={terrazaSeleccionada.imagen}
-                      alt={terrazaSeleccionada.nombre}
-                      className="w-14 h-14 rounded-2xl object-cover border border-white/10 shrink-0"
-                    />
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#F27B91] block">
-                        {terrazaSeleccionada.categoria}
-                      </span>
-                      <h3 className="font-serif font-bold text-lg text-[#E8EDF5] leading-tight">
-                        {terrazaSeleccionada.nombre}
-                      </h3>
-                      <p className="text-[11px] text-slate-300 flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3 text-[#F27B91]" />
-                        <span>{terrazaSeleccionada.zona}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setTerrazaSeleccionada(null)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"
-                  >
-                    &times;
-                  </button>
-                </div>
-
-                {/* Métricas Rápidas de la Terraza */}
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="p-2 rounded-xl bg-[#162032] border border-white/5 space-y-0.5">
-                    <span className="text-[9px] uppercase font-bold text-[#94A3B8] block">Acústica</span>
-                    <p className="font-bold text-[#E8EDF5] tabular-nums">{terrazaSeleccionada.decibelios} dB</p>
-                    <span className="text-[9px] text-emerald-400 block font-medium">{terrazaSeleccionada.nivelRuido}</span>
-                  </div>
-
-                  <div className="p-2 rounded-xl bg-[#162032] border border-white/5 space-y-0.5">
-                    <span className="text-[9px] uppercase font-bold text-[#94A3B8] block">Piso</span>
-                    <p className="font-bold text-[#E8EDF5] tabular-nums">{terrazaSeleccionada.temperaturaPiso}</p>
-                    <span className="text-[9px] text-[#94A3B8] block font-medium">{terrazaSeleccionada.sombraPorcentaje}% sombra</span>
-                  </div>
-
-                  <div className="p-2 rounded-xl bg-[#162032] border border-white/5 space-y-0.5">
-                    <span className="text-[9px] uppercase font-bold text-[#94A3B8] block">Cupos</span>
-                    <p className="font-bold text-[#E8EDF5] tabular-nums">{terrazaSeleccionada.aforoCaninoActual}/{terrazaSeleccionada.aforoCaninoMax}</p>
-                    <span className="text-[9px] text-emerald-400 block font-medium">Libres</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between gap-2">
-                  <span className="text-[10px] text-[#94A3B8] truncate">
-                    ★ {terrazaSeleccionada.puntuacionPet} &bull; {terrazaSeleccionada.insignia}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => setModalAuditoria(terrazaSeleccionada)}
-                    icon={ArrowRight}
-                    className="bg-[#55152D] hover:bg-[#6E1E3A] text-white text-xs font-semibold px-3 py-1.5"
-                  >
-                    Ver Auditoría
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </section>
-
-      {/* ============================================================
-          MODAL DE FICHA DE AUDITORÍA CON ANIMATE PRESENCE
-          ============================================================ */}
-      <AnimatePresence>
-        {modalAuditoria && (
-          <Modal
-            isOpen={Boolean(modalAuditoria)}
-            onClose={() => setModalAuditoria(null)}
-            title={`Auditoría Urbana: ${modalAuditoria.nombre}`}
-            size="lg"
-          >
-            <div className="space-y-5 text-[#E8EDF5] text-left">
-              <div className="relative h-44 sm:h-52 rounded-2xl overflow-hidden border border-white/10">
-                <img
-                  src={modalAuditoria.imagen}
-                  alt={modalAuditoria.nombre}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                <div className="absolute bottom-3 left-4">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#F27B91]">
-                    {modalAuditoria.categoria}
-                  </span>
-                  <p className="text-sm font-semibold text-white flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#F27B91]" />
-                    {modalAuditoria.zona}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-3.5 bg-[#162032] rounded-2xl border border-white/10 text-xs">
-                <div className="flex items-center gap-2.5">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <div>
-                    <p className="font-bold text-[#E8EDF5]">{modalAuditoria.insignia}</p>
-                    <p className="text-[10px] text-[#94A3B8]">{modalAuditoria.procedenciaVerificacion}</p>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Verificado Vigente
+            <div className="flex flex-wrap items-center gap-2 text-xs shrink-0">
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border ${tokens.superficiePrincipal}`}>
+                <Thermometer className="w-3.5 h-3.5 text-[#F27B91]" aria-hidden="true" />
+                <span className={tokens.textoCuerpo}>
+                  Asfalto: <strong className={tokens.textoTitulo}>{telemetria.temperaturaAsfalto} °C</strong>
                 </span>
               </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-[#162032] rounded-xl border border-white/5 space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-[#94A3B8] block">Presión Acústica</span>
-                  <p className="font-bold text-base text-[#E8EDF5]">{modalAuditoria.decibelios} dB ({modalAuditoria.nivelRuido})</p>
-                </div>
-                <div className="p-3 bg-[#162032] rounded-xl border border-white/5 space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-[#94A3B8] block">Temperatura Calzada</span>
-                  <p className="font-bold text-base text-[#E8EDF5]">{modalAuditoria.temperaturaPiso}</p>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 text-xs">
-                <h4 className="font-bold uppercase tracking-wider text-[#94A3B8]">Condiciones Pet-Friendly</h4>
-                <p className="p-3 bg-[#162032] rounded-xl border border-white/5 text-slate-300 leading-relaxed">
-                  {modalAuditoria.condicionesMascotas}
-                </p>
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => setModalAuditoria(null)}
-                  className="bg-[#55152D] hover:bg-[#6E1E3A] text-white"
-                >
-                  Entendido
-                </Button>
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border ${tokens.superficiePrincipal}`}>
+                <Volume2 className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
+                <span className={tokens.textoCuerpo}>
+                  Ruido: <strong className={tokens.textoTitulo}>{telemetria.aforoAcusticoDb} dB</strong>
+                </span>
               </div>
             </div>
-          </Modal>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      </section>
+
+      {/* Composición Principal: aprovecha el ancho liberado por la sidebar */}
+      <section className="max-w-[1440px] mx-auto px-3 sm:px-6">
+        <div
+          className={
+            esEscritorio
+              ? 'grid grid-cols-[370px_1fr] xl:grid-cols-[400px_1fr] gap-4 items-stretch h-[calc(100dvh-10.5rem)] min-h-[540px] max-h-[740px]'
+              : 'flex flex-col rounded-3xl border overflow-hidden h-[calc(100dvh-9.5rem)] min-h-[520px] max-h-[760px]'
+          }
+        >
+          {/* Columna Lateral Escritorio (>= 1024px) */}
+          {esEscritorio && (
+            <aside
+              aria-label="Buscador, filtros y detalle de lugares"
+              className={`h-full min-h-0 rounded-3xl border p-4 flex flex-col overflow-hidden ${tokens.superficiePrincipal}`}
+            >
+              {lugarSeleccionado ? (
+                <PanelDetalleLugar
+                  lugar={lugarSeleccionado}
+                  tokens={tokens}
+                  modo="columna"
+                  onCerrar={() => setLugarSeleccionado(null)}
+                  onCentrarEnMapa={(l) => moverMapa(l.lat, l.lng, 16)}
+                  triggerRef={triggerDetalleRef}
+                />
+              ) : (
+                <ListaLugaresMapa
+                  tokens={tokens}
+                  lugares={lugaresVisibles}
+                  busqueda={busquedaInput}
+                  onBusquedaChange={setBusquedaInput}
+                  cargandoBusqueda={cargandoBusqueda}
+                  filtros={filtros}
+                  onFiltrosChange={setFiltros}
+                  orden={orden}
+                  onOrdenChange={setOrden}
+                  onLimpiarFiltros={handleLimpiarFiltros}
+                  lugarSeleccionado={lugarSeleccionado}
+                  onSeleccionarLugar={handleSeleccionarLugar}
+                />
+              )}
+            </aside>
+          )}
+
+          {/* Lienzo Protagonista del Mapa Leaflet */}
+          <div
+            className={`relative flex-1 min-h-[300px] ${
+              esEscritorio ? 'h-full rounded-3xl border overflow-hidden shadow-xl' : 'w-full overflow-hidden'
+            } ${tokens.superficieMapa}`}
+          >
+            {/* Controles Superiores Izquierda: Navegación GPS + Buscar en esta zona + Capas independientes */}
+            <div className="absolute top-3 left-3 z-[500] flex flex-col items-start gap-2 max-w-[calc(100%-4.5rem)]">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => centrarEnUsuario(false)}
+                  className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-transform active:scale-[0.98] ${tokens.superficieFlotante} ${tokens.focusRing}`}
+                >
+                  <Crosshair className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  <span>
+                    {estadoGps === 'ready'
+                      ? 'Ubicación activa'
+                      : estadoGps === 'locating'
+                      ? 'Ubicando...'
+                      : 'Mi ubicación'}
+                  </span>
+                </button>
+
+                {zonaModificadaPorUsuario && (
+                  <button
+                    type="button"
+                    onClick={handleBuscarEnEstaZona}
+                    className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 shadow-lg transition-transform active:scale-[0.98] ${tokens.botonPrimario} ${tokens.focusRing}`}
+                  >
+                    <Search className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span>Buscar en esta zona</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Control independiente de capas cartográficas (Rutas verdes y Riesgo podal) */}
+              <div
+                className={`flex flex-wrap items-center gap-1.5 p-1 rounded-xl border ${tokens.superficieFlotante}`}
+                role="group"
+                aria-label="Capas del mapa"
+              >
+                <button
+                  type="button"
+                  aria-pressed={mostrarRutasVerdes}
+                  onClick={() => setMostrarRutasVerdes((prev) => !prev)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-colors ${tokens.focusRing} ${
+                    mostrarRutasVerdes ? tokens.corredorVerde : tokens.chipInactivo
+                  }`}
+                >
+                  <Navigation className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  <span>Rutas verdes</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={mostrarRiesgoPodal}
+                  onClick={() => setMostrarRiesgoPodal((prev) => !prev)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-colors ${tokens.focusRing} ${
+                    mostrarRiesgoPodal ? tokens.alertaAsfalto : tokens.chipInactivo
+                  }`}
+                >
+                  <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  <span>Riesgo podal</span>
+                </button>
+              </div>
+
+              {mensajeZona && (
+                <div
+                  role="status"
+                  className={`px-3 py-1 rounded-xl border text-[11px] font-medium ${tokens.superficieFlotante}`}
+                >
+                  {mensajeZona}
+                </div>
+              )}
+            </div>
+
+            {/* Controles Superiores Derecha: Zoom y Restablecer */}
+            <div
+              className={`absolute top-3 right-3 z-[500] flex flex-col gap-1 p-1.5 rounded-2xl border ${tokens.superficieFlotante}`}
+              role="group"
+              aria-label="Controles de zoom del mapa"
+            >
+              <button
+                type="button"
+                onClick={() => mapRef.current?.zoomIn()}
+                aria-label="Acercar mapa"
+                title="Acercar mapa"
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${tokens.botonControlMapa}`}
+              >
+                <ZoomIn className="w-4 h-4" aria-hidden="true" />
+              </button>
+              <span
+                aria-label={`Nivel de zoom ${zoomActual}`}
+                className={`text-[11px] font-mono font-bold text-center tabular-nums ${tokens.textoCuerpo}`}
+              >
+                z{zoomActual}
+              </span>
+              <button
+                type="button"
+                onClick={() => mapRef.current?.zoomOut()}
+                aria-label="Alejar mapa"
+                title="Alejar mapa"
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${tokens.botonControlMapa}`}
+              >
+                <ZoomOut className="w-4 h-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={resetearVista}
+                aria-label="Restablecer vista del mapa"
+                title="Restablecer vista"
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${tokens.botonControlMapa}`}
+              >
+                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+              </button>
+            </div>
+
+            {/* Leyenda inferior izquierda sin colisión con atribuciones OSM */}
+            <div className="absolute bottom-7 sm:bottom-3 left-3 z-[500] max-w-[calc(100%-1.5rem)]">
+              {!esEscritorio && !leyendaMovilAbierta ? (
+                <button
+                  type="button"
+                  aria-expanded="false"
+                  onClick={() => setLeyendaMovilAbierta(true)}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 ${tokens.superficieFlotante} ${tokens.focusRing}`}
+                >
+                  <Layers className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Leyenda</span>
+                </button>
+              ) : (
+                <div
+                  className={`px-3 py-2 rounded-2xl border text-[11px] flex flex-wrap items-center gap-x-3 gap-y-1.5 ${tokens.superficieFlotante}`}
+                >
+                  <span className="inline-flex items-center gap-1.5 font-semibold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/60" />
+                    Permitido (demo)
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 font-semibold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-white/60" />
+                    Desconocido / Alerta
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 font-semibold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 border border-white/60" />
+                    No permitido
+                  </span>
+                  {!esEscritorio && (
+                    <button
+                      type="button"
+                      aria-label="Ocultar leyenda"
+                      onClick={() => setLeyendaMovilAbierta(false)}
+                      className={`ml-1 p-1 rounded-lg ${tokens.botonControlMapa}`}
+                    >
+                      <X className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Lienzo real de Leaflet */}
+            <div ref={mapContainerRef} className="w-full h-full z-10" />
+
+            {/* Tarjeta flotante para Corredor Verde o Alerta de Asfalto */}
+            {elementoInfo && (
+              <div
+                role="region"
+                aria-label={elementoInfo.data.nombre}
+                className={`absolute bottom-14 sm:bottom-12 right-3 left-3 sm:left-auto sm:w-80 z-[510] rounded-2xl border p-4 space-y-2 text-left ${tokens.superficieFlotante}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wide mb-1 ${
+                        elementoInfo.tipo === 'corredor' ? tokens.corredorVerde : tokens.alertaAsfalto
+                      }`}
+                    >
+                      {elementoInfo.tipo === 'corredor' ? 'Corredor Demo' : 'Alerta Podal Demo'}
+                    </span>
+                    <h3 className={`font-serif font-bold text-sm ${tokens.textoTitulo}`}>
+                      {elementoInfo.data.nombre}
+                    </h3>
+                    <p className={`text-[11px] flex items-center gap-1 ${tokens.textoMuted}`}>
+                      <MapPin className="w-3 h-3 shrink-0" aria-hidden="true" />
+                      <span>{elementoInfo.data.zona}</span>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Cerrar aviso del mapa"
+                    onClick={() => setElementoInfo(null)}
+                    className={`p-1.5 rounded-lg border text-xs ${tokens.botonSecundario} ${tokens.focusRing}`}
+                  >
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+                <p className={`text-xs leading-relaxed ${tokens.textoCuerpo}`}>
+                  {elementoInfo.tipo === 'corredor'
+                    ? `${elementoInfo.data.decibelios} dB · Sombra ${elementoInfo.data.sombra}. ${elementoInfo.data.detalle}`
+                    : `${elementoInfo.data.temp} · ${elementoInfo.data.alerta}`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Panel Inferior en Móvil y Tablet (< 1024px) */}
+          {!esEscritorio && (
+            <PanelInferiorMovil
+              tokens={tokens}
+              expandido={panelMovilExpandido}
+              onToggleExpandido={setPanelMovilExpandido}
+              totalResultados={lugaresVisibles.length}
+            >
+              <ListaLugaresMapa
+                tokens={tokens}
+                lugares={lugaresVisibles}
+                busqueda={busquedaInput}
+                onBusquedaChange={setBusquedaInput}
+                cargandoBusqueda={cargandoBusqueda}
+                filtros={filtros}
+                onFiltrosChange={setFiltros}
+                orden={orden}
+                onOrdenChange={setOrden}
+                onLimpiarFiltros={handleLimpiarFiltros}
+                lugarSeleccionado={lugarSeleccionado}
+                onSeleccionarLugar={handleSeleccionarLugar}
+                compacto
+              />
+            </PanelInferiorMovil>
+          )}
+        </div>
+      </section>
+
+      {/* Modal de detalle en móvil/tablet (< 1024px) con bloqueo de scroll y Escape */}
+      {!esEscritorio && lugarSeleccionado && (
+        <PanelDetalleLugar
+          lugar={lugarSeleccionado}
+          tokens={tokens}
+          modo="modal"
+          onCerrar={() => setLugarSeleccionado(null)}
+          onCentrarEnMapa={(l) => {
+            setLugarSeleccionado(null);
+            moverMapa(l.lat, l.lng, 16);
+          }}
+          triggerRef={triggerDetalleRef}
+        />
+      )}
     </PageWrapper>
   );
 }

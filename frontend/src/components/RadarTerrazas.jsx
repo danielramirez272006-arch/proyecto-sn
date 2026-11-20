@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TERRAZAS } from '../data/terrazas';
 import { api } from '../shared/services/api-client';
+import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { LugarFoto } from './LugarFoto';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
@@ -29,6 +31,7 @@ export function RadarTerrazas() {
   const [busqueda, setBusqueda] = useState('');
   const [terrazaSeleccionada, setTerrazaSeleccionada] = useState(null);
   const [backendPlacesCount, setBackendPlacesCount] = useState(null);
+  const { lugaresConFotos: terrazasConFotos, cargandoFotos } = useResolvedPlacePhotos(TERRAZAS);
 
   useEffect(() => {
     let activo = true;
@@ -44,7 +47,7 @@ export function RadarTerrazas() {
     return () => { activo = false; };
   }, []);
 
-  const terrazasFiltradas = TERRAZAS.filter((terraza) => {
+  const terrazasFiltradas = terrazasConFotos.filter((terraza) => {
     if (filtroRuido !== 'todos') {
       if (filtroRuido === 'silencioso' && !terraza.nivelRuido.toLowerCase().includes('silencioso')) {
         return false;
@@ -65,7 +68,7 @@ export function RadarTerrazas() {
       if (!coincide) return false;
     }
     return true;
-  });
+  }).sort((a, b) => (b.imagen ? 1 : 0) - (a.imagen ? 1 : 0));
 
   return (
     <section id="terrazas" className="py-16 md:py-24 relative overflow-hidden">
@@ -199,15 +202,16 @@ export function RadarTerrazas() {
                   key={terraza.id}
                   className="p-0 bg-[#111827] border-white/10 rounded-3xl overflow-hidden flex flex-col justify-between hover:border-[#F27B91]/30 transition-all duration-300 shadow-md group"
                 >
-                  {/* Fotografía de Alta Calidad */}
+                  {/* Fotografía Real (Google Places) o marcador sin fotografía */}
                   <div className="relative h-56 sm:h-64 w-full overflow-hidden bg-slate-900">
-                    <img
+                    <LugarFoto
                       src={terraza.imagen}
-                      alt={`Terraza pet-friendly de ${terraza.nombre}`}
+                      alt={`Terraza de ${terraza.nombre}`}
+                      photoMeta={terraza.photoMeta}
+                      cargando={cargandoFotos}
                       className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
-                      loading="lazy"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-black/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-black/20 to-transparent pointer-events-none" />
 
                     {/* Badge de Verificación y Procedencia */}
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">

@@ -163,6 +163,24 @@ class PetCareVideosController {
   }
 
   /**
+   * GET /api/pet-videos/live (Público: videos actualizados desde YouTube)
+   */
+  async listLiveVideos(req, res, next) {
+    try {
+      const { q, step, limit, refresh } = req.query || {};
+      const result = await petCareVideosService.getLiveRecommendedVideos({
+        queryText: q,
+        step: step !== undefined ? parseInt(step, 10) : undefined,
+        limit: limit ? parseInt(limit, 10) : 6,
+        refresh: refresh === '1' || refresh === 'true'
+      });
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * GET /api/pet-videos/:id (Público)
    */
   async getVideoDetail(req, res, next) {

@@ -6,12 +6,92 @@ const geminiVideoClient = require('../../../shared/clients/gemini-video-client')
 const questionMatcher = require('./question-matcher');
 const petVideoSmartSearch = require('./pet-video-smart-search');
 
+const LIVE_VIDEO_QUERIES = [
+  'primeros auxilios perros y gatos veterinario',
+  'como banar y cuidar el pelaje de tu perro veterinario',
+  'juegos y enriquecimiento para perros y gatos en casa',
+  'alimentacion y cuidados basicos para mascotas veterinaria'
+];
+
+const LIVE_CACHE_TTL_MS = 10 * 60 * 1000;
+
 class PetCareVideosService {
+  constructor() {
+    this.liveCache = new Map();
+  }
+
   /**
    * Búsqueda de videos públicos en YouTube Data API (exclusivo admin)
    */
   async searchYouTube(queryText = 'cuidado de mascotas', maxResults = 8) {
     return await youtubeApiClient.searchVideos(queryText, maxResults);
+  }
+
+  /**
+   * Obtiene recomendaciones actualizadas de YouTube Data API para el carrusel público
+   */
+  async getLiveRecommendedVideos({ queryText = '', step = undefined, limit = 6, refresh = false } = {}) {
+    const safeLimit = Math.max(3, Math.min(10, Number(limit) || 6));
+    const slotAutomatico = Math.floor(Date.now() / LIVE_CACHE_TTL_MS);
+    const safeStep = step === undefined || step === null || Number.isNaN(Number(step))
+      ? slotAutomatico
+      : Math.abs(Math.round(Number(step)));
+    const selectedQuery = String(queryText || '').trim() || LIVE_VIDEO_QUERIES[safeStep % LIVE_VIDEO_QUERIES.length];
+    const cacheKey = `${selectedQuery}:${safeLimit}`;
+
+    const cached = this.liveCache.get(cacheKey);
+    if (!refresh && cached && Date.now() - cached.timestamp < LIVE_CACHE_TTL_MS) {
+      return { ...cached.payload, cached: true };
+    }
+
+    const ytRes = await youtubeApiClient.searchVideos(selectedQuery, Math.min(safeLimit + 4, 12));
+    const rawList = Array.isArray(ytRes?.videos) ? ytRes.videos : [];
+
+    const nonShorts = rawList.filter((v) => Number(v.duration_seconds || 0) >= 45);
+    const chosen = (nonShorts.length >= 3 ? nonShorts : rawList).slice(0, safeLimit);
+
+    const videos = chosen.map((v) => {
+      const titleLower = String(v.title || '').toLowerCase();
+      const species = v.species || (titleLower.includes('gato') || titleLower.includes('felin') ? 'gatos' : 'perros');
+      const topic = v.topic || (
+        titleLower.includes('bañ') || titleLower.includes('ban') || titleLower.includes('cepill')
+          ? 'higiene'
+          : titleLower.includes('aliment') || titleLower.includes('nutri')
+          ? 'alimentacion'
+          : titleLower.includes('juego') || titleLower.includes('adiest')
+          ? 'bienestar'
+          : 'primeros_auxilios'
+      );
+      const year = v.published_at ? new Date(v.published_at).getFullYear() : 2025;
+      return {
+        id: `yt_${v.youtube_id}`,
+        youtube_id: v.youtube_id,
+        youtube_url: v.canonical_url || `https://www.youtube.com/watch?v=${v.youtube_id}`,
+        title: v.title,
+        channel_title: v.channel_title || 'Canal Veterinario',
+        duration_seconds: Number(v.duration_seconds) || 240,
+        thumbnail_url: v.thumbnail_url || `https://i.ytimg.com/vi/${v.youtube_id}/hqdefault.jpg`,
+        species,
+        topic,
+        year,
+        category: `${species === 'gatos' ? 'Gatos' : 'Perros'} • ${v.channel_title || 'Veterinaria'}`,
+      };
+    });
+
+    const payload = {
+      videos,
+      total: videos.length,
+      is_live: Boolean(ytRes?.is_live),
+      provider: ytRes?.provider || 'youtube_data_api_v3',
+      query: selectedQuery,
+      cached: false,
+    };
+
+    if (videos.length > 0 && ytRes?.is_live) {
+      this.liveCache.set(cacheKey, { timestamp: Date.now(), payload });
+    }
+
+    return payload;
   }
 
   /**

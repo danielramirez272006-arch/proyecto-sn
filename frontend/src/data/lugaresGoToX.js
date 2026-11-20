@@ -38,12 +38,8 @@ export const LUGARES_GOTOX = [
     telefono: "+506 2253-4010",
     descripcion: "Cafetería botánica de especialidad con microclima fresco, repostería artesanal y terraza sombreada ideal para trabajar o disfrutar en compañía.",
     servicios: ["WiFi fibra óptica", "Bowls térmicos caninos", "Opciones veganas & gluten-free", "Tomas de corriente"],
-    imagen: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80",
-    galeria: [
-      "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80"
-    ]
+    imagen: null,
+    galeria: []
   },
   {
     id: "el-arbol-de-seda",
@@ -78,11 +74,8 @@ export const LUGARES_GOTOX = [
     telefono: "+506 2224-6385",
     descripcion: "Bistro vegetal de autor con cocina estacional, coctelería botánica sin alcohol y atmósfera pacífica en un jardín interior colonial.",
     servicios: ["Menú 100% vegetariano/vegano", "Agua con electrolitos para mascotas", "Piso atérmico", "Bocadillos horneados"],
-    imagen: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
-    galeria: [
-      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"
-    ]
+    imagen: null,
+    galeria: []
   },
   {
     id: "apotecario",
@@ -117,11 +110,8 @@ export const LUGARES_GOTOX = [
     telefono: "+506 2221-5080",
     descripcion: "Microcervecería costarricense con panes de masa madre, kombuchas de la casa y un galpón abierto de arquitectura industrial urbana.",
     servicios: ["Cerveza artesanal de barril", "Anclajes seguros", "Comida reconfortante", "Música indie moderada"],
-    imagen: "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=800&q=80",
-    galeria: [
-      "https://images.unsplash.com/photo-1559925393-8be0ec4767c8?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1574096079513-d8259312b785?auto=format&fit=crop&w=800&q=80"
-    ]
+    imagen: null,
+    galeria: []
   },
   {
     id: "cafe-miel-garage",
@@ -156,10 +146,8 @@ export const LUGARES_GOTOX = [
     telefono: "+506 2256-8912",
     descripcion: "Famoso rincón josefino con postres golosos, café de Tarrazú y atmósfera victoriana en el corazón arquitectónico de Barrio Amón.",
     servicios: ["Café chorreado premium", "Pasteles y galletas", "Terraza techada de ladrillo"],
-    imagen: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80",
-    galeria: [
-      "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80"
-    ]
+    imagen: null,
+    galeria: []
   },
   {
     id: "museo-arte-costarricense",
@@ -194,11 +182,8 @@ export const LUGARES_GOTOX = [
     telefono: "+506 2459-3540",
     descripcion: "Antigua torre de control del aeropuerto de La Sabana, hoy convertida en el recinto de arte más bello del país, con el imponente Salón Dorado y jardines abiertos.",
     servicios: ["Visitas guiadas gratuitas", "Rampa en todas las salas", "Audio-guías", "Parqueo público cercano"],
-    imagen: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=800&q=80",
-    galeria: [
-      "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1544531586-fde5298cdd40?auto=format&fit=crop&w=800&q=80"
-    ]
+    imagen: null,
+    galeria: []
   },
   {
     id: "parque-la-sabana-lago",
@@ -233,10 +218,8 @@ export const LUGARES_GOTOX = [
     telefono: "+506 2549-0700",
     descripcion: "El parque metropolitano más grande del país con senderos pavimentados arbolados, lagos y zonas de descanso sin tráfico vehicular.",
     servicios: ["Senderos accesibles", "Bancas con sombra", "Fuentes de hidratación", "Seguridad municipal"],
-    imagen: "https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=800&q=80",
-    galeria: [
-      "https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=800&q=80"
-    ]
+    imagen: null,
+    galeria: []
   },
   {
     id: "teatro-nacional-bistro",
@@ -271,10 +254,8 @@ export const LUGARES_GOTOX = [
     telefono: "+506 2010-1110",
     descripcion: "Café de alta alcurnia dentro del mayor tesoro arquitectónico neoclásico de Costa Rica, con frescos de Villa, mármoles de Carrara y pastelería fina.",
     servicios: ["Café gourmet galardonado", "Música clásica en vivo ocasional", "Wi-Fi", "Aire acondicionado"],
-    imagen: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=800&q=80",
-    galeria: [
-      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=800&q=80"
-    ]
+    imagen: null,
+    galeria: []
   },
   {
     id: "pet-park-wellness-rohrmoser",
@@ -309,10 +290,8 @@ export const LUGARES_GOTOX = [
     telefono: "+506 2547-6000",
     descripcion: "Espacio público modelo de bienestar animal en el GAM con pista de agilidad, arena lavada, sombra de higuerones y dispensadores sanitarios.",
     servicios: ["Circuito Agility", "Doble puerta de seguridad", "Pasto bermuda y arena", "Bebederos automáticos"],
-    imagen: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80",
-    galeria: [
-      "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80"
-    ]
+    imagen: null,
+    galeria: []
   },
   {
     id: "mercado-escalante-gastronomia",
@@ -347,10 +326,116 @@ export const LUGARES_GOTOX = [
     telefono: "+506 2283-9900",
     descripcion: "Espacio multicultural con 8 conceptos gastronómicos bajo un mismo techo: tacos al pastor, ramen, ceviches costarricenses, pizzas y cócteles.",
     servicios: ["Múltiples opciones culinarias", "Pet-friendly techado", "Pago con tarjeta / SINPE", "Parqueo de bicicletas"],
-    imagen: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80",
-    galeria: [
-      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"
-    ]
+    imagen: null,
+    galeria: []
+  },
+  {
+    id: "mercado-central-san-jose",
+    nombre: "Mercado Central de San José",
+    categoria: "Gastronomía Típica & Cultura",
+    tipoActividad: "gastronomia",
+    zona: "San José Centro",
+    canton: "San José",
+    direccion: "Avenida Central y Avenida 1, entre Calles 6 y 8",
+    lat: 9.9336,
+    lng: -84.0835,
+    precioNivel: "$",
+    rangoPrecio: "₡2.000 - ₡5.500",
+    horario: "06:30 - 18:00",
+    tiempoEstimado: "1 - 2 horas",
+    condicionClima: "bajo-techo",
+    petFriendly: "solo-humanos",
+    politicaPet: "Pasillos estrechos de alta afluencia; recomendado únicamente sin mascotas (excepto perros de asistencia).",
+    accesibilidad: {
+      rampa: true,
+      acusticaTranquila: false,
+      sillaRuedas: true,
+      estacionamientoPreferencial: false
+    },
+    nivelRuido: "Moderado",
+    decibelios: 64,
+    aforoActual: 40,
+    aforoMax: 80,
+    puntuacion: 4.8,
+    verificado: true,
+    insignia: "Patrimonio Cultural",
+    telefono: "+506 2221-1234",
+    descripcion: "Mercado histórico fundado en 1880 con sodas tradicionales costarricenses, café chorreado, helados de sorbetera y artesanías locales.",
+    servicios: ["Gastronomía típica", "Bajo techo", "Café tradicional"],
+    imagen: null,
+    galeria: []
+  },
+  {
+    id: "museo-nacional-costa-rica",
+    nombre: "Museo Nacional de Costa Rica",
+    categoria: "Museo & Historia",
+    tipoActividad: "cultural",
+    zona: "Cuesta de Moras",
+    canton: "San José",
+    direccion: "Calle 17, entre Avenida Central y Avenida 2",
+    lat: 9.9329,
+    lng: -84.0715,
+    precioNivel: "$",
+    rangoPrecio: "₡2.000 - ₡5.000",
+    horario: "08:30 - 16:30",
+    tiempoEstimado: "1 - 2 horas",
+    condicionClima: "bajo-techo",
+    petFriendly: "solo-humanos",
+    politicaPet: "Salas de exposición históricas; acceso exclusivo para perros de asistencia certificados.",
+    accesibilidad: {
+      rampa: true,
+      acusticaTranquila: true,
+      sillaRuedas: true,
+      estacionamientoPreferencial: false
+    },
+    nivelRuido: "Ultra Silencioso",
+    decibelios: 40,
+    aforoActual: 15,
+    aforoMax: 60,
+    puntuacion: 4.9,
+    verificado: true,
+    insignia: "Historia & Cultura",
+    telefono: "+506 2211-5700",
+    descripcion: "Antiguo Cuartel Bellavista convertido en museo nacional con jardín de mariposas, esferas precolombinas y vistas panorámicas del centro.",
+    servicios: ["Salas climatizadas", "Rampas de acceso", "Jardín interior"],
+    imagen: null,
+    galeria: []
+  },
+  {
+    id: "parque-espana-san-jose",
+    nombre: "Parque España",
+    categoria: "Parque Urbano & Arboleda",
+    tipoActividad: "aire-libre",
+    zona: "Barrio Amón / Otoya",
+    canton: "San José",
+    direccion: "Avenida 7, Calle 9, frente al Edificio Metálico",
+    lat: 9.9360,
+    lng: -84.0754,
+    precioNivel: "$",
+    rangoPrecio: "Acceso Libre",
+    horario: "05:00 - 21:00",
+    tiempoEstimado: "Menos de 1 hora",
+    condicionClima: "aire-libre",
+    petFriendly: "si",
+    politicaPet: "Senderos sombreados ideales para paseos tranquilos con correa.",
+    accesibilidad: {
+      rampa: true,
+      acusticaTranquila: true,
+      sillaRuedas: true,
+      estacionamientoPreferencial: false
+    },
+    nivelRuido: "Silencioso",
+    decibelios: 45,
+    aforoActual: 6,
+    aforoMax: 25,
+    puntuacion: 4.8,
+    verificado: true,
+    insignia: "Corredor Arbolado",
+    telefono: "N/A",
+    descripcion: "Parque histórico de densa vegetación tropical y sombra natural conectado con las cafeterías pet-friendly de Barrio Amón y Otoya.",
+    servicios: ["Sombra densa", "Senderos pavimentados", "Acceso libre"],
+    imagen: null,
+    galeria: []
   }
 ];
 

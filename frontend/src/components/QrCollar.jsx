@@ -56,7 +56,7 @@ export function QrCollar({ mascota }) {
           </div>
 
           <div className="text-[10px] font-black uppercase tracking-widest text-[#501228] pt-1">
-            GOTOX PET OS
+            SYNODOS PET OS
           </div>
 
           {/* Código QR Vectorial SVG del Collar */}

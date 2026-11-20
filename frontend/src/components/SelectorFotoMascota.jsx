@@ -1,6 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { Camera, Upload, Trash2, Dog, Link2 } from 'lucide-react';
+import { Camera, Upload, Trash2, Dog, Link2, Sparkles, Check } from 'lucide-react';
 import { useTema } from '../context/TemaContext';
+import {
+  PERFILES_RAZAS_CANINAS,
+  buscarPerfilRaza
+} from '../servicios/razasPerrosApi';
 
 /**
  * Comprime y redimensiona la imagen seleccionada en el navegador a JPEG máx 512px
@@ -37,13 +41,43 @@ function comprimirImagenArchivo(file, maxDim = 512, calidad = 0.82) {
   });
 }
 
-export function SelectorFotoMascota({ valor, onChange, nombreMascota = 'tu mascota' }) {
+export function SelectorFotoMascota({
+  valor,
+  onChange,
+  nombreMascota = 'tu mascota',
+  razaActual = '',
+  onSeleccionarPerfilRaza
+}) {
   const { esClaro, esMorado } = useTema();
   const inputRef = useRef(null);
   const [mostrarUrl, setMostrarUrl] = useState(false);
+  const [mostrarCatalogoRazas, setMostrarCatalogoRazas] = useState(false);
+  const [razaSeleccionadaId, setRazaSeleccionadaId] = useState(() => {
+    const p = buscarPerfilRaza(razaActual);
+    return p?.id || PERFILES_RAZAS_CANINAS[0].id;
+  });
   const [urlTemporal, setUrlTemporal] = useState('');
   const [procesando, setProcesando] = useState(false);
   const [errorFoto, setErrorFoto] = useState('');
+
+  const perfilRazaActivo =
+    PERFILES_RAZAS_CANINAS.find((r) => r.id === razaSeleccionadaId) ||
+    buscarPerfilRaza(razaActual) ||
+    PERFILES_RAZAS_CANINAS[0];
+
+  const handleElegirFotoDeRaza = (fotoUrl, perfil = perfilRazaActivo) => {
+    setErrorFoto('');
+    onChange && onChange(fotoUrl);
+    if (onSeleccionarPerfilRaza && perfil) {
+      onSeleccionarPerfilRaza({
+        raza: perfil.nombre,
+        pesoKg: perfil.pesoPromedioKg,
+        colorManto: perfil.colorMantoSugerido,
+        foto: fotoUrl,
+        perfilRaza: perfil
+      });
+    }
+  };
 
   const handleArchivoSeleccionado = async (e) => {
     const file = e.target.files?.[0];
@@ -91,10 +125,11 @@ export function SelectorFotoMascota({ valor, onChange, nombreMascota = 'tu masco
       }`}
     >
       <div className="flex items-center gap-3.5">
-        {/* Vista previa de foto */}
+        {/* Vista previa de foto con dimensiones fijas garantizadas */}
         <div
           onClick={() => inputRef.current?.click()}
           title="Cambiar foto del perro"
+          style={{ width: '64px', height: '64px', minWidth: '64px', minHeight: '64px' }}
           className={`w-16 h-16 rounded-2xl overflow-hidden shrink-0 border-2 flex items-center justify-center cursor-pointer transition-all hover:opacity-90 ${
             esClaro ? 'bg-white border-[#501228]/25' : 'bg-[#0D131F] border-[#F27B91]/40'
           }`}
@@ -103,7 +138,8 @@ export function SelectorFotoMascota({ valor, onChange, nombreMascota = 'tu masco
             <img
               src={valor}
               alt={`Foto de ${nombreMascota}`}
-              className="w-full h-full object-cover"
+              style={{ width: '64px', height: '64px', objectFit: 'cover' }}
+              className="w-16 h-16 object-cover block"
             />
           ) : (
             <Dog className="w-7 h-7 opacity-45" />
@@ -116,7 +152,7 @@ export function SelectorFotoMascota({ valor, onChange, nombreMascota = 'tu masco
             <span className="text-xs font-bold block">Foto de tu perro (Opcional)</span>
           </div>
           <p className="text-[11px] opacity-70 leading-snug">
-            Se mostrará en su carnet digital y en su ficha personal.
+            Sube tu foto o elige una raza para ver y seleccionar entre sus fotos.
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-0.5">
             <input
@@ -134,6 +170,15 @@ export function SelectorFotoMascota({ valor, onChange, nombreMascota = 'tu masco
             >
               {procesando ? <Upload className="w-3 h-3 animate-bounce" /> : <Camera className="w-3 h-3" />}
               <span>{procesando ? 'Procesando...' : valor ? 'Cambiar foto' : 'Subir foto'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMostrarCatalogoRazas(!mostrarCatalogoRazas)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold bg-[#F27B91]/15 text-[#F27B91] border border-[#F27B91]/35 hover:bg-[#F27B91]/25 transition-all"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>Fotos por Raza</span>
             </button>
 
             <button
@@ -158,6 +203,88 @@ export function SelectorFotoMascota({ valor, onChange, nombreMascota = 'tu masco
           </div>
         </div>
       </div>
+
+      {/* Apartado de Fotos por Raza: al elegir la raza muestra directamente sus fotos para escoger */}
+      {mostrarCatalogoRazas && (
+        <div className="p-3.5 rounded-xl border border-[#F27B91]/30 bg-current/5 space-y-3 animate-in fade-in duration-150">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <span className="text-[11px] font-bold flex items-center gap-1.5 text-[#F27B91]">
+              <Dog className="w-3.5 h-3.5" />
+              <span>Elige la raza y haz clic en la foto que más te guste:</span>
+            </span>
+            <select
+              value={razaSeleccionadaId}
+              onChange={(e) => {
+                const nuevoId = e.target.value;
+                setRazaSeleccionadaId(nuevoId);
+                const p = PERFILES_RAZAS_CANINAS.find((r) => r.id === nuevoId);
+                if (p && p.fotos?.[0]) {
+                  handleElegirFotoDeRaza(p.fotos[0], p);
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl text-xs border border-current/20 bg-transparent outline-none font-semibold"
+            >
+              {PERFILES_RAZAS_CANINAS.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nombre} ({r.rangoPeso})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Galería de fotos de la raza seleccionada (sin botón de recargar) */}
+          <div className="grid grid-cols-3 gap-2.5">
+            {(perfilRazaActivo?.fotos || []).map((fotoUrl, idx) => {
+              const seleccionada = valor === fotoUrl;
+              return (
+                <button
+                  key={fotoUrl}
+                  type="button"
+                  onClick={() => handleElegirFotoDeRaza(fotoUrl, perfilRazaActivo)}
+                  className={`relative rounded-xl overflow-hidden border-2 transition-all group ${
+                    seleccionada
+                      ? 'border-[#F27B91] ring-2 ring-[#F27B91]/40 scale-[1.01]'
+                      : 'border-current/15 opacity-80 hover:opacity-100 hover:border-[#F27B91]/50'
+                  }`}
+                  style={{ height: '76px' }}
+                >
+                  <img
+                    src={fotoUrl}
+                    alt={`${perfilRazaActivo.nombre} opción ${idx + 1}`}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/imagenes/copiloto-bruno.jpg';
+                    }}
+                    style={{ width: '100%', height: '76px', objectFit: 'cover' }}
+                    className="w-full h-full object-cover block"
+                  />
+                  <span
+                    className={`absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 ${
+                      seleccionada
+                        ? 'bg-[#501228] text-white border border-[#F27B91]/50'
+                        : 'bg-black/65 text-white'
+                    }`}
+                  >
+                    {seleccionada && <Check className="w-2.5 h-2.5 text-[#F27B91]" />}
+                    <span>{seleccionada ? 'Elegida' : `Foto ${idx + 1}`}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {perfilRazaActivo && (
+            <div className="text-[11px] opacity-85 grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1.5 border-t border-current/10">
+              <div>
+                <strong>Temperamento:</strong> {perfilRazaActivo.temperamento}
+              </div>
+              <div>
+                <strong>Tolerancia térmica GAM:</strong> {perfilRazaActivo.toleranciaCalor}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {mostrarUrl && (
         <div className="flex items-center gap-2 pt-1">

@@ -92,7 +92,7 @@ export function CarnetDigital({ mascota, interactivo = true }) {
           transform: `rotateX(${inclinacion.x}deg) rotateY(${inclinacion.y}deg)`,
           transition: 'transform 0.15s ease-out'
         }}
-        className={`carnet-digital-card relative w-full rounded-3xl p-6 shadow-xl border transition-all duration-300 ${
+        className={`carnet-digital-card relative w-full overflow-hidden rounded-3xl p-6 shadow-xl border transition-all duration-300 ${
           interactivo ? 'cursor-pointer hover:shadow-2xl' : ''
         } ${clasesCarnet.tarjeta}`}
       >
@@ -103,25 +103,29 @@ export function CarnetDigital({ mascota, interactivo = true }) {
 
         {/* Encabezado del Carnet */}
         <div className={`flex items-start justify-between pb-4 border-b relative z-10 ${clasesCarnet.bordeInterno}`}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             {fotoMascota ? (
-              <div className="w-13 h-13 rounded-2xl overflow-hidden shadow-md border-2 border-[#F27B91]/40 shrink-0 bg-slate-800">
+              <div
+                style={{ width: '48px', height: '48px', minWidth: '48px', minHeight: '48px' }}
+                className="w-12 h-12 rounded-2xl overflow-hidden shadow-md border-2 border-[#F27B91]/40 shrink-0 bg-slate-800"
+              >
                 <img
                   src={fotoMascota}
                   alt={nombreMascota}
-                  className="w-full h-full object-cover"
+                  style={{ width: '48px', height: '48px', objectFit: 'cover' }}
+                  className="w-12 h-12 object-cover block"
                 />
               </div>
             ) : (
-              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-md shrink-0 ${clasesCarnet.iconoHeader}`}>
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md shrink-0 ${clasesCarnet.iconoHeader}`}>
                 <Dog className="w-6 h-6" />
               </div>
             )}
-            <div>
-              <span className={`text-[10px] tracking-widest uppercase font-semibold block ${clasesCarnet.subtituloHeader}`}>
+            <div className="min-w-0">
+              <span className={`text-[10px] tracking-widest uppercase font-semibold block truncate ${clasesCarnet.subtituloHeader}`}>
                 Bóveda Biométrica &bull; GAM
               </span>
-              <h3 className={`font-serif font-black text-xl ${clasesCarnet.titulo}`}>
+              <h3 className={`font-serif font-black text-xl truncate ${clasesCarnet.titulo}`}>
                 {nombreMascota}
               </h3>
             </div>

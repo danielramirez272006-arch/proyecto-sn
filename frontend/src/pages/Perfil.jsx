@@ -693,8 +693,18 @@ export function Perfil({ embebido = false }) {
                         <form onSubmit={handleGuardarCambios} className="space-y-4 text-xs">
                           <SelectorFotoMascota
                             valor={formMascota.foto}
-                            onChange={(foto) => setFormMascota({ ...formMascota, foto })}
+                            onChange={(foto) => setFormMascota((prev) => ({ ...prev, foto }))}
                             nombreMascota={formMascota.nombre || 'tu perro'}
+                            razaActual={formMascota.raza}
+                            onSeleccionarPerfilRaza={({ raza, pesoKg, colorManto, foto }) => {
+                              setFormMascota((prev) => ({
+                                ...prev,
+                                raza: raza || prev.raza,
+                                pesoKg: pesoKg ? String(pesoKg) : prev.pesoKg,
+                                colorManto: colorManto || prev.colorManto,
+                                foto: foto || prev.foto
+                              }));
+                            }}
                           />
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

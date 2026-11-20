@@ -31,15 +31,15 @@ export function Nosotros() {
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FDF2F4] text-[#501228] text-xs font-semibold">
             <Heart className="w-3.5 h-3.5 fill-[#501228]" />
-            <span>Manifiesto GoToX Pet OS</span>
+            <span>Manifiesto Synodos (Σύνοδος) &bull; Caminar Juntos</span>
           </div>
 
           <h1 className="font-serif text-4xl sm:text-5xl font-bold text-[#111827] tracking-tight">
-            Ciudades diseñadas para convivir en cuatro patas
+            Ciudades diseñadas para caminar juntos en cuatro patas
           </h1>
 
           <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-            GoToX Pet OS nació en San José, Costa Rica, para resolver un vacío crítico: la falta de datos ambientales en tiempo real adaptados a la fisonomía de las mascotas que transitan por nuestras calles.
+            Synodos (Σύνοδος — del griego «reunión, encuentro o caminar juntos por el mismo camino») nació en San José, Costa Rica, para coordinar salidas grupales y resolver la falta de datos ambientales en tiempo real adaptados a la fisonomía de las mascotas que nos acompañan, guiados por la lealtad del Copiloto Argos.
           </p>
         </div>
 
@@ -141,7 +141,7 @@ export function Nosotros() {
               ¿Gestionas un espacio gastronómico en el GAM?
             </h3>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-[#94A3B8]">
-              Solicita la inspección acústica y térmica oficial de GoToX Pet OS para obtener la certificación física e integrarte a nuestro radar satelital.
+              Solicita la inspección acústica y térmica oficial de Synodos Pet OS para obtener la certificación física e integrarte a nuestro radar satelital.
             </p>
           </div>
           <Link to="/terrazas">
@@ -154,4 +154,6 @@ export function Nosotros() {
     </PageWrapper>
   );
 }
+
+export default Nosotros;
 

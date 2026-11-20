@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { PageWrapper } from '../components/PageWrapper';
 import { LUGARES_GOTOX } from '../data/lugaresGoToX';
-import { obtenerPlanes, guardarPlan, eliminarPlan } from '../servicios/almacenamientoCliente';
+import {
+  obtenerPlanes,
+  guardarPlan,
+  eliminarPlan,
+  EVENTOS_GAM_CATALOGO,
+  obtenerEventosAgendadosIds,
+  alternarEventoAgendado,
+  descargarEventoIcs
+} from '../servicios/almacenamientoCliente';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { useTema } from '../context/TemaContext';
 import {
@@ -16,13 +24,16 @@ import {
   Sparkles,
   CheckCircle2,
   Dog,
-  ExternalLink
+  ExternalLink,
+  CalendarPlus,
+  Volume2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function MisPlanesPage() {
   const { esClaro, esMorado, esOscuro } = useTema();
   const [planes, setPlanes] = useState(obtenerPlanes);
+  const [eventosAgendados, setEventosAgendados] = useState(obtenerEventosAgendadosIds);
   const [modalNuevoPlan, setModalNuevoPlan] = useState(false);
   const [lugarParaVer, setLugarParaVer] = useState(null);
 
@@ -245,6 +256,107 @@ export function MisPlanesPage() {
             );
           })
         )}
+      </div>
+
+      {/* AGENDA DE EVENTOS COMUNITARIOS SYNODOS & ENCUENTROS PET-FRIENDLY GAM */}
+      <div className="space-y-4 pt-6 border-t border-current/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#F27B91] uppercase tracking-wider mb-1">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Encuentros Synodos (Σύνοδος) &bull; Caminar Juntos</span>
+            </div>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">
+              Agendar Eventos Pet-Friendly & Culturales en el GAM
+            </h2>
+            <p className="text-xs opacity-70">
+              Inscríbete a los encuentros grupales del fin de semana o descárgalos directamente a Google / Apple Calendar (.ics).
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#501228] text-white border border-[#F27B91]/35 self-start sm:self-auto">
+            {eventosAgendados.length} eventos agendados
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {EVENTOS_GAM_CATALOGO.map((evt) => {
+            const agendado = eventosAgendados.includes(evt.id);
+            return (
+              <div
+                key={evt.id}
+                className={`p-5 rounded-3xl border shadow-sm flex flex-col justify-between gap-4 transition-all ${
+                  agendado
+                    ? 'border-[#F27B91] bg-[#501228]/15 shadow-md'
+                    : esClaro
+                    ? 'bg-white border-slate-200'
+                    : esMorado
+                    ? 'bg-[#180A14] border-[#F27B91]/20'
+                    : 'bg-[#111827] border-white/10'
+                }`}
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#501228] text-[#F27B91] border border-[#F27B91]/30">
+                      {evt.categoria}
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-emerald-400 flex items-center gap-1">
+                      <Volume2 className="w-3 h-3" />
+                      {evt.acustica}
+                    </span>
+                  </div>
+
+                  <h3 className="font-serif font-bold text-lg leading-snug">{evt.titulo}</h3>
+
+                  <p className="text-xs opacity-80 leading-relaxed">{evt.descripcion}</p>
+
+                  <div className="pt-1 space-y-1 text-[11px] opacity-75">
+                    <div className="flex items-center gap-1.5 font-semibold text-[#F27B91]">
+                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      <span>{evt.fecha} &bull; {evt.hora}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{evt.zona}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-current/10 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEventosAgendados(alternarEventoAgendado(evt.id))}
+                    className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                      agendado
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/35'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{agendado ? 'Agendado en Mi Lista' : 'Agendar Evento'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      descargarEventoIcs({
+                        titulo: evt.titulo,
+                        fecha: evt.fecha,
+                        hora: evt.hora,
+                        ubicacion: evt.zona,
+                        descripcion: evt.descripcion
+                      })
+                    }
+                    title="Descargar archivo .ics para Google/Apple Calendar"
+                    className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border border-current/20 hover:border-[#F27B91] transition-colors"
+                  >
+                    <CalendarPlus className="w-3.5 h-3.5 text-[#F27B91]" />
+                    <span>.ics</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Modal Crear Nuevo Plan */}

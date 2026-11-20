@@ -78,10 +78,10 @@ export function TelemetriaHero() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           {/* Columna Izquierda: Identidad, Titular Editorial y Acciones */}
           <div className="lg:col-span-6 space-y-6 text-left">
-            {/* Identidad de GoToX */}
+            {/* Identidad de Synodos */}
             <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#111827] border border-white/10 shadow-xs text-xs">
               <span className="w-2 h-2 rounded-full bg-[#F27B91] animate-pulse" />
-              <span className="font-semibold text-[#E8EDF5] tracking-wide">GoToX Pet OS</span>
+              <span className="font-semibold text-[#E8EDF5] tracking-wide">Synodos Pet OS (Σύνοδος)</span>
               <span className="text-slate-500">&bull;</span>
               <span className="text-[#94A3B8] text-[11px]">San José, Costa Rica</span>
             </div>
@@ -115,7 +115,7 @@ export function TelemetriaHero() {
                   icon={Sparkles}
                   className="w-full sm:w-auto justify-center bg-[#111827] text-[#E8EDF5] hover:text-[#F27B91] border-white/10 hover:border-[#F27B91]/30 transition-all"
                 >
-                  Consultar con Bruno
+                  Consultar con Argos
                 </Button>
               </Link>
             </div>

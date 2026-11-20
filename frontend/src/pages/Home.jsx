@@ -519,13 +519,13 @@ export function Home() {
             <div className="max-w-xl space-y-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold tracking-wide uppercase text-[#F27B91] border border-white/15">
                 <Sparkles className="w-3 h-3" />
-                Experiencia Integral GoToX
+                Experiencia Integral Synodos (Σύνοδος)
               </span>
               <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-white">
-                Descubre planes y organiza tus salidas en el GAM
+                Caminar juntos: descubre planes y coordina tus salidas en el GAM
               </h2>
               <p className="text-slate-300 text-sm leading-relaxed">
-                Tanto si sales en solitario, con amigos o con tu compañero de cuatro patas, GoToX sincroniza mapas, clima y recomendaciones en tiempo real.
+                Tanto si sales en solitario, en encuentro grupal con amigos o con tu compañero de cuatro patas, Synodos y el Copiloto Argos sincronizan mapas, clima y recomendaciones en tiempo real.
               </p>
             </div>
 

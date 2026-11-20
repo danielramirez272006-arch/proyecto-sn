@@ -94,7 +94,7 @@ export function CopilotoPage() {
     {
       id: 'bienvenida',
       remitente: 'bruno',
-      texto: `¡Pura vida! Soy Bruno, tu copiloto inteligente de GoToX Pet OS. Estoy conectado en tiempo real a los sensores de asfalto (${telemetria.temperaturaAsfalto} °C), lluvia (${telemetria.ventanaSecaMinutos} min de ventana seca) y confort acústico (${telemetria.aforoAcusticoDb} dB) en el Gran Área Metropolitana. ¿En qué te puedo asesorar hoy para el bienestar de tu mascota?`,
+      texto: `¡Pura vida! Soy Argos, tu copiloto inteligente de Synodos (Σύνοδος). Estoy conectado en tiempo real a los sensores de asfalto (${telemetria.temperaturaAsfalto} °C), lluvia (${telemetria.ventanaSecaMinutos} min de ventana seca) y confort acústico (${telemetria.aforoAcusticoDb} dB) en el Gran Área Metropolitana. ¿En qué te puedo asesorar hoy para el bienestar de tu mascota?`,
       hora: 'Ahora',
       recomendaciones: [
         { tipo: 'asfalto', texto: `Pavimento seguro en ${telemetria.temperaturaAsfalto} °C` },
@@ -261,7 +261,7 @@ export function CopilotoPage() {
                 <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden border-2 border-[#F27B91]/40 shadow-2xl bg-[#111827]">
                   <img
                     src="/imagenes/copiloto-bruno.jpg"
-                    alt="Bruno - Copiloto Canino Inteligente GoToX"
+                    alt="Argos - Copiloto Canino Inteligente Synodos"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -274,13 +274,13 @@ export function CopilotoPage() {
               <div className="space-y-1.5">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#55152D]/35 text-[#F27B91] border border-[#F27B91]/30 text-xs font-semibold">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Copiloto Urbano en Vivo</span>
+                  <span>Lealtad & Monitoreo Inteligente &bull; Synodos</span>
                 </div>
                 <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#E8EDF5] tracking-tight">
-                  Copiloto Bruno
+                  Copiloto Argos
                 </h1>
                 <p className="text-xs sm:text-sm text-[#94A3B8] max-w-xl">
-                  Inteligencia ambiental entrenada para la seguridad de tu perro en San José. Asfalto en vivo, predicción pluvial y sugerencias de terrazas.
+                  Inteligencia ambiental en honor a Argos (el fiel compañero de Odiseo), entrenada para la seguridad de tu perro en San José. Asfalto en vivo, predicción pluvial y sugerencias de terrazas.
                 </p>
               </div>
             </div>
@@ -336,7 +336,7 @@ export function CopilotoPage() {
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 gotox-radar-dot" />
                   <span className="font-semibold text-[#E8EDF5]">
-                    Bruno &bull; {mascota?.nombre || 'Tu mascota'}
+                    Argos &bull; {mascota?.nombre || 'Tu mascota'}
                   </span>
                   <span className="hidden md:inline text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-[#94A3B8] border border-white/10">
                     No reemplaza a un veterinario
@@ -447,7 +447,7 @@ export function CopilotoPage() {
                       onClick={enviarChequeoMascota}
                       className="px-3.5 py-1.5 rounded-xl bg-[#55152D] hover:bg-[#6E1E3A] text-white font-semibold border border-[#F27B91]/40"
                     >
-                      Consultar estado con Bruno
+                      Consultar estado con Argos
                     </button>
                   </div>
                 </div>

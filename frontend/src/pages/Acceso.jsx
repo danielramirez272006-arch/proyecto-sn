@@ -235,12 +235,12 @@ export function Acceso() {
                 <span>Autenticación Conectada al Backend</span>
               </div>
               <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#111827] dark:text-[#E8EDF5] tracking-tight leading-tight">
-                {modo === 'login' ? 'Bienvenido a GoToX' : 'Registrar Usuario'}
+                {modo === 'login' ? 'Bienvenido a Synodos' : 'Registrar Usuario en Synodos'}
               </h1>
               <p className="text-sm sm:text-base text-slate-600 dark:text-[#94A3B8] font-sans leading-relaxed">
                 {modo === 'login'
                   ? 'Inicia sesión para entrar a tu página personal de usuario o accede con una cuenta administrativa exclusiva.'
-                  : 'Crea tu cuenta de usuario en GoToX y, si tienes mascota, agrega su información debajo.'}
+                  : 'Crea tu cuenta de usuario en Synodos (Σύνοδος) y, si tienes mascota, agrega su información debajo.'}
               </p>
               {moduloSolicitado && (
                 <div
@@ -555,6 +555,12 @@ export function Acceso() {
                           valor={fotoPerro}
                           onChange={setFotoPerro}
                           nombreMascota={nombrePerro || 'tu perro'}
+                          razaActual={razaPerro}
+                          onSeleccionarPerfilRaza={({ raza, pesoKg, foto }) => {
+                            if (raza) setRazaPerro(raza);
+                            if (pesoKg) setPesoPerro(String(pesoKg));
+                            if (foto) setFotoPerro(foto);
+                          }}
                         />
                       </div>
                     ) : (
@@ -589,9 +595,9 @@ export function Acceso() {
                 className="w-full justify-center shadow-md text-sm sm:text-base font-semibold py-3"
               >
                 {cargando
-                  ? 'Conectando con GoToX...'
+                  ? 'Conectando con Synodos...'
                   : modo === 'login'
-                  ? 'Iniciar Sesión en GoToX'
+                  ? 'Iniciar Sesión en Synodos'
                   : 'Crear Cuenta de Usuario'}
               </Button>
             </form>

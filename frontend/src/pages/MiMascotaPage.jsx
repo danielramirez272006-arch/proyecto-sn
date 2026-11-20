@@ -8,6 +8,20 @@ import { useTema } from '../context/TemaContext';
 import { LUGARES_GOTOX } from '../data/lugaresGoToX';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import {
+  obtenerAlertasSos,
+  publicarAlertaSos,
+  marcarAlertaSosResuelta,
+  obtenerRecordatorios,
+  agregarRecordatorio,
+  alternarRecordatorioCompletado,
+  eliminarRecordatorio,
+  descargarEventoIcs
+} from '../servicios/almacenamientoCliente';
+import {
+  PERFILES_RAZAS_CANINAS,
+  buscarPerfilRaza
+} from '../servicios/razasPerrosApi';
+import {
   Dog,
   ShieldCheck,
   PhoneCall,
@@ -19,7 +33,14 @@ import {
   Edit3,
   Save,
   CheckCircle2,
-  X
+  X,
+  Sparkles,
+  Thermometer,
+  Siren,
+  Bell,
+  CalendarPlus,
+  Trash2,
+  Plus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -63,6 +84,25 @@ export function MiMascotaPage() {
   const [mensajeGuardado, setMensajeGuardado] = useState('');
   const [errorGuardado, setErrorGuardado] = useState('');
   const [lugarSeleccionado, setLugarSeleccionado] = useState(null);
+  const [razaApartadoId, setRazaApartadoId] = useState(() => {
+    const p = buscarPerfilRaza(mascota?.raza);
+    return p?.id || PERFILES_RAZAS_CANINAS[0].id;
+  });
+  const razaApartadoActiva =
+    PERFILES_RAZAS_CANINAS.find((r) => r.id === razaApartadoId) || PERFILES_RAZAS_CANINAS[0];
+
+  // Estados para Red SOS Comunitaria GAM y Recordatorios Médicos / Vacunas
+  const [alertasSos, setAlertasSos] = useState(obtenerAlertasSos);
+  const [formSosAbierto, setFormSosAbierto] = useState(false);
+  const [tipoReporteSos, setTipoReporteSos] = useState('extraviada');
+  const [zonaSos, setZonaSos] = useState('Parque Francia, Barrio Escalante');
+  const [descripcionSos, setDescripcionSos] = useState('');
+
+  const [recordatorios, setRecordatorios] = useState(obtenerRecordatorios);
+  const [nuevoRecTitulo, setNuevoRecTitulo] = useState('');
+  const [nuevoRecCategoria, setNuevoRecCategoria] = useState('Vacunación');
+  const [nuevoRecFecha, setNuevoRecFecha] = useState('2026-12-10');
+  const [nuevoRecLugar, setNuevoRecLugar] = useState('Clínica Veterinaria GAM');
 
   const [formMascota, setFormMascota] = useState({
     nombre: tieneMascotaRegistrada ? mascota.nombre : '',
@@ -322,8 +362,18 @@ export function MiMascotaPage() {
               <form onSubmit={handleGuardarMascota} className="space-y-4 text-xs">
                 <SelectorFotoMascota
                   valor={formMascota.foto}
-                  onChange={(foto) => setFormMascota({ ...formMascota, foto })}
+                  onChange={(foto) => setFormMascota((prev) => ({ ...prev, foto }))}
                   nombreMascota={formMascota.nombre || 'tu perro'}
+                  razaActual={formMascota.raza}
+                  onSeleccionarPerfilRaza={({ raza, pesoKg, colorManto, foto }) => {
+                    setFormMascota((prev) => ({
+                      ...prev,
+                      raza: raza || prev.raza,
+                      pesoKg: pesoKg ? String(pesoKg) : prev.pesoKg,
+                      colorManto: colorManto || prev.colorManto,
+                      foto: foto || prev.foto
+                    }));
+                  }}
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -434,24 +484,30 @@ export function MiMascotaPage() {
               }`}
             >
               <div className="flex items-center justify-between pb-3 border-b border-current/10 gap-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   {fotoMascotaActiva ? (
-                    <img
-                      src={fotoMascotaActiva}
-                      alt={mascotaVista.nombre}
-                      className="w-12 h-12 rounded-2xl object-cover border border-[#F27B91]/40 shadow-xs"
-                    />
+                    <div
+                      style={{ width: '48px', height: '48px', minWidth: '48px', minHeight: '48px' }}
+                      className="w-12 h-12 rounded-2xl overflow-hidden border border-[#F27B91]/40 shadow-xs shrink-0 bg-slate-800"
+                    >
+                      <img
+                        src={fotoMascotaActiva}
+                        alt={mascotaVista.nombre}
+                        style={{ width: '48px', height: '48px', objectFit: 'cover' }}
+                        className="w-12 h-12 object-cover block"
+                      />
+                    </div>
                   ) : (
-                    <div className="w-12 h-12 rounded-2xl bg-[#501228]/20 text-[#F27B91] flex items-center justify-center border border-[#F27B91]/30">
+                    <div className="w-12 h-12 rounded-2xl bg-[#501228]/20 text-[#F27B91] flex items-center justify-center border border-[#F27B91]/30 shrink-0">
                       <Dog className="w-6 h-6" />
                     </div>
                   )}
-                  <div>
-                    <span className="font-serif font-bold text-lg block">Ficha de {mascotaVista.nombre}</span>
+                  <div className="min-w-0">
+                    <span className="font-serif font-bold text-lg block truncate">Ficha de {mascotaVista.nombre}</span>
                     <span className="text-[11px] opacity-65">Bóveda Médica GAM</span>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
                   Activo
                 </span>
               </div>
@@ -491,6 +547,477 @@ export function MiMascotaPage() {
                   Los datos biométricos y la fotografía de tu mascota permanecen sincronizados con tu cuenta personal en GoToX.
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* Apartado de Razas y Galería de Fotos: al elegir una raza muestra sus fotos directamente */}
+          <div
+            className={`p-6 sm:p-8 rounded-3xl border shadow-sm space-y-6 ${
+              esClaro ? 'bg-white border-slate-200' : esMorado ? 'bg-[#180A14] border-[#F27B91]/20' : 'bg-[#111827] border-white/10'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-current/10">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#F27B91] uppercase tracking-wider mb-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Catálogo de Razas & Galería</span>
+                </div>
+                <h2 className="font-serif font-bold text-2xl tracking-tight">
+                  Elige una Raza para Ver sus Fotos y Perfil
+                </h2>
+                <p className="text-xs opacity-70 mt-0.5">
+                  Selecciona la raza de tu perro y haz clic en cualquiera de sus fotografías para asignarla a su carnet digital.
+                </p>
+              </div>
+            </div>
+
+            {/* Píldoras de selección rápida de raza */}
+            <div className="flex flex-wrap gap-2">
+              {PERFILES_RAZAS_CANINAS.map((perfil) => {
+                const activa = razaApartadoActiva.id === perfil.id;
+                return (
+                  <button
+                    key={perfil.id}
+                    type="button"
+                    onClick={() => setRazaApartadoId(perfil.id)}
+                    className={`px-3.5 py-2 rounded-2xl text-xs font-semibold border transition-all flex items-center gap-2 ${
+                      activa
+                        ? 'bg-[#501228] text-white border-[#F27B91]/50 shadow-sm'
+                        : 'bg-current/5 border-current/10 opacity-75 hover:opacity-100 hover:border-[#F27B91]/35'
+                    }`}
+                  >
+                    <Dog className={`w-3.5 h-3.5 ${activa ? 'text-[#F27B91]' : 'opacity-70'}`} />
+                    <span>{perfil.nombre}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Galería de fotos y perfil de la raza elegida */}
+            {razaApartadoActiva && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pt-2">
+                {/* Fotos de la raza elegida */}
+                <div className="lg:col-span-7 space-y-2.5">
+                  <span className="text-xs font-bold block opacity-80">
+                    Fotografías disponibles de {razaApartadoActiva.nombre} (haz clic en una para usarla):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    {(razaApartadoActiva.fotos || []).map((fotoUrl, index) => {
+                      const esFotoActual = fotoMascotaActiva === fotoUrl;
+                      return (
+                        <button
+                          key={fotoUrl}
+                          type="button"
+                          onClick={() => {
+                            setFormMascota((prev) => ({
+                              ...prev,
+                              nombre: prev.nombre || mascotaVista.nombre || 'Max',
+                              raza: razaApartadoActiva.nombre,
+                              pesoKg: String(razaApartadoActiva.pesoPromedioKg),
+                              colorManto: razaApartadoActiva.colorMantoSugerido,
+                              foto: fotoUrl
+                            }));
+                            setEditandoMascota(true);
+                            setMensajeGuardado(
+                              `Foto ${index + 1} y perfil de ${razaApartadoActiva.nombre} seleccionados. Haz clic en "Guardar Mascota" arriba para confirmar.`
+                            );
+                          }}
+                          className={`group relative rounded-2xl overflow-hidden border-2 text-left transition-all ${
+                            esFotoActual
+                              ? 'border-[#F27B91] ring-2 ring-[#F27B91]/35 shadow-lg'
+                              : 'border-current/15 hover:border-[#F27B91]/60 shadow-sm'
+                          }`}
+                          style={{ height: '148px' }}
+                        >
+                          <img
+                            src={fotoUrl}
+                            alt={`${razaApartadoActiva.nombre} foto ${index + 1}`}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = '/imagenes/copiloto-bruno.jpg';
+                            }}
+                            style={{ width: '100%', height: '148px', objectFit: 'cover' }}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 block"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" />
+                          <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white text-[11px] font-bold">
+                            <span>Opción {index + 1}</span>
+                            <span
+                              className={`px-2 py-0.5 rounded-lg text-[10px] ${
+                                esFotoActual ? 'bg-emerald-500 text-white' : 'bg-[#501228]/90 text-[#F27B91]'
+                              }`}
+                            >
+                              {esFotoActual ? 'En uso' : 'Elegir foto'}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Ficha resumen del perfil de esa raza */}
+                <div className="lg:col-span-5 p-5 rounded-2xl bg-current/5 border border-current/10 space-y-3 text-xs">
+                  <div className="flex items-center justify-between border-b border-current/10 pb-2.5">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[#F27B91] block">Perfil de la Raza</span>
+                      <h3 className="font-serif font-bold text-lg">{razaApartadoActiva.nombre}</h3>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-xl font-bold bg-[#501228] text-white text-[11px]">
+                      {razaApartadoActiva.rangoPeso}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="opacity-65">Esperanza de vida:</span>
+                      <strong>{razaApartadoActiva.esperanzaVida}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="opacity-65">Manto habitual:</span>
+                      <strong>{razaApartadoActiva.colorMantoSugerido}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="opacity-65">Nivel de energía:</span>
+                      <strong className="text-[#F27B91]">{razaApartadoActiva.nivelEnergia}</strong>
+                    </div>
+                    <div className="pt-1 border-t border-current/10 space-y-1">
+                      <span className="opacity-65 flex items-center gap-1">
+                        <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Clima & Asfalto GAM:</span>
+                      </span>
+                      <p className="font-semibold leading-snug">{razaApartadoActiva.toleranciaCalor}</p>
+                    </div>
+                    <div className="pt-1 border-t border-current/10 space-y-1">
+                      <span className="opacity-65 block">Temperamento y cuidados:</span>
+                      <p className="opacity-90 leading-relaxed">{razaApartadoActiva.cuidadosGam}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* RED SOS DE MASCOTAS EXTRAVIADAS & ALERTA COMUNITARIA GAM */}
+          <div
+            className={`p-6 sm:p-8 rounded-3xl border shadow-sm space-y-5 ${
+              esClaro ? 'bg-white border-slate-200' : esMorado ? 'bg-[#180A14] border-rose-500/30' : 'bg-[#111827] border-rose-500/25'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-current/10">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-400 uppercase tracking-wider mb-1">
+                  <Siren className="w-3.5 h-3.5" />
+                  <span>Red Comunitaria de Rescate &bull; Synodos SOS GAM</span>
+                </div>
+                <h2 className="font-serif font-bold text-2xl tracking-tight">
+                  Red SOS de Mascotas Extraviadas y Avistamientos
+                </h2>
+                <p className="text-xs opacity-75 mt-0.5">
+                  Activa una alerta inmediata con los datos biométricos y microchip de {mascotaVista.nombre} o reporta una mascota avistada en el GAM.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setFormSosAbierto(!formSosAbierto)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md transition-all self-start sm:self-auto"
+              >
+                <Siren className="w-4 h-4" />
+                <span>{formSosAbierto ? 'Cerrar Formulario SOS' : `Activar Alerta SOS / Reportar`}</span>
+              </button>
+            </div>
+
+            {formSosAbierto && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const actualizadas = publicarAlertaSos({
+                    tipo: tipoReporteSos,
+                    nombreMascota: tipoReporteSos === 'extraviada' ? mascotaVista.nombre : 'Mascota Avistada en GAM',
+                    raza: mascotaVista.raza,
+                    colorManto: mascotaVista.colorManto,
+                    zona: zonaSos,
+                    contacto: mascotaVista.tutor.telefono !== 'Sin registrar' ? mascotaVista.tutor.telefono : '+506 8832-9011',
+                    tutor: mascotaVista.tutor.nombre,
+                    microchip: mascotaVista.microchipId,
+                    descripcion:
+                      descripcionSos.trim() ||
+                      `Alerta emitida desde la bóveda Synodos para ${mascotaVista.nombre} (${mascotaVista.raza}).`,
+                    foto: fotoMascotaActiva || '/imagenes/copiloto-bruno.jpg'
+                  });
+                  setAlertasSos(actualizadas);
+                  setDescripcionSos('');
+                  setFormSosAbierto(false);
+                  setMensajeGuardado('¡Alerta SOS publicada en la Red Comunitaria del GAM!');
+                  setTimeout(() => setMensajeGuardado(''), 4000);
+                }}
+                className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-3 text-xs"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold block mb-1">Tipo de Reporte</label>
+                    <select
+                      value={tipoReporteSos}
+                      onChange={(e) => setTipoReporteSos(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent outline-none font-semibold"
+                    >
+                      <option value="extraviada">🚨 Mi mascota ({mascotaVista.nombre}) se extravió</option>
+                      <option value="avistada">👀 Encontré / Avisté una mascota en la vía pública</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-bold block mb-1">Última Zona / Punto de Referencia GAM</label>
+                    <input
+                      type="text"
+                      required
+                      value={zonaSos}
+                      onChange={(e) => setZonaSos(e.target.value)}
+                      placeholder="Ej. Parque Francia, Barrio Escalante"
+                      className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="font-bold block mb-1">Señas particulares, collar o estado</label>
+                  <input
+                    type="text"
+                    value={descripcionSos}
+                    onChange={(e) => setDescripcionSos(e.target.value)}
+                    placeholder="Ej. Lleva collar burdeos con placa QR Synodos, responde a su nombre..."
+                    className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent outline-none"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+                  >
+                    Emitir Alerta en Red GAM
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {alertasSos.map((alerta) => (
+                <div
+                  key={alerta.id}
+                  className="p-4 rounded-2xl bg-current/5 border border-current/10 flex gap-3.5 items-start justify-between"
+                >
+                  <div className="flex gap-3 min-w-0">
+                    <div
+                      style={{ width: '56px', height: '56px', minWidth: '56px', minHeight: '56px' }}
+                      className="w-14 h-14 rounded-2xl overflow-hidden border border-rose-500/40 shrink-0 bg-slate-800"
+                    >
+                      <img
+                        src={alerta.foto}
+                        alt={alerta.nombreMascota}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = '/imagenes/copiloto-bruno.jpg';
+                        }}
+                        style={{ width: '56px', height: '56px', objectFit: 'cover' }}
+                        className="w-14 h-14 object-cover block"
+                      />
+                    </div>
+                    <div className="space-y-1 text-xs min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            alerta.estado === 'Resuelta'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : alerta.tipo === 'extraviada'
+                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/35'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/35'
+                          }`}
+                        >
+                          {alerta.estado === 'Resuelta'
+                            ? '✓ En Casa (Resuelta)'
+                            : alerta.tipo === 'extraviada'
+                            ? 'SOS Extraviada'
+                            : 'Avistamiento'}
+                        </span>
+                        <span className="text-[10px] opacity-60">{alerta.fechaHora}</span>
+                      </div>
+                      <h3 className="font-serif font-bold text-base truncate">
+                        {alerta.nombreMascota} <span className="text-xs font-sans font-normal opacity-75">({alerta.raza})</span>
+                      </h3>
+                      <p className="text-[11px] opacity-85 line-clamp-2">{alerta.descripcion}</p>
+                      <p className="text-[11px] text-[#F27B91] font-semibold flex items-center gap-1">
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{alerta.zona}</span>
+                      </p>
+                      <div className="pt-1 flex flex-wrap items-center gap-2">
+                        <a
+                          href={`tel:${alerta.contacto}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#501228] text-white text-[11px] font-bold"
+                        >
+                          <PhoneCall className="w-3 h-3" />
+                          <span>Contactar ({alerta.contacto})</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => setAlertasSos(marcarAlertaSosResuelta(alerta.id))}
+                          className="text-[11px] font-semibold opacity-75 hover:opacity-100 underline"
+                        >
+                          {alerta.estado === 'Resuelta' ? 'Reabrir alerta' : 'Marcar como encontrada'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* AGENDA DE RECORDATORIOS MÉDICOS, VACUNACIÓN Y CUIDADOS (CON DESCARGA .ICS) */}
+          <div
+            className={`p-6 sm:p-8 rounded-3xl border shadow-sm space-y-5 ${
+              esClaro ? 'bg-white border-slate-200' : esMorado ? 'bg-[#180A14] border-[#F27B91]/20' : 'bg-[#111827] border-white/10'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-current/10">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#F27B91] uppercase tracking-wider mb-1">
+                  <Bell className="w-3.5 h-3.5" />
+                  <span>Agenda Preventiva &bull; Salud al Día</span>
+                </div>
+                <h2 className="font-serif font-bold text-2xl tracking-tight">
+                  Recordatorios de Vacunación, Desparasitación y Citas
+                </h2>
+                <p className="text-xs opacity-70 mt-0.5">
+                  Programa los controles de {mascotaVista.nombre}, márcalos como completados o descárgalos a tu calendario (.ics).
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 self-start sm:self-auto">
+                {recordatorios.filter((r) => r.completado).length} / {recordatorios.length} completados
+              </span>
+            </div>
+
+            {/* Formulario rápido para agendar nuevo recordatorio */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!nuevoRecTitulo.trim()) return;
+                const lista = agregarRecordatorio({
+                  titulo: nuevoRecTitulo.trim(),
+                  categoria: nuevoRecCategoria,
+                  fecha: nuevoRecFecha,
+                  lugar: nuevoRecLugar.trim() || 'Clínica Veterinaria GAM'
+                });
+                setRecordatorios(lista);
+                setNuevoRecTitulo('');
+              }}
+              className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 text-xs p-3.5 rounded-2xl bg-current/5 border border-current/10"
+            >
+              <input
+                type="text"
+                value={nuevoRecTitulo}
+                onChange={(e) => setNuevoRecTitulo(e.target.value)}
+                placeholder="Nuevo recordatorio (ej. Vacuna Antirrábica, Corte de uñas...)"
+                className="sm:col-span-4 px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
+              />
+              <select
+                value={nuevoRecCategoria}
+                onChange={(e) => setNuevoRecCategoria(e.target.value)}
+                className="sm:col-span-2 px-2.5 py-2 rounded-xl border border-current/15 bg-transparent outline-none font-semibold"
+              >
+                <option value="Vacunación">Vacunación</option>
+                <option value="Prevención">Desparasitación</option>
+                <option value="Higiene & Podología">Peluquería / Podal</option>
+                <option value="Control Veterinario">Cita Médica</option>
+              </select>
+              <input
+                type="date"
+                value={nuevoRecFecha}
+                onChange={(e) => setNuevoRecFecha(e.target.value)}
+                className="sm:col-span-2 px-2.5 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
+              />
+              <input
+                type="text"
+                value={nuevoRecLugar}
+                onChange={(e) => setNuevoRecLugar(e.target.value)}
+                placeholder="Clínica o lugar"
+                className="sm:col-span-2 px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
+              />
+              <button
+                type="submit"
+                className="sm:col-span-2 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/40"
+              >
+                <Plus className="w-3.5 h-3.5 text-[#F27B91]" />
+                <span>Agendar</span>
+              </button>
+            </form>
+
+            {/* Lista de recordatorios */}
+            <div className="space-y-2.5">
+              {recordatorios.map((rec) => (
+                <div
+                  key={rec.id}
+                  className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                    rec.completado
+                      ? 'bg-emerald-500/5 border-emerald-500/25 opacity-80'
+                      : 'bg-current/5 border-current/10'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setRecordatorios(alternarRecordatorioCompletado(rec.id))}
+                      title={rec.completado ? 'Marcar como pendiente' : 'Marcar como completado'}
+                      className={`mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${
+                        rec.completado
+                          ? 'bg-emerald-500 border-emerald-500 text-white'
+                          : 'border-current/30 hover:border-[#F27B91]'
+                      }`}
+                    >
+                      {rec.completado && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    </button>
+                    <div className="space-y-0.5 text-xs">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#501228] text-[#F27B91]">
+                          {rec.categoria}
+                        </span>
+                        <span className="font-mono text-[11px] opacity-75">
+                          📅 {rec.fecha} &bull; {rec.hora}
+                        </span>
+                      </div>
+                      <h4 className={`font-bold text-sm ${rec.completado ? 'line-through opacity-70' : ''}`}>
+                        {rec.titulo}
+                      </h4>
+                      <p className="text-[11px] opacity-65">{rec.lugar}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        descargarEventoIcs({
+                          titulo: `${rec.titulo} (${mascotaVista.nombre})`,
+                          fecha: rec.fecha,
+                          hora: rec.hora,
+                          ubicacion: rec.lugar,
+                          descripcion: `Recordatorio médico de ${mascotaVista.nombre} en Synodos.`
+                        })
+                      }
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border border-current/15 hover:border-[#F27B91] transition-colors"
+                    >
+                      <CalendarPlus className="w-3.5 h-3.5 text-[#F27B91]" />
+                      <span>Descargar .ics</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRecordatorios(eliminarRecordatorio(rec.id))}
+                      className="p-1.5 rounded-xl text-rose-400 hover:bg-rose-500/10 transition-colors"
+                      title="Eliminar recordatorio"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

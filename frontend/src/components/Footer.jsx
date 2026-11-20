@@ -16,11 +16,11 @@ export function Footer() {
                 <Dog className="w-4 h-4 text-[#FDF2F4]" />
               </div>
               <span className="font-serif font-black text-lg text-[#111827]">
-                GoToX Pet OS
+                Synodos Pet OS
               </span>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Sistema operativo urbano inteligente para mascotas en el Gran Área Metropolitana de Costa Rica. Tecnología cívica y bienestar animal.
+              Synodos (Σύνοδος — Caminar juntos): sistema operativo urbano inteligente para planes compartidos y bienestar animal en el Gran Área Metropolitana de Costa Rica.
             </p>
             <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-1">
               <MapPin className="w-3.5 h-3.5 text-[#501228]" />
@@ -51,7 +51,7 @@ export function Footer() {
               </li>
               <li>
                 <Link to="/copiloto" className="hover:text-[#501228] transition-colors">
-                  Copiloto Bruno (Asistente)
+                  Copiloto Argos (Asistente IA)
                 </Link>
               </li>
               <li>
@@ -107,7 +107,7 @@ export function Footer() {
         {/* Barra inferior */}
         <div className="pt-8 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>
-            &copy; {new Date().getFullYear()} GoToX Pet OS. Diseñado con calidez para las mascotas del GAM.
+            &copy; {new Date().getFullYear()} Synodos Pet OS. Diseñado con calidez para caminar juntos en el GAM.
           </p>
           <div className="flex items-center gap-2">
             <span>Hecho con</span>

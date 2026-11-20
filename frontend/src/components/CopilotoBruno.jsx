@@ -83,7 +83,7 @@ export function CopilotoBruno() {
     {
       id: 'bienvenida',
       remitente: 'bruno',
-      texto: `¡Pura vida! Soy Bruno, tu copiloto urbano en GoToX Pet OS. Monitoreo en tiempo real el asfalto (${telemetria.temperaturaAsfalto} °C), las lluvias (${telemetria.ventanaSecaMinutos} min de ventana seca) y el confort acústico del GAM para proteger a tu perro. ¿En qué te puedo asesorar hoy?`,
+      texto: `¡Pura vida! Soy Argos, tu copiloto inteligente de monitoreo y lealtad canina en Synodos (Σύνοδος). Monitoreo en tiempo real el asfalto (${telemetria.temperaturaAsfalto} °C), las lluvias (${telemetria.ventanaSecaMinutos} min de ventana seca) y el confort acústico del GAM para proteger a tu perro. ¿En qué te puedo asesorar hoy?`,
       hora: 'Ahora',
       recomendaciones: [
         { tipo: 'asfalto', texto: `Pavimento seguro en ${telemetria.temperaturaAsfalto} °C` },
@@ -246,13 +246,13 @@ export function CopilotoBruno() {
           <div className="space-y-2 max-w-2xl text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111827] border border-white/10 text-xs font-semibold text-[#F27B91]">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Asistente Inteligente de Paseo y Bienestar</span>
+              <span>Monitoreo Inteligente & Lealtad Canina &bull; Synodos</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#E8EDF5] tracking-tight">
-              Copiloto Bruno
+              Copiloto Argos
             </h2>
             <p className="text-sm sm:text-base text-[#94A3B8] leading-relaxed">
-              Consulta en lenguaje natural sobre condiciones de salida o calcula la tolerancia fisiológica exacta de tu mascota cruzando su raza con la telemetría del GAM.
+              Inspirado en la lealtad inquebrantable de Argos (el perro de Odiseo), nuestro copiloto de IA analiza en tiempo real condiciones de salida y tolerancia fisiológica en el GAM.
             </p>
           </div>
 
@@ -268,7 +268,7 @@ export function CopilotoBruno() {
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span>Conversación con Bruno</span>
+              <span>Conversación con Argos</span>
             </button>
             <button
               type="button"
@@ -303,14 +303,14 @@ export function CopilotoBruno() {
                     <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#111827]" />
                   </div>
                   <div>
-                    <h3 className="font-serif font-bold text-xl text-[#E8EDF5]">Bruno</h3>
-                    <p className="text-xs text-[#F27B91] font-semibold">Zaguate Experto GAM</p>
-                    <p className="text-[11px] text-[#94A3B8]">Sensor collar: CRC-BRUNO-01</p>
+                    <h3 className="font-serif font-bold text-xl text-[#E8EDF5]">Argos</h3>
+                    <p className="text-xs text-[#F27B91] font-semibold">Guardián IA &bull; Synodos GAM</p>
+                    <p className="text-[11px] text-[#94A3B8]">Nodo: SYN-ARGOS-01</p>
                   </div>
                 </div>
 
                 <p className="text-xs text-[#94A3B8] leading-relaxed">
-                  Bruno procesa en vivo los sensores meteorológicos y acústicos de San José para darte recomendaciones preventivas de paseo.
+                  Argos procesa en vivo los sensores meteorológicos y acústicos de San José para darte recomendaciones preventivas de paseo y coordinación grupal.
                 </p>
 
                 {/* Preguntas sugeridas */}
@@ -461,7 +461,7 @@ export function CopilotoBruno() {
                         onClick={enviarChequeoMascota}
                         className="px-3.5 py-1.5 rounded-xl bg-[#55152D] hover:bg-[#6E1E3A] text-white font-semibold border border-[#F27B91]/40"
                       >
-                        Consultar estado con Bruno
+                        Consultar estado con Argos
                       </button>
                     </div>
                   </div>
@@ -555,7 +555,7 @@ export function CopilotoBruno() {
                         <span className="w-2 h-2 rounded-full bg-[#F27B91] animate-bounce" />
                         <span className="w-2 h-2 rounded-full bg-[#F27B91] animate-bounce [animation-delay:0.2s]" />
                         <span className="w-2 h-2 rounded-full bg-[#F27B91] animate-bounce [animation-delay:0.4s]" />
-                        <span className="ml-1 text-[11px]">Bruno está evaluando datos...</span>
+                        <span className="ml-1 text-[11px]">Argos está evaluando datos...</span>
                       </div>
                     </div>
                   )}
@@ -790,7 +790,7 @@ export function CopilotoBruno() {
                 <div className="p-4 rounded-2xl bg-[#55152D]/25 border border-[#F27B91]/25 space-y-2 text-xs">
                   <div className="flex items-center gap-2 font-semibold text-[#F27B91]">
                     <Sparkles className="w-4 h-4" />
-                    <span>Recomendación Personalizada de Bruno:</span>
+                    <span>Recomendación Personalizada de Argos:</span>
                   </div>
                   <p className="text-[#E8EDF5] leading-relaxed">
                     {consejoBruno}

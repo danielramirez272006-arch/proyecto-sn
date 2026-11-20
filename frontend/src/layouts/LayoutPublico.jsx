@@ -32,10 +32,12 @@ export function LayoutPublico() {
         onToggleCompacta={() => setSidebarCompacta((prev) => !prev)}
       />
 
-      {/* Contenedor principal sincronizado con el ancho de la sidebar */}
+      {/* Contenedor principal sincronizado con la misma duración (300ms) y curva cubic-bezier(0.22,1,0.36,1) */}
       <div
-        className={`flex-1 min-w-0 flex flex-col min-h-screen ${
-          prefersReducedMotion ? '' : 'transition-[padding] duration-[250ms] ease-out'
+        className={`flex-1 min-w-0 flex flex-col min-h-screen will-change-[padding] ${
+          prefersReducedMotion
+            ? ''
+            : 'transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'
         } ${sidebarCompacta ? 'md:pl-20' : 'md:pl-64 lg:pl-72'}`}
       >
         <main className="flex-1 w-full">

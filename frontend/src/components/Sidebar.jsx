@@ -46,7 +46,7 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
     { nombre: 'Inicio', ruta: '/', icon: Home },
     { nombre: 'Mapa Interactivo', ruta: '/mapa', icon: Map, badge: 'GAM' },
     { nombre: 'Terrazas Verificadas', ruta: '/terrazas', icon: Coffee },
-    { nombre: 'Copiloto Bruno', ruta: '/copiloto', icon: Sparkles },
+    { nombre: 'Copiloto Argos', ruta: '/copiloto', icon: Sparkles },
     { nombre: 'Sobre Nosotros', ruta: '/nosotros', icon: Users },
     ...(isLoggedIn
       ? [{ nombre: 'Bóveda Pet', ruta: '/usuario', icon: ShieldCheck, badge: 'Activo' }]
@@ -196,207 +196,223 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F27B91] focus-visible:ring-offset-1'
   };
 
-  const transicionTexto = prefersReducedMotion
-    ? ''
-    : 'transition-opacity duration-200 ease-out';
+  /**
+   * Genera las clases CSS de transición para elementos colapsables manteniendo el DOM estable:
+   * - Al cerrar: se desvanece rápido (opacity-0 duration-150) antes de que el panel se estreche.
+   * - Al abrir: aparece con ligero retraso (opacity-100 duration-200 delay-100) cuando ya hay ancho.
+   */
+  const clasesColapsoTexto = (modoCompacto, maxWAbierto = 'max-w-[180px]') => {
+    if (prefersReducedMotion) {
+      return `whitespace-nowrap overflow-hidden ${
+        modoCompacto ? 'opacity-0 max-w-0 pointer-events-none' : `opacity-100 ${maxWAbierto}`
+      }`;
+    }
+    return `whitespace-nowrap overflow-hidden transition-[opacity,max-width] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      modoCompacto
+        ? 'opacity-0 max-w-0 duration-150 delay-0 pointer-events-none'
+        : `opacity-100 ${maxWAbierto} duration-200 delay-100`
+    }`;
+  };
+
+  const clasesColapsoSeccion = (modoCompacto, maxHAbierto = 'max-h-24') => {
+    if (prefersReducedMotion) {
+      return `overflow-hidden ${
+        modoCompacto ? 'opacity-0 max-h-0 pointer-events-none' : `opacity-100 ${maxHAbierto}`
+      }`;
+    }
+    return `overflow-hidden transition-[opacity,max-height,margin,padding] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      modoCompacto
+        ? 'opacity-0 max-h-0 duration-150 delay-0 pointer-events-none !my-0 !py-0 border-transparent'
+        : `opacity-100 ${maxHAbierto} duration-200 delay-100`
+    }`;
+  };
 
   const ContenidoSidebar = ({ esMovil = false }) => {
     const modoCompacto = !esMovil && compacta;
+    const nombreUsuarioMostrar = usuario?.nombre || 'Mariana Rojas';
 
     return (
-      <div className={`flex flex-col h-full justify-between ${clasesTema.contenedor}`}>
-        {/* 1. CABECERA: Identidad de Marca + Botón Contraer/Expandir */}
-        <div>
-          <div
-            className={`px-3.5 py-4 ${clasesTema.bordeCabecera} flex items-center ${
-              modoCompacto ? 'flex-col gap-2.5 justify-center' : 'justify-between gap-2'
-            }`}
-          >
+      <div className={`flex flex-col h-full min-h-0 justify-between overflow-hidden ${clasesTema.contenedor}`}>
+        {/* 1. CABECERA FIJA + 2. MENÚ DESLIZABLE CON SCROLL FLUIDO */}
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className={`relative px-3 py-3.5 shrink-0 ${clasesTema.bordeCabecera} flex items-center justify-between`}>
+            {/* Logotipo anclado a la izquierda con contenedor fijo w-10 h-10 shrink-0 */}
             <Link
               to="/"
               onClick={() => esMovil && setMenuMovilAbierto(false)}
-              title="Ir al inicio de GoToX"
-              aria-label="GoToX Pet OS - Inicio"
-              className={`flex items-center gap-3 group rounded-xl ${clasesTema.focusRing}`}
+              title="Ir al inicio de Synodos"
+              aria-label="Synodos Pet OS - Inicio"
+              className={`flex items-center justify-start shrink-0 group rounded-xl pl-1.5 ${clasesTema.focusRing}`}
             >
-              <div className="w-10 h-10 rounded-xl bg-[#501228] border border-[#F27B91]/35 flex items-center justify-center text-white shadow-md shadow-[#501228]/35 group-hover:bg-[#6E1E3A] transition-colors shrink-0">
+              <div className="w-10 h-10 shrink-0 rounded-xl bg-[#501228] border border-[#F27B91]/35 flex items-center justify-center text-white shadow-md shadow-[#501228]/35 group-hover:bg-[#6E1E3A] transition-colors">
                 <Dog className="w-5 h-5 text-[#FDF2F4]" aria-hidden="true" />
               </div>
 
-              {!modoCompacto && (
-                <div className={`flex flex-col whitespace-nowrap overflow-hidden ${transicionTexto}`}>
-                  <span className={`font-serif font-black text-lg tracking-tight flex items-center gap-2 ${clasesTema.textoMarca}`}>
-                    GoToX
-                    <span className={`text-[10px] uppercase font-sans font-semibold tracking-wider px-1.5 py-0.5 rounded ${clasesTema.badgePetOs}`}>
-                      PET OS
-                    </span>
+              {/* Texto de marca siempre renderizado en el DOM; sin padding residual al colapsar */}
+              <div
+                className={`flex flex-col transition-[opacity,max-width,padding] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  modoCompacto ? 'pl-0' : 'pl-3'
+                } ${clasesColapsoTexto(modoCompacto, 'max-w-[165px]')}`}
+              >
+                <span className={`font-serif font-black text-lg tracking-tight flex items-center gap-2 whitespace-nowrap ${clasesTema.textoMarca}`}>
+                  Synodos
+                  <span className={`text-[10px] uppercase font-sans font-semibold tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap ${clasesTema.badgePetOs}`}>
+                    PET OS
                   </span>
-                  <span className={`text-[11px] font-sans tracking-wide ${clasesTema.subtexto}`}>
-                    San José &bull; GAM
-                  </span>
-                </div>
-              )}
+                </span>
+                <span className={`text-[11px] font-sans tracking-wide whitespace-nowrap ${clasesTema.subtexto}`}>
+                  San José &bull; GAM
+                </span>
+              </div>
             </Link>
 
-            {esMovil ? (
+            {esMovil && (
               <button
                 ref={closeDrawerButtonRef}
                 type="button"
                 onClick={() => setMenuMovilAbierto(false)}
-                className={`p-2 rounded-xl border transition-colors ${clasesTema.focusRing} ${
+                className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-xl border transition-colors ${clasesTema.focusRing} ${
                   esClaro
                     ? 'text-slate-700 border-slate-300 hover:bg-slate-100'
                     : 'text-slate-200 border-white/15 hover:text-white hover:bg-white/10'
                 }`}
                 aria-label="Cerrar menú de navegación"
               >
-                <X className="w-5 h-5" aria-hidden="true" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
-            ) : (
-              onToggleCompacta && (
-                <button
-                  type="button"
-                  onClick={onToggleCompacta}
-                  aria-expanded={!modoCompacto}
-                  aria-label={modoCompacto ? 'Expandir barra lateral' : 'Contraer barra lateral'}
-                  title={modoCompacto ? 'Expandir barra lateral' : 'Contraer barra lateral'}
-                  className={`p-2 rounded-xl border transition-colors ${clasesTema.focusRing} ${
-                    esClaro
-                      ? 'text-slate-700 border-slate-300 hover:bg-slate-100'
-                      : esMorado
-                      ? 'text-[#FDF2F6] border-[#F27B91]/30 hover:bg-[#55152D]/40'
-                      : 'text-slate-200 border-white/15 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {modoCompacto ? (
-                    <PanelLeftOpen className="w-4 h-4" aria-hidden="true" />
-                  ) : (
-                    <PanelLeftClose className="w-4 h-4" aria-hidden="true" />
-                  )}
-                </button>
-              )
             )}
           </div>
 
-          {/* 2. MENÚ DE ENLACES DE NAVEGACIÓN VERTICAL */}
-          <nav aria-label="Navegación principal" className="p-2.5 space-y-1">
-            {!modoCompacto && (
-              <span className={`px-3 text-[10px] font-bold uppercase tracking-wider block mb-2 whitespace-nowrap ${clasesTema.subtexto}`}>
-                Navegación
-              </span>
-            )}
-            {enlacesNavegacion.map((enlace) => {
-              const Icono = enlace.icon;
-              const activa = esRutaActiva(enlace.ruta);
-              return (
-                <div key={enlace.nombre} className="relative group/nav">
-                  <Link
-                    to={enlace.ruta}
-                    aria-current={activa ? 'page' : undefined}
-                    aria-label={enlace.nombre}
-                    title={modoCompacto ? enlace.nombre : undefined}
-                    onClick={() => esMovil && setMenuMovilAbierto(false)}
-                    className={`relative w-full flex items-center ${
-                      modoCompacto ? 'justify-center px-2 py-2.5' : 'justify-between px-3.5 py-2.5'
-                    } rounded-xl text-xs font-medium transition-colors duration-150 group ${clasesTema.focusRing} ${
-                      activa ? clasesTema.enlaceActivo : clasesTema.enlaceInactivo
-                    }`}
-                  >
-                    {/* Indicador animado de sección activa */}
-                    {activa &&
-                      (prefersReducedMotion ? (
-                        <span
-                          aria-hidden="true"
-                          className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full ${clasesTema.indicadorActivo}`}
-                        />
-                      ) : (
-                        <motion.span
-                          layoutId={esMovil ? 'sidebar-active-mobile' : 'sidebar-active-desktop'}
-                          transition={{ duration: 0.22, ease: 'easeOut' }}
-                          aria-hidden="true"
-                          className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full ${clasesTema.indicadorActivo}`}
-                        />
-                      ))}
+          {/* 2. MENÚ DE ENLACES DE NAVEGACIÓN VERTICAL (DOM ESTABLE, ICONOS ANCLADOS) */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden gotox-scrollbar py-2">
+            <nav aria-label="Navegación principal" className="px-3 space-y-1">
+              {/* Etiqueta NAVEGACIÓN siempre en el DOM */}
+              <div className={clasesColapsoSeccion(modoCompacto, 'max-h-7')}>
+                <span className={`pl-2.5 text-[10px] font-bold uppercase tracking-wider block mb-1.5 whitespace-nowrap overflow-hidden ${clasesTema.subtexto}`}>
+                  Navegación
+                </span>
+              </div>
 
-                    <div className={`flex items-center ${modoCompacto ? 'justify-center' : 'gap-3 min-w-0'}`}>
-                      <Icono
-                        className={`w-4 h-4 shrink-0 transition-colors ${
-                          activa
-                            ? clasesTema.iconoActivo
-                            : esClaro
-                            ? 'text-slate-600 group-hover:text-[#501228]'
-                            : esMorado
-                            ? 'text-[#D8C3CC] group-hover:text-[#FDF2F6]'
-                            : 'text-slate-300 group-hover:text-white'
-                        }`}
-                        aria-hidden="true"
-                      />
-                      {!modoCompacto && (
-                        <span className={`whitespace-nowrap truncate ${transicionTexto}`}>
+              {enlacesNavegacion.map((enlace) => {
+                const Icono = enlace.icon;
+                const activa = esRutaActiva(enlace.ruta);
+                return (
+                  <div key={enlace.nombre} className="relative group/nav">
+                    <Link
+                      to={enlace.ruta}
+                      aria-current={activa ? 'page' : undefined}
+                      aria-label={enlace.nombre}
+                      title={modoCompacto ? enlace.nombre : undefined}
+                      onClick={() => esMovil && setMenuMovilAbierto(false)}
+                      className={`relative w-full flex items-center justify-start pl-1.5 pr-2.5 py-1 rounded-xl text-xs font-medium whitespace-nowrap overflow-hidden transition-colors duration-150 group ${clasesTema.focusRing} ${
+                        activa ? clasesTema.enlaceActivo : clasesTema.enlaceInactivo
+                      }`}
+                    >
+                      {/* Indicador animado de sección activa */}
+                      {activa &&
+                        (prefersReducedMotion ? (
+                          <span
+                            aria-hidden="true"
+                            className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full ${clasesTema.indicadorActivo}`}
+                          />
+                        ) : (
+                          <motion.span
+                            layoutId={esMovil ? 'sidebar-active-mobile' : 'sidebar-active-desktop'}
+                            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                            aria-hidden="true"
+                            className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full ${clasesTema.indicadorActivo}`}
+                          />
+                        ))}
+
+                      {/* Contenedor fijo w-10 h-10 shrink-0 para mantener el eje X del icono inmóvil */}
+                      <span className="w-10 h-10 shrink-0 flex items-center justify-center">
+                        <Icono
+                          className={`w-4 h-4 shrink-0 transition-colors ${
+                            activa
+                              ? clasesTema.iconoActivo
+                              : esClaro
+                              ? 'text-slate-600 group-hover:text-[#501228]'
+                              : esMorado
+                              ? 'text-[#D8C3CC] group-hover:text-[#FDF2F6]'
+                              : 'text-slate-300 group-hover:text-white'
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </span>
+
+                      {/* Texto y badge siempre montados en el DOM */}
+                      <div
+                        className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(
+                          modoCompacto,
+                          'max-w-[200px]'
+                        )}`}
+                      >
+                        <span className="whitespace-nowrap truncate pr-2">
                           {enlace.nombre}
                         </span>
-                      )}
-                    </div>
 
-                    {!modoCompacto && enlace.badge && (
+                        {enlace.badge && (
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 whitespace-nowrap ${
+                              activa
+                                ? esClaro
+                                  ? 'bg-white/20 text-white'
+                                  : 'bg-[#F27B91]/25 text-[#FDF2F6] border border-[#F27B91]/40'
+                                : esClaro
+                                ? 'bg-slate-100 text-slate-700 border border-slate-300'
+                                : 'bg-white/10 text-slate-200 border border-white/15'
+                            }`}
+                          >
+                            {enlace.badge}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+
+                    {/* Tooltip accesible en modo compacto */}
+                    {modoCompacto && (
                       <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ${
-                          activa
-                            ? esClaro
-                              ? 'bg-white/20 text-white'
-                              : 'bg-[#F27B91]/25 text-[#FDF2F6] border border-[#F27B91]/40'
-                            : esClaro
-                            ? 'bg-slate-100 text-slate-700 border border-slate-300'
-                            : 'bg-white/10 text-slate-200 border border-white/15'
-                        }`}
+                        role="tooltip"
+                        className={`pointer-events-none opacity-0 group-hover/nav:opacity-100 group-focus-within/nav:opacity-100 transition-opacity duration-150 fixed left-[5.25rem] -translate-y-8 z-50 px-2.5 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap shadow-lg ${clasesTema.tooltip}`}
                       >
-                        {enlace.badge}
+                        {enlace.nombre}
                       </span>
                     )}
-                  </Link>
+                  </div>
+                );
+              })}
+            </nav>
 
-                  {/* Tooltip accesible en modo compacto */}
-                  {modoCompacto && (
-                    <span
-                      role="tooltip"
-                      className={`pointer-events-none opacity-0 group-hover/nav:opacity-100 group-focus-within/nav:opacity-100 transition-opacity duration-150 fixed left-[5.25rem] -translate-y-8 z-50 px-2.5 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap shadow-lg ${clasesTema.tooltip}`}
-                    >
-                      {enlace.nombre}
-                    </span>
-                  )}
+            {/* Mini tarjeta informativa de Red GAM siempre en el DOM */}
+            <div className={`mx-3 mt-2.5 ${clasesColapsoSeccion(modoCompacto, 'max-h-24')}`}>
+              <div className={`p-2.5 rounded-xl border space-y-0.5 whitespace-nowrap overflow-hidden ${clasesTema.tarjetaRedGam}`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold flex items-center gap-1.5 text-[11px] whitespace-nowrap">
+                    <Radio className="w-3.5 h-3.5 text-emerald-500 shrink-0" aria-hidden="true" />
+                    <span>Red GAM Activa</span>
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
                 </div>
-              );
-            })}
-          </nav>
-
-          {/* Mini tarjeta informativa de Red GAM (oculta en modo compacto) */}
-          {!modoCompacto && (
-            <div className={`mx-3 mt-2 p-3 rounded-xl border space-y-1 ${clasesTema.tarjetaRedGam}`}>
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold flex items-center gap-1.5 text-[11px]">
-                  <Radio className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-                  Red GAM Activa
-                </span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
+                <p className={`text-[10px] leading-tight truncate ${clasesTema.subtexto}`}>
+                  Sensores urbanos y clima en San José.
+                </p>
               </div>
-              <p className={`text-[10px] leading-tight ${clasesTema.subtexto}`}>
-                Sensores urbanos y clima en San José.
-              </p>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* 3. ZONA INFERIOR: Selector de tema y Perfil */}
-        <div className={`${modoCompacto ? 'p-2.5' : 'p-3.5'} space-y-3 ${clasesTema.pieInferior}`}>
+        {/* 3. ZONA INFERIOR FIJA: Selector de tema y Perfil (DOM estable, sin desmontar textos) */}
+        <div className={`shrink-0 px-3 py-3 space-y-2 ${clasesTema.pieInferior}`}>
           {/* Selector de Tono de Pantalla */}
-          <div className="space-y-1.5">
-            {!modoCompacto && (
-              <span className={`text-[10px] font-bold uppercase tracking-wider block px-1 ${clasesTema.subtexto}`}>
+          <div className="space-y-1">
+            <div className={clasesColapsoSeccion(modoCompacto, 'max-h-6')}>
+              <span className={`text-[10px] font-bold uppercase tracking-wider block pl-1.5 whitespace-nowrap overflow-hidden ${clasesTema.subtexto}`}>
                 Tono de Pantalla
               </span>
-            )}
+            </div>
+
             <div
-              className={`grid ${modoCompacto ? 'grid-cols-1 gap-1' : 'grid-cols-3 gap-1'} p-1 border rounded-xl ${clasesTema.selectorTonoCaja}`}
+              className={`grid grid-cols-3 gap-1 p-1 border rounded-xl overflow-hidden ${clasesTema.selectorTonoCaja}`}
               role="group"
               aria-label="Selector de tema visual"
             >
@@ -406,64 +422,64 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
                 aria-pressed={tema === 'claro'}
                 aria-label="Tema Claro"
                 title="Modo Claro"
-                className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${clasesTema.focusRing} ${
+                className={`flex items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-medium whitespace-nowrap overflow-hidden transition-colors ${clasesTema.focusRing} ${
                   tema === 'claro'
                     ? 'bg-amber-100 text-amber-950 border border-amber-400 font-semibold'
                     : `${clasesTema.subtexto} hover:opacity-100`
                 }`}
               >
                 <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden="true" />
-                {!modoCompacto && <span>Claro</span>}
+                <span className={clasesColapsoTexto(modoCompacto, 'max-w-[60px] pl-1')}>Claro</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => setTema('oscuro')}
                 aria-pressed={tema === 'oscuro'}
                 aria-label="Tema Oscuro"
                 title="Modo Oscuro"
-                className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${clasesTema.focusRing} ${
+                className={`flex items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-medium whitespace-nowrap overflow-hidden transition-colors ${clasesTema.focusRing} ${
                   tema === 'oscuro'
                     ? 'bg-slate-800 text-white font-semibold border border-slate-500'
                     : `${clasesTema.subtexto} hover:opacity-100`
                 }`}
               >
                 <Moon className="w-3.5 h-3.5 text-sky-400 shrink-0" aria-hidden="true" />
-                {!modoCompacto && <span>Oscuro</span>}
+                <span className={clasesColapsoTexto(modoCompacto, 'max-w-[60px] pl-1')}>Oscuro</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => setTema('morado')}
                 aria-pressed={tema === 'morado'}
                 aria-label="Tema Vino"
                 title="Modo Vino"
-                className={`flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${clasesTema.focusRing} ${
+                className={`flex items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-medium whitespace-nowrap overflow-hidden transition-colors ${clasesTema.focusRing} ${
                   tema === 'morado'
                     ? 'bg-[#55152D] text-[#FDF2F6] font-semibold border border-[#F27B91]/60'
                     : `${clasesTema.subtexto} hover:opacity-100`
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-[#F27B91] shrink-0" aria-hidden="true" />
-                {!modoCompacto && <span>Vino</span>}
+                <span className={clasesColapsoTexto(modoCompacto, 'max-w-[60px] pl-1')}>Vino</span>
               </button>
             </div>
           </div>
 
-          {/* Perfil de Usuario y Acciones */}
+          {/* Perfil de Usuario y Acciones con iconos anclados a la izquierda */}
           {isLoggedIn ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Link
                 to={esAdmin ? '/panel' : '/usuario'}
-                title={modoCompacto ? `Perfil: ${usuario?.nombre || 'Usuario GoToX'}` : undefined}
-                aria-label={`Perfil de ${usuario?.nombre || 'Usuario GoToX'}`}
+                title={modoCompacto ? `Perfil: ${nombreUsuarioMostrar}` : undefined}
+                aria-label={`Perfil de ${nombreUsuarioMostrar}`}
                 onClick={() => esMovil && setMenuMovilAbierto(false)}
-                className={`flex items-center ${
-                  modoCompacto ? 'justify-center p-2' : 'justify-between p-2.5'
-                } rounded-xl border transition-colors group ${clasesTema.tarjetaUsuario} ${clasesTema.focusRing}`}
+                className={`w-full flex items-center justify-start pl-1.5 pr-2 py-1 rounded-xl border whitespace-nowrap overflow-hidden transition-colors group ${clasesTema.tarjetaUsuario} ${clasesTema.focusRing}`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 shrink-0 flex items-center justify-center">
                   <div className="relative shrink-0">
                     <div className="w-8 h-8 rounded-lg bg-[#501228] border border-[#F27B91]/35 text-white flex items-center justify-center font-bold text-xs">
-                      {usuario?.nombre?.charAt(0)?.toUpperCase() || 'U'}
+                      {nombreUsuarioMostrar.charAt(0).toUpperCase()}
                     </div>
                     <span
                       className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 ${
@@ -471,21 +487,25 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
                       }`}
                     />
                   </div>
-                  {!modoCompacto && (
-                    <div className="truncate text-left">
-                      <p className="text-xs font-bold truncate">
-                        {usuario?.nombre || 'Usuario GoToX'}
-                      </p>
-                      <p className={`text-[10px] truncate flex items-center gap-1 ${clasesTema.subtexto}`}>
-                        <Shield className={`w-2.5 h-2.5 ${esAdmin ? 'text-[#F27B91]' : 'text-emerald-500'} shrink-0`} aria-hidden="true" />
-                        <span>{esAdmin ? 'Administrador Exclusivo' : 'Usuario GoToX'}</span>
-                      </p>
-                    </div>
-                  )}
                 </div>
-                {!modoCompacto && (
+
+                <div
+                  className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(
+                    modoCompacto,
+                    'max-w-[190px]'
+                  )}`}
+                >
+                  <div className="truncate text-left pr-2">
+                    <p className="text-xs font-bold truncate whitespace-nowrap">
+                      {nombreUsuarioMostrar}
+                    </p>
+                    <p className={`text-[10px] truncate flex items-center gap-1 whitespace-nowrap ${clasesTema.subtexto}`}>
+                      <Shield className={`w-2.5 h-2.5 ${esAdmin ? 'text-[#F27B91]' : 'text-emerald-500'} shrink-0`} aria-hidden="true" />
+                      <span>{esAdmin ? 'Administrador Exclusivo' : 'Tutor Certificado'}</span>
+                    </p>
+                  </div>
                   <ChevronRight className={`w-4 h-4 shrink-0 ${clasesTema.subtexto}`} aria-hidden="true" />
-                )}
+                </div>
               </Link>
 
               <button
@@ -493,15 +513,20 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
                 onClick={handleSolicitarCierre}
                 title={modoCompacto ? 'Cerrar Sesión' : undefined}
                 aria-label="Cerrar Sesión"
-                className={`w-full flex items-center ${
-                  modoCompacto ? 'justify-center p-2' : 'justify-between px-3 py-2'
-                } rounded-xl text-xs font-semibold border transition-colors active:scale-[0.98] ${clasesTema.botonCerrarSesion} ${clasesTema.focusRing}`}
+                className={`w-full flex items-center justify-start pl-1.5 pr-2.5 py-0.5 rounded-xl text-xs font-semibold border whitespace-nowrap overflow-hidden transition-colors active:scale-[0.98] ${clasesTema.botonCerrarSesion} ${clasesTema.focusRing}`}
               >
-                <div className="flex items-center gap-2">
+                <span className="w-10 h-9 shrink-0 flex items-center justify-center">
                   <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  {!modoCompacto && <span>Cerrar Sesión</span>}
+                </span>
+                <div
+                  className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(
+                    modoCompacto,
+                    'max-w-[190px]'
+                  )}`}
+                >
+                  <span className="whitespace-nowrap">Cerrar Sesión</span>
+                  <span className="text-[10px] opacity-85 font-medium whitespace-nowrap">Salir</span>
                 </div>
-                {!modoCompacto && <span className="text-[10px] opacity-85 font-medium">Salir</span>}
               </button>
 
               {esAdmin ? (
@@ -510,12 +535,14 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
                   title={modoCompacto ? 'Entrar al Panel' : undefined}
                   aria-label="Entrar al Panel"
                   onClick={() => esMovil && setMenuMovilAbierto(false)}
-                  className={`w-full flex items-center justify-center gap-2 ${
-                    modoCompacto ? 'p-2.5' : 'px-3.5 py-2.5'
-                  } rounded-xl text-xs font-bold transition-colors active:scale-[0.98] ${clasesTema.botonPrincipal} ${clasesTema.focusRing}`}
+                  className={`w-full flex items-center justify-start pl-1.5 pr-2.5 py-0.5 rounded-xl text-xs font-bold whitespace-nowrap overflow-hidden transition-colors active:scale-[0.98] ${clasesTema.botonPrincipal} ${clasesTema.focusRing}`}
                 >
-                  <Activity className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  {!modoCompacto && <span>Entrar al Panel</span>}
+                  <span className="w-10 h-9 shrink-0 flex items-center justify-center">
+                    <Activity className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  </span>
+                  <span className={clasesColapsoTexto(modoCompacto, 'max-w-[190px]')}>
+                    Entrar al Panel
+                  </span>
                 </Link>
               ) : (
                 <Link
@@ -523,12 +550,14 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
                   title={modoCompacto ? 'Entrar a Mi Espacio' : undefined}
                   aria-label="Entrar a Mi Espacio"
                   onClick={() => esMovil && setMenuMovilAbierto(false)}
-                  className={`w-full flex items-center justify-center gap-2 ${
-                    modoCompacto ? 'p-2.5' : 'px-3.5 py-2.5'
-                  } rounded-xl text-xs font-bold transition-colors active:scale-[0.98] ${clasesTema.botonPrincipal} ${clasesTema.focusRing}`}
+                  className={`w-full flex items-center justify-start pl-1.5 pr-2.5 py-0.5 rounded-xl text-xs font-bold whitespace-nowrap overflow-hidden transition-colors active:scale-[0.98] ${clasesTema.botonPrincipal} ${clasesTema.focusRing}`}
                 >
-                  <ShieldCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  {!modoCompacto && <span>Entrar a Mi Espacio</span>}
+                  <span className="w-10 h-9 shrink-0 flex items-center justify-center">
+                    <ShieldCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  </span>
+                  <span className={clasesColapsoTexto(modoCompacto, 'max-w-[190px]')}>
+                    Entrar a Mi Espacio
+                  </span>
                 </Link>
               )}
             </div>
@@ -538,12 +567,14 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
               title={modoCompacto ? 'Iniciar Sesión' : undefined}
               aria-label="Iniciar Sesión"
               onClick={() => esMovil && setMenuMovilAbierto(false)}
-              className={`w-full flex items-center justify-center gap-2 ${
-                modoCompacto ? 'p-2.5' : 'px-3.5 py-2.5'
-              } rounded-xl text-xs font-bold transition-colors active:scale-[0.98] ${clasesTema.botonPrincipal} ${clasesTema.focusRing}`}
+              className={`w-full flex items-center justify-start pl-1.5 pr-2.5 py-0.5 rounded-xl text-xs font-bold whitespace-nowrap overflow-hidden transition-colors active:scale-[0.98] ${clasesTema.botonPrincipal} ${clasesTema.focusRing}`}
             >
-              <LogIn className="w-4 h-4 shrink-0" aria-hidden="true" />
-              {!modoCompacto && <span>Iniciar Sesión</span>}
+              <span className="w-10 h-9 shrink-0 flex items-center justify-center">
+                <LogIn className="w-4 h-4 shrink-0" aria-hidden="true" />
+              </span>
+              <span className={clasesColapsoTexto(modoCompacto, 'max-w-[190px]')}>
+                Iniciar Sesión
+              </span>
             </Link>
           )}
         </div>
@@ -581,7 +612,7 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
             <Dog className="w-4 h-4 text-[#FDF2F4]" aria-hidden="true" />
           </div>
           <span className={`font-serif font-black text-base tracking-tight flex items-center gap-1.5 ${clasesTema.textoMarca}`}>
-            GoToX
+            Synodos
             <span className={`text-[9px] uppercase font-sans font-semibold tracking-wider px-1 py-0.5 rounded ${clasesTema.badgePetOs}`}>
               PET OS
             </span>
@@ -649,7 +680,7 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
               initial={prefersReducedMotion ? false : { x: '-100%' }}
               animate={{ x: 0 }}
               exit={prefersReducedMotion ? { opacity: 0 } : { x: '-100%' }}
-              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
               className={`relative w-72 max-w-[85vw] h-full shadow-2xl z-10 overflow-y-auto gotox-scrollbar border-r ${
                 esClaro ? 'border-slate-300' : esMorado ? 'border-[#F27B91]/25' : 'border-white/15'
               }`}
@@ -663,12 +694,40 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
       {/* 2. SIDEBAR LATERAL CONTRAÍBLE EN DESKTOP (md: y superior) */}
       <aside
         aria-label="Barra lateral de navegación"
-        className={`hidden md:flex fixed inset-y-0 left-0 z-40 shadow-xl overflow-y-auto overflow-x-hidden gotox-scrollbar flex-col border-r ${
-          prefersReducedMotion ? '' : 'transition-[width] duration-[250ms] ease-out'
+        className={`hidden md:flex fixed inset-y-0 left-0 z-40 shadow-xl flex-col border-r will-change-[width] ${
+          prefersReducedMotion
+            ? ''
+            : 'transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'
         } ${compacta ? 'w-20' : 'md:w-64 lg:w-72'} ${
           esClaro ? 'border-slate-200' : esMorado ? 'border-[#F27B91]/20' : 'border-white/15'
         }`}
       >
+        {onToggleCompacta && (
+          <button
+            type="button"
+            onClick={onToggleCompacta}
+            aria-expanded={!compacta}
+            aria-label={compacta ? 'Expandir barra lateral' : 'Contraer barra lateral'}
+            title={compacta ? 'Expandir barra lateral' : 'Contraer barra lateral'}
+            className={`absolute top-5 z-50 w-7 h-7 shrink-0 flex items-center justify-center rounded-lg border shadow-md ${
+              prefersReducedMotion
+                ? ''
+                : 'transition-[right,background-color,border-color,color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'
+            } ${compacta ? '-right-3.5' : 'right-3'} ${clasesTema.focusRing} ${
+              esClaro
+                ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                : esMorado
+                ? 'bg-[#1F0E19] text-[#FDF2F6] border-[#F27B91]/40 hover:bg-[#55152D]'
+                : 'bg-[#111827] text-slate-200 border-white/20 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            {compacta ? (
+              <PanelLeftOpen className="w-3.5 h-3.5" aria-hidden="true" />
+            ) : (
+              <PanelLeftClose className="w-3.5 h-3.5" aria-hidden="true" />
+            )}
+          </button>
+        )}
         <ContenidoSidebar esMovil={false} />
       </aside>
     </>

@@ -54,17 +54,24 @@ function elegirConfig() {
   return { radius: 280, stepDeg: 18, fadeStart: 1.1, maxDelta: 2.5 };
 }
 
-function PanelInfo({ video, indice, total }) {
+/* Limpia títulos de YouTube eliminando hashtags (#perros), emojis excesivos y sufijos innecesarios */
+function limpiarTituloVideo(titulo = '') {
+  const limpio = String(titulo || '')
+    .replace(/#[\p{L}\p{N}_-]+/gu, '') // Quita cualquier hashtag (#perros, #shorts, etc.)
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '') // Quita emojis que ensucian o alargan el título
+    .replace(/\s*\|\s*.*$/, '') // Quita sufijos tipo "| Canal"
+    .replace(/\s+/g, ' ')
+    .trim();
+  return limpio || String(titulo || '').trim();
+}
+
+function PanelInfo({ video }) {
   if (!video) return null;
+  const tituloLimpio = limpiarTituloVideo(video.titulo);
   return (
-    <>
-      <h2 className="gxw-info__title">{video.titulo}</h2>
-      <div className="gxw-info__year">{video.anio}</div>
-      <p className="gxw-info__cat">
-        {video.categoria}
-        {indice !== null && indice !== undefined && total ? <> — {pad(indice + 1)}/{pad(total)}</> : null}
-      </p>
-    </>
+    <div className="gxw-info__content">
+      <h2 className="gxw-info__title">{tituloLimpio}</h2>
+    </div>
   );
 }
 
@@ -240,7 +247,7 @@ export function RuletaVideos() {
         ...existente,
         id: v.youtube_id,
         dbId: v.id || existente.dbId,
-        titulo: v.title || existente.titulo,
+        titulo: limpiarTituloVideo(v.title || existente.titulo),
         categoria: v.category || existente.categoria || `${v.species || 'general'} • ${v.topic || 'cuidado'}`,
         anio: v.year || existente.anio || (v.approved_at ? new Date(v.approved_at).getFullYear() : 2026),
         especie: v.species || existente.especie,
@@ -1344,10 +1351,6 @@ export function RuletaVideos() {
                       <em>Video no disponible</em>
                     </div>
                     <div className="gxw-card__shade" aria-hidden="true" />
-                    <div className="gxw-card__tag" aria-hidden="true">
-                      <b>{video.categoria}</b>
-                      <span>{video.anio}</span>
-                    </div>
                     {videoActivo === i && !videoCaido[i] && (
                       <iframe
                         key={video.id}
@@ -1465,29 +1468,20 @@ export function RuletaVideos() {
           )}
         </div>
 
-        {/* ---------------- Panel de texto ---------------- */}
+        {/* ---------------- Panel de texto (limpio, sin superposición) ---------------- */}
         <aside className={`gxw-info ${hayReproductor ? 'is-playing' : ''}`}>
           <p className="gxw-info__label">
-            <span className="gxw-info__dot" aria-hidden="true" /> Now showing
+            <span className="gxw-info__dot" aria-hidden="true" /> Video Seleccionado
           </p>
-          <p className="gxw-info__ghost">{ghostPrev}</p>
           <div className="gxw-info__swap">
-            {reproductor ? (
-              <div className="gxw-info__layer is-on">
-                <PanelInfo video={reproductor.video} indice={reproductor.indice} total={totalVideos} />
-              </div>
-            ) : (
-              <>
-                <div className={`gxw-info__layer ${info.front === 0 ? 'is-on' : ''}`} aria-hidden={info.front !== 0}>
-                  <PanelInfo video={capa0} indice={idx0} total={totalVideos} />
-                </div>
-                <div className={`gxw-info__layer ${info.front === 1 ? 'is-on' : ''}`} aria-hidden={info.front !== 1}>
-                  <PanelInfo video={capa1} indice={idx1} total={totalVideos} />
-                </div>
-              </>
-            )}
+            <div className="gxw-info__layer is-on">
+              <PanelInfo
+                video={reproductor ? reproductor.video : vActual}
+                indice={reproductor ? reproductor.indice : indiceSeg}
+                total={totalVideos}
+              />
+            </div>
           </div>
-          <p className="gxw-info__ghost">{ghostNext}</p>
           {!reproductor && (
             <button
               type="button"
@@ -1542,10 +1536,8 @@ export function RuletaVideos() {
                 <span className="gxw-list__ver" aria-hidden="true">▶ Ver video</span>
               </div>
               <div className="gxw-list__meta">
-                <span className="gxw-list__name">{video.titulo}</span>
-                <span className="gxw-list__year">{video.anio}</span>
+                <span className="gxw-list__name">{limpiarTituloVideo(video.titulo)}</span>
               </div>
-              <div className="gxw-list__cat">{video.categoria}</div>
             </button>
           ))}
         </div>

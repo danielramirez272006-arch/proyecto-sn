@@ -1,6 +1,5 @@
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'motion/react';
 import { LayoutPublico } from '../layouts/LayoutPublico';
 import { RutaPrivada } from './RutaPrivada';
 import { RutaAdmin } from './RutaAdmin';
@@ -14,15 +13,13 @@ import { Acceso } from '../pages/Acceso';
 import { Panel } from '../pages/Panel';
 
 /**
- * Enrutador con transiciones fluidas de página mediante AnimatePresence.
- * Cada ruta tiene su propio ciclo de entrada y salida sin parpadeos.
+ * Enrutador directo de respuesta instantánea sin bloqueo de salida ni fallos de carga diferida.
  */
 export function AnimatedRoutes() {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+    <Routes location={location}>
         {/* Rutas Públicas de GoToX */}
         <Route element={<LayoutPublico />}>
           <Route path="/" element={<Home />} />
@@ -98,7 +95,6 @@ export function AnimatedRoutes() {
         {/* Redirección por defecto */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </AnimatePresence>
   );
 }
 

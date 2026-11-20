@@ -11,6 +11,8 @@ import { Tabla, Tr, Td } from '../components/ui/Tabla';
 import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
 import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useSesion } from '../hooks/useSesion';
+import { authService } from '../shared/services/auth-service';
+import { abrirConfiguracionCookies } from '../shared/utils/cookie-consent';
 import { obtenerFavoritosIds, obtenerPlanes } from '../servicios/almacenamientoCliente';
 import {
   User,
@@ -28,7 +30,10 @@ import {
   Save,
   AlertTriangle,
   Compass,
-  ArrowRight
+  ArrowRight,
+  Trash2,
+  FileCheck2,
+  Cookie
 } from 'lucide-react';
 
 export function Perfil({ embebido = false }) {
@@ -147,6 +152,50 @@ export function Perfil({ embebido = false }) {
     cerrarSesion();
     setAnimandoSalida(false);
     navigate('/acceso');
+  };
+
+  // Estados para Baja del Sistema y Eliminación de Datos Personales (Ley N.º 8968 CR)
+  const [mostrarFormBaja, setMostrarFormBaja] = useState(false);
+  const [passwordBaja, setPasswordBaja] = useState('');
+  const [motivoBaja, setMotivoBaja] = useState('Ejercicio de derecho de supresión (Art. 7 Ley N.º 8968)');
+  const [confirmaBajaIrreversible, setConfirmaBajaIrreversible] = useState(false);
+  const [procesandoBaja, setProcesandoBaja] = useState(false);
+  const [errorBaja, setErrorBaja] = useState('');
+  const [comprobanteBaja, setComprobanteBaja] = useState(null);
+
+  const handleSolicitarEliminacionCuenta = async (e) => {
+    e.preventDefault();
+    setErrorBaja('');
+
+    if (!passwordBaja || passwordBaja.trim().length < 4) {
+      setErrorBaja('Por seguridad, confirma tu identidad ingresando tu contraseña actual.');
+      return;
+    }
+    if (!confirmaBajaIrreversible) {
+      setErrorBaja('Debes marcar la casilla confirmando la solicitud de eliminación y anonimización.');
+      return;
+    }
+
+    setProcesandoBaja(true);
+    try {
+      const res = await authService.deleteAccount({
+        email: perfilUsuario.correo,
+        password: passwordBaja,
+        reason: motivoBaja
+      });
+      setComprobanteBaja(res);
+      setTimeout(() => {
+        cerrarSesion();
+        navigate('/acceso', {
+          replace: true,
+          state: { cuentaEliminadaRecibo: res.receiptId }
+        });
+      }, 3200);
+    } catch (err) {
+      setErrorBaja(err?.message || 'No se pudo procesar la solicitud de baja.');
+    } finally {
+      setProcesandoBaja(false);
+    }
   };
 
   const handleGuardarCambios = async (e) => {
@@ -885,17 +934,203 @@ export function Perfil({ embebido = false }) {
                   </Button>
                 </div>
               </Card>
+
+              {/* BAJA DEL SISTEMA Y ELIMINACIÓN DE DATOS PERSONALES (LEY N.º 8968 CR) */}
+              <Card className="p-6 border-rose-300/80 dark:border-rose-800/50 bg-rose-50/30 dark:bg-rose-950/15 space-y-4">
+                <div className="flex items-start justify-between gap-3 pb-3 border-b border-rose-200/70 dark:border-rose-800/40">
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300/60 dark:border-rose-800/50 mb-1.5">
+                      <Trash2 className="w-3 h-3" />
+                      <span>Derecho de Supresión ARCO &bull; Ley N.º 8968 CR</span>
+                    </span>
+                    <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white">
+                      Baja del Sistema y Eliminación de Datos Personales
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
+                      Como titular de tus datos personales, puedes solicitar en cualquier momento la eliminación de tu cuenta y la supresión o anonimización de tu información en Synodos.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#162032] border border-slate-200/80 dark:border-white/10 space-y-1">
+                    <span className="font-bold text-rose-700 dark:text-rose-300 block">
+                      ¿Qué se elimina de inmediato?
+                    </span>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Nombre completo, correo electrónico, teléfono, dirección/zona, perfil biométrico y fotografías de tu mascota, preferencias y tokens de sesión activos.
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#162032] border border-slate-200/80 dark:border-white/10 space-y-1">
+                    <span className="font-bold text-slate-800 dark:text-white block">
+                      ¿Qué se conserva anonimizado por ley?
+                    </span>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Únicamente los registros de auditoría técnica e historial contable/operativo exigidos por obligación legal, totalmente anonimizados (sin datos personales identificables).
+                    </p>
+                  </div>
+                </div>
+
+                {comprobanteBaja ? (
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 space-y-2 text-xs">
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <span>Solicitud Procesada &bull; Comprobante #{comprobanteBaja.receiptId}</span>
+                    </div>
+                    <p className="leading-relaxed">{comprobanteBaja.message}</p>
+                    <p className="text-[11px] opacity-80">
+                      Notificación emitida el {new Date(comprobanteBaja.processedAt).toLocaleString('es-CR')}. Cerrando sesión y limpiando bóveda local...
+                    </p>
+                  </div>
+                ) : !mostrarFormBaja ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Se requerirá confirmar tu identidad antes de ejecutar la baja definitiva.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMostrarFormBaja(true);
+                        setErrorBaja('');
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 transition-colors shadow-sm"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Solicitar Eliminación de Cuenta y Datos</span>
+                    </button>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={handleSolicitarEliminacionCuenta}
+                    className="p-4 rounded-2xl bg-white dark:bg-[#111827] border border-rose-300 dark:border-rose-800/60 space-y-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Confirmación de Identidad del Titular</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setMostrarFormBaja(false)}
+                        className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                          Contraseña actual (para confirmar identidad)
+                        </label>
+                        <input
+                          type="password"
+                          value={passwordBaja}
+                          onChange={(e) => setPasswordBaja(e.target.value)}
+                          placeholder="Ingresa tu contraseña actual"
+                          required
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-[#162032] text-slate-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                          Motivo de la solicitud
+                        </label>
+                        <select
+                          value={motivoBaja}
+                          onChange={(e) => setMotivoBaja(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-[#162032] text-slate-900 dark:text-white"
+                        >
+                          <option value="Ejercicio de derecho de supresión (Art. 7 Ley N.º 8968)">
+                            Derecho de supresión ARCO (Ley N.º 8968)
+                          </option>
+                          <option value="Ya no utilizo la plataforma Synodos">
+                            Ya no utilizo la plataforma Synodos
+                          </option>
+                          <option value="Deseo revocar mi consentimiento y anonimizar mi historial">
+                            Revocar consentimiento y anonimizar historial
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <label className="flex items-start gap-2.5 text-xs cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={confirmaBajaIrreversible}
+                        onChange={(e) => setConfirmaBajaIrreversible(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded accent-rose-700 shrink-0"
+                      />
+                      <span className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                        Confirmo mi identidad como titular de la cuenta <strong>{perfilUsuario.correo}</strong> y solicito la eliminación de mis datos personales y la anonimización de los registros legales conforme a la Ley N.º 8968.
+                      </span>
+                    </label>
+
+                    {errorBaja && (
+                      <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-300 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>{errorBaja}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setMostrarFormBaja(false)}
+                        className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-white/15"
+                      >
+                        Conservar mi cuenta
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={procesandoBaja}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 disabled:opacity-50 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>
+                          {procesandoBaja ? 'Procesando baja y anonimización...' : 'Confirmar Eliminación Definitiva'}
+                        </span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </Card>
             </div>
 
             <div className="lg:col-span-4 space-y-4">
               <Card className="p-6 border-slate-200/80 dark:border-white/10 space-y-3">
                 <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                   <ShieldCheck className="w-5 h-5" />
-                  <h4 className="font-serif font-bold text-sm text-[#111827] dark:text-white">Privacidad de Datos</h4>
+                  <h4 className="font-serif font-bold text-sm text-[#111827] dark:text-white">
+                    Gobernanza Ley N.º 8968 CR
+                  </h4>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Tu cuenta personal únicamente almacena tu perfil, tus preferencias y los datos de tu mascota que decidas registrar.
+                  Tu cuenta personal cuenta con consentimiento informado activo (versión <strong>2026.11-CR-8968</strong>). Tus datos están protegidos mediante hash criptográfico, control de roles y bitácoras auditables.
                 </p>
+                <div className="pt-2 space-y-2 border-t border-slate-100 dark:border-white/10 text-xs">
+                  <Link
+                    to="/terminos"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-[#162032] hover:bg-[#FDF2F4] dark:hover:bg-[#55152D]/30 font-semibold text-[#501228] dark:text-[#F27B91] transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileCheck2 className="w-4 h-4" />
+                      <span>Ver Términos y Política de Privacidad</span>
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={abrirConfiguracionCookies}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-[#162032] hover:bg-slate-100 dark:hover:bg-white/10 font-medium text-slate-700 dark:text-slate-200 transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Cookie className="w-4 h-4 text-[#F27B91]" />
+                      <span>Gestionar Consentimiento de Cookies</span>
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </Card>
             </div>
           </div>

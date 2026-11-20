@@ -8,6 +8,7 @@ import { PageWrapper } from '../components/PageWrapper';
 import { useSesion } from '../hooks/useSesion';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useTema } from '../context/TemaContext';
+import { authService } from '../shared/services/auth-service';
 import {
   Dog,
   Mail,
@@ -22,7 +23,9 @@ import {
   User,
   Phone,
   MapPin,
-  AlertTriangle
+  AlertTriangle,
+  KeyRound,
+  ArrowLeft
 } from 'lucide-react';
 
 export function Acceso() {
@@ -34,11 +37,18 @@ export function Acceso() {
   const telemetria = useTelemetria();
   const { esClaro, esMorado } = useTema();
 
-  const [modo, setModo] = useState('login'); // 'login' | 'registro'
+  const [modo, setModo] = useState('login'); // 'login' | 'registro' | 'recuperar'
 
   // Estado de Inicio de Sesión
   const [correoLogin, setCorreoLogin] = useState('');
   const [claveLogin, setClaveLogin] = useState('');
+
+  // Estado de Recuperación de Contraseña
+  const [pasoRecuperacion, setPasoRecuperacion] = useState(1); // 1: solicitar código | 2: ingresar código y nueva clave
+  const [correoRecuperar, setCorreoRecuperar] = useState('');
+  const [codigoRecuperar, setCodigoRecuperar] = useState('');
+  const [nuevaClaveRecuperar, setNuevaClaveRecuperar] = useState('');
+  const [confirmarClaveRecuperar, setConfirmarClaveRecuperar] = useState('');
 
   // Estado de Registrar Usuario (arriba)
   const [nombreUsuario, setNombreUsuario] = useState('');
@@ -46,6 +56,7 @@ export function Acceso() {
   const [claveRegistro, setClaveRegistro] = useState('');
   const [telefonoRegistro, setTelefonoRegistro] = useState('');
   const [ubicacionRegistro, setUbicacionRegistro] = useState('San José, Costa Rica');
+  const [aceptaTerminosPrivacidad, setAceptaTerminosPrivacidad] = useState(false);
 
   // Estado de Información de Mascota (abajo de usuario)
   const [incluirMascota, setIncluirMascota] = useState(true);
@@ -102,6 +113,10 @@ export function Acceso() {
       if (!razaPerro.trim()) err.razaPerro = 'La raza o especie es requerida.';
       if (pesoPerro && Number(pesoPerro) <= 0) err.pesoPerro = 'Ingresa un peso válido en kilogramos.';
     }
+    if (!aceptaTerminosPrivacidad) {
+      err.aceptaTerminosPrivacidad =
+        'Debes aceptar explícitamente los Términos y Condiciones y la Política de Privacidad (Ley N.º 8968 CR).';
+    }
     setErrores(err);
     return Object.keys(err).length === 0;
   };
@@ -110,6 +125,66 @@ export function Acceso() {
     e.preventDefault();
     setErrorBackend('');
     setExitoMensaje('');
+
+    if (modo === 'recuperar') {
+      if (pasoRecuperacion === 1) {
+        if (!correoRecuperar.includes('@') || !correoRecuperar.includes('.')) {
+          setErrores({ correoRecuperar: 'Ingresa el correo electrónico de tu cuenta.' });
+          return;
+        }
+        setErrores({});
+        setCargando(true);
+        try {
+          const res = await authService.forgotPassword({ email: correoRecuperar.trim() });
+          setExitoMensaje(res.message);
+          if (res.demoToken) {
+            setCodigoRecuperar(res.demoToken);
+          }
+          setPasoRecuperacion(2);
+        } catch (err) {
+          setErrorBackend(err?.message || 'No se pudo procesar la solicitud de recuperación.');
+        } finally {
+          setCargando(false);
+        }
+        return;
+      }
+
+      // Paso 2: validar código y nueva contraseña
+      const errRec = {};
+      if (!codigoRecuperar.trim()) errRec.codigoRecuperar = 'Ingresa el código de verificación recibido.';
+      if (!nuevaClaveRecuperar || nuevaClaveRecuperar.length < 6) {
+        errRec.nuevaClaveRecuperar = 'La nueva contraseña debe tener al menos 6 caracteres.';
+      }
+      if (nuevaClaveRecuperar !== confirmarClaveRecuperar) {
+        errRec.confirmarClaveRecuperar = 'Las contraseñas no coinciden.';
+      }
+      if (Object.keys(errRec).length > 0) {
+        setErrores(errRec);
+        return;
+      }
+      setErrores({});
+      setCargando(true);
+      try {
+        const res = await authService.resetPassword({
+          email: correoRecuperar.trim(),
+          token: codigoRecuperar.trim(),
+          newPassword: nuevaClaveRecuperar
+        });
+        setExitoMensaje(res.message);
+        setCorreoLogin(correoRecuperar.trim());
+        setTimeout(() => {
+          setModo('login');
+          setPasoRecuperacion(1);
+          setNuevaClaveRecuperar('');
+          setConfirmarClaveRecuperar('');
+        }, 1100);
+      } catch (err) {
+        setErrorBackend(err?.message || 'No se pudo restablecer la contraseña.');
+      } finally {
+        setCargando(false);
+      }
+      return;
+    }
 
     if (modo === 'login') {
       if (!validarLogin()) return;
@@ -160,7 +235,10 @@ export function Acceso() {
         phone: telefonoRegistro.trim() || null,
         zone: ubicacionRegistro.trim() || 'San José, Costa Rica',
         hasPet: incluirMascota,
-        pet: petPayload
+        pet: petPayload,
+        acceptTerms: true,
+        acceptPrivacy: true,
+        termsVersion: '2026.11-CR-8968'
       });
 
       setExitoMensaje('¡Cuenta de usuario creada exitosamente! Redirigiendo a tu espacio...');
@@ -395,7 +473,97 @@ export function Acceso() {
 
             {/* Formulario Principal */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {modo === 'login' ? (
+              {modo === 'recuperar' ? (
+                <div
+                  className={`p-4 sm:p-5 rounded-2xl border space-y-4 shadow-2xs ${
+                    esClaro
+                      ? 'bg-white border-slate-200/80'
+                      : esMorado
+                      ? 'bg-[#180A14] border-[#F27B91]/20'
+                      : 'bg-[#111827] border-white/10'
+                  }`}
+                >
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#501228] dark:text-[#F27B91]">
+                      <KeyRound className="w-4 h-4" />
+                      <span>
+                        {pasoRecuperacion === 1
+                          ? 'Recuperación de Contraseña (Paso 1 de 2)'
+                          : 'Restablecer Contraseña (Paso 2 de 2)'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModo('login');
+                        setPasoRecuperacion(1);
+                        setErrores({});
+                        setErrorBackend('');
+                        setExitoMensaje('');
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-[#501228] dark:hover:text-white"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Volver al login</span>
+                    </button>
+                  </div>
+
+                  {pasoRecuperacion === 1 ? (
+                    <>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        Ingresa el correo electrónico asociado a tu cuenta de Synodos. Te enviaremos un código temporal de verificación para que definas una nueva contraseña.
+                      </p>
+                      <Input
+                        label="Correo Electrónico Registrado"
+                        type="email"
+                        icon={Mail}
+                        value={correoRecuperar}
+                        onChange={(e) => setCorreoRecuperar(e.target.value)}
+                        error={errores.correoRecuperar}
+                        placeholder="tu@correo.cr"
+                        required
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        Ingresa el código de verificación enviado a <strong>{correoRecuperar}</strong> y define tu nueva contraseña de seguridad.
+                      </p>
+                      <Input
+                        label="Código de Verificación"
+                        icon={KeyRound}
+                        value={codigoRecuperar}
+                        onChange={(e) => setCodigoRecuperar(e.target.value)}
+                        error={errores.codigoRecuperar}
+                        placeholder="Ej. SYN-8968-2026"
+                        required
+                      />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Input
+                          label="Nueva Contraseña (mín. 6 caracteres)"
+                          type="password"
+                          icon={Lock}
+                          value={nuevaClaveRecuperar}
+                          onChange={(e) => setNuevaClaveRecuperar(e.target.value)}
+                          error={errores.nuevaClaveRecuperar}
+                          placeholder="••••••••••"
+                          required
+                        />
+                        <Input
+                          label="Confirmar Nueva Contraseña"
+                          type="password"
+                          icon={Lock}
+                          value={confirmarClaveRecuperar}
+                          onChange={(e) => setConfirmarClaveRecuperar(e.target.value)}
+                          error={errores.confirmarClaveRecuperar}
+                          placeholder="••••••••••"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : modo === 'login' ? (
                 <>
                   <Input
                     label="Correo Electrónico"
@@ -408,16 +576,34 @@ export function Acceso() {
                     required
                   />
 
-                  <Input
-                    label="Contraseña de Seguridad"
-                    type="password"
-                    icon={Lock}
-                    value={claveLogin}
-                    onChange={(e) => setClaveLogin(e.target.value)}
-                    error={errores.claveLogin}
-                    placeholder="••••••••••"
-                    required
-                  />
+                  <div className="space-y-1.5">
+                    <Input
+                      label="Contraseña de Seguridad"
+                      type="password"
+                      icon={Lock}
+                      value={claveLogin}
+                      onChange={(e) => setClaveLogin(e.target.value)}
+                      error={errores.claveLogin}
+                      placeholder="••••••••••"
+                      required
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModo('recuperar');
+                          setPasoRecuperacion(1);
+                          setCorreoRecuperar(correoLogin || '');
+                          setErrores({});
+                          setErrorBackend('');
+                          setExitoMensaje('');
+                        }}
+                        className="text-xs font-semibold text-[#501228] dark:text-[#F27B91] hover:underline"
+                      >
+                        ¿Olvidaste tu contraseña?
+                      </button>
+                    </div>
+                  </div>
                 </>
               ) : (
                 <>
@@ -569,6 +755,52 @@ export function Acceso() {
                       </p>
                     )}
                   </div>
+
+                  {/* SECCIÓN 3: CONSENTIMIENTO INFORMADO OBLIGATORIO (LEY N.º 8968 CR) */}
+                  <div
+                    className={`p-4 rounded-2xl border space-y-2 ${
+                      errores.aceptaTerminosPrivacidad
+                        ? 'border-rose-400 bg-rose-50/70 dark:bg-rose-950/30'
+                        : esClaro
+                        ? 'bg-slate-50 border-slate-200/80'
+                        : esMorado
+                        ? 'bg-[#180A14] border-[#F27B91]/25'
+                        : 'bg-[#111827] border-white/10'
+                    }`}
+                  >
+                    <label className="flex items-start gap-2.5 text-xs cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={aceptaTerminosPrivacidad}
+                        onChange={(e) => {
+                          setAceptaTerminosPrivacidad(e.target.checked);
+                          if (e.target.checked && errores.aceptaTerminosPrivacidad) {
+                            setErrores((prev) => ({ ...prev, aceptaTerminosPrivacidad: undefined }));
+                          }
+                        }}
+                        className="mt-0.5 w-4 h-4 rounded accent-[#501228] shrink-0"
+                      />
+                      <span className="leading-relaxed text-slate-700 dark:text-slate-200">
+                        He leído y acepto explícitamente los{' '}
+                        <a
+                          href="/terminos"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate('/terminos');
+                          }}
+                          className="font-bold underline text-[#501228] dark:text-[#F27B91]"
+                        >
+                          Términos y Condiciones de Uso y la Política de Privacidad (Ley N.º 8968 de Protección de la Persona frente al Tratamiento de sus Datos Personales)
+                        </a>
+                        , incluyendo el tratamiento de datos para funciones del sistema y agentes de IA.
+                      </span>
+                    </label>
+                    {errores.aceptaTerminosPrivacidad && (
+                      <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 pl-6">
+                        {errores.aceptaTerminosPrivacidad}
+                      </p>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -586,32 +818,38 @@ export function Acceso() {
                 </div>
               )}
 
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                Al continuar, confirmas que conoces nuestros{' '}
-                <a
-                  href="/terminos"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate('/terminos');
-                  }}
-                  className="font-semibold underline text-[#501228] dark:text-[#F27B91]"
-                >
-                  Términos, Condiciones y Política de Privacidad (Ley N° 8968 CR)
-                </a>
-                .
-              </p>
+              {modo !== 'registro' && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Al continuar, confirmas que conoces nuestros{' '}
+                  <a
+                    href="/terminos"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate('/terminos');
+                    }}
+                    className="font-semibold underline text-[#501228] dark:text-[#F27B91]"
+                  >
+                    Términos, Condiciones y Política de Privacidad (Ley N° 8968 CR)
+                  </a>
+                  .
+                </p>
+              )}
 
-              {/* Botón Prominente de Iniciar Sesión */}
+              {/* Botón Prominente de Acción */}
               <Button
                 type="submit"
                 variant="primary"
                 size="lg"
                 disabled={cargando}
-                icon={modo === 'login' ? LogIn : UserPlus}
+                icon={modo === 'recuperar' ? KeyRound : modo === 'login' ? LogIn : UserPlus}
                 className="w-full justify-center shadow-md text-sm sm:text-base font-semibold py-3"
               >
                 {cargando
-                  ? 'Conectando con Synodos...'
+                  ? 'Procesando solicitud en Synodos...'
+                  : modo === 'recuperar'
+                  ? pasoRecuperacion === 1
+                    ? 'Enviar Código de Recuperación'
+                    : 'Restablecer Contraseña'
                   : modo === 'login'
                   ? 'Iniciar Sesión en Synodos'
                   : 'Crear Cuenta de Usuario'}

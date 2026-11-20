@@ -186,4 +186,25 @@ test('Base de datos: schema_migrations, persistencia real de user_vaults y auto-
   await authService.login(legacyEmail, plainPass);
   const updatedRows = await query('SELECT password_hash FROM users WHERE LOWER(email) = ?', [legacyEmail]);
   assert.ok(updatedRows[0].password_hash.includes(':'), 'La contraseña legacy debe haberse migrado a PBKDF2 (salt:hash)');
+
+  // 4. Limpieza de refresh_tokens revocados o expirados
+  const activeId = `rt_active_${Date.now()}`;
+  const revokedId = `rt_revoked_${Date.now()}`;
+  const expiredId = `rt_expired_${Date.now()}`;
+  await execute(
+    `INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, revoked) VALUES (?, 'usr_admin_1', 'h1', '2099-01-01 00:00:00', FALSE)`,
+    [activeId]
+  );
+  await execute(
+    `INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, revoked) VALUES (?, 'usr_admin_1', 'h2', '2099-01-01 00:00:00', TRUE)`,
+    [revokedId]
+  );
+  await execute(
+    `INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, revoked) VALUES (?, 'usr_admin_1', 'h3', '2020-01-01 00:00:00', FALSE)`,
+    [expiredId]
+  );
+
+  await authService.purgeExpiredRefreshTokens();
+  const remaining = await query('SELECT id FROM refresh_tokens WHERE id IN (?, ?, ?)', [activeId, revokedId, expiredId]);
+  assert.deepEqual(remaining.map((r) => r.id), [activeId]);
 });

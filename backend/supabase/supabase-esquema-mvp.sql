@@ -326,8 +326,9 @@ DROP POLICY IF EXISTS "Permitir lectura publica de fragmentos aprobados" ON app_
 CREATE POLICY "Permitir lectura publica de fragmentos aprobados" ON app_private.pet_video_fragments
     FOR SELECT TO public USING (status = 'approved');
 
--- Conceder uso del esquema a los roles de Supabase
-GRANT USAGE ON SCHEMA app_private TO postgres, service_role, authenticated, anon;
+-- Conceder uso del esquema SOLO a los roles privilegiados del backend (Express / migraciones)
+REVOKE ALL ON SCHEMA app_private FROM PUBLIC, anon, authenticated;
+GRANT USAGE ON SCHEMA app_private TO postgres, service_role;
 
 -- Políticas de lectura pública para el catálogo (Lugares y Eventos)
 DROP POLICY IF EXISTS "Permitir lectura de lugares verificados" ON app_private.places;
@@ -483,5 +484,67 @@ CREATE POLICY "Permitir lectura publica de fotos aprobadas" ON app_private.place
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private TO postgres, service_role;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA app_private TO postgres, service_role;
+
+-- ============================================================================
+-- 11. Endurecimiento de Seguridad en Base de Datos (Least Privilege, CHECKs e Inmutabilidad)
+-- ============================================================================
+
+-- 11.1 Revocar acceso directo desde la Data API pública (anon / authenticated) a app_private
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private FROM PUBLIC, anon, authenticated;
+REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA app_private FROM PUBLIC, anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA app_private REVOKE ALL ON TABLES FROM PUBLIC, anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA app_private GRANT ALL ON TABLES TO postgres, service_role;
+
+-- 11.2 Restricciones CHECK de integridad de dominio (idempotentes)
+DO $$
+BEGIN
+    ALTER TABLE app_private.users
+        ADD CONSTRAINT chk_users_role_valid
+        CHECK (role IN ('admin', 'organizer', 'merchant', 'business_owner', 'client', 'guest'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    ALTER TABLE app_private.place_photos
+        ADD CONSTRAINT chk_place_photos_status_valid
+        CHECK (approval_status IN ('pending_review', 'approved', 'rejected', 'retracted'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    ALTER TABLE app_private.place_pet_evidence
+        ADD CONSTRAINT chk_pet_evidence_access_valid
+        CHECK (access_status IN ('allowed', 'not_allowed', 'unknown'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    ALTER TABLE app_private.places
+        ADD CONSTRAINT chk_places_coords_valid
+        CHECK (lat BETWEEN -90 AND 90 AND lng BETWEEN -180 AND 180);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- 11.3 Triggers de inmutabilidad en tablas de auditoría (impide UPDATE/DELETE incluso desde código)
+CREATE OR REPLACE FUNCTION app_private.prevent_audit_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Los registros de auditoría en %.% son inmutables y no pueden modificarse ni eliminarse.', TG_TABLE_SCHEMA, TG_TABLE_NAME;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_audit_trail_immutable ON app_private.audit_trail;
+CREATE TRIGGER trg_audit_trail_immutable
+    BEFORE UPDATE OR DELETE ON app_private.audit_trail
+    FOR EACH ROW EXECUTE FUNCTION app_private.prevent_audit_mutation();
+
+DROP TRIGGER IF EXISTS trg_audit_chain_ledger_immutable ON app_private.audit_chain_ledger;
+CREATE TRIGGER trg_audit_chain_ledger_immutable
+    BEFORE UPDATE OR DELETE ON app_private.audit_chain_ledger
+    FOR EACH ROW EXECUTE FUNCTION app_private.prevent_audit_mutation();
+
 
 

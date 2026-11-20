@@ -18,14 +18,22 @@ async function initDatabase() {
       try {
         const { Pool } = require('pg');
         let poolConfig;
+        const sslConfig = process.env.SUPABASE_DB_CA_CERT
+          ? { rejectUnauthorized: true, ca: process.env.SUPABASE_DB_CA_CERT.replace(/\\n/g, '\n') }
+          : { rejectUnauthorized: false };
+        const statementTimeout = Number(process.env.PG_STATEMENT_TIMEOUT_MS) || 10000;
+        const queryTimeout = Number(process.env.PG_QUERY_TIMEOUT_MS) || 12000;
+
         if (env.db.supabaseDbUrl) {
           const cleanedUrl = env.db.supabaseDbUrl.replace(/\[([^\]]+)\]/, '$1');
           poolConfig = { 
             connectionString: cleanedUrl, 
-            ssl: { rejectUnauthorized: false },
+            ssl: sslConfig,
             max: Number(process.env.PG_POOL_MAX) || 10,
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 5000,
+            statement_timeout: statementTimeout,
+            query_timeout: queryTimeout,
             allowExitOnIdle: true,
             options: '-c search_path=app_private,public'
           };
@@ -36,10 +44,12 @@ async function initDatabase() {
             user: env.db.user,
             password: env.db.password,
             database: env.db.database,
-            ssl: { rejectUnauthorized: false },
+            ssl: sslConfig,
             max: Number(process.env.PG_POOL_MAX) || 10,
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 5000,
+            statement_timeout: statementTimeout,
+            query_timeout: queryTimeout,
             allowExitOnIdle: true,
             options: '-c search_path=app_private,public'
           };

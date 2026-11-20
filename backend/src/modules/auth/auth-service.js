@@ -219,6 +219,15 @@ class AuthService {
     return { success: true, message: 'Sesión cerrada correctamente' };
   }
 
+  async purgeExpiredRefreshTokens() {
+    const nowSql = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    await execute(
+      `DELETE FROM refresh_tokens WHERE revoked = TRUE OR expires_at < ?`,
+      [nowSql]
+    );
+    return { purged_at: nowSql };
+  }
+
   async createGuestSession(alias = '') {
     const guestId = `gst_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const guestAlias = alias && alias.trim() ? alias.trim() : `Invitado-${crypto.randomBytes(2).toString('hex')}`;

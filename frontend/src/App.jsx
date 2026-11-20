@@ -5,6 +5,7 @@ import './estilos/estilos.css';
 import './estilos/tema.css';
 
 import { AnimatedRoutes } from './components/AnimatedRoutes';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 /**
  * GoToXApp - Sistema Operativo Urbano Inteligente para Mascotas (GAM, Costa Rica)
@@ -16,7 +17,9 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <div className="gotox-root">
         <HashRouter>
-          <AnimatedRoutes />
+          <ErrorBoundary>
+            <AnimatedRoutes />
+          </ErrorBoundary>
         </HashRouter>
       </div>
     </MotionConfig>

@@ -13,6 +13,7 @@ import { useLiveMultisourcePlaces } from '../shared/services/multisource-places-
 import { LugarFoto } from '../components/LugarFoto';
 import { esFavorito, alternarFavorito } from '../servicios/almacenamientoCliente';
 import { useTema } from '../context/TemaContext';
+import { useSesion } from '../hooks/useSesion';
 import {
   ShieldCheck,
   Navigation,
@@ -42,6 +43,7 @@ import { geolocalizacionPermitida } from '../shared/utils/cookie-consent';
 export function Home() {
   const navigate = useNavigate();
   const { esClaro, esMorado, esOscuro } = useTema();
+  const { isLoggedIn } = useSesion();
 
   // Estados del Buscador Inteligente
   const [consulta, setConsulta] = useState('');
@@ -328,10 +330,10 @@ export function Home() {
               </button>
             </div>
             <Link
-              to="/explorar"
+              to={isLoggedIn ? "/explorar" : "/terrazas"}
               className="text-xs font-bold text-[#F27B91] hover:underline flex items-center gap-1"
             >
-              <span>Ver catálogo completo con filtros</span>
+              <span>{isLoggedIn ? 'Ver catálogo completo con filtros' : 'Ver terrazas verificadas'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -372,18 +374,20 @@ export function Home() {
                       </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        alternarFavorito(lugar.id);
-                        setFavoritosVersion(v => v + 1);
-                      }}
-                      title={fav ? "Quitar de favoritos" : "Guardar en favoritos"}
-                      className="absolute top-3 right-3 p-2 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md transition-all active:scale-90"
-                    >
-                      <Heart className={`w-4 h-4 ${fav ? 'fill-rose-500 text-rose-500' : ''}`} />
-                    </button>
+                    {isLoggedIn && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          alternarFavorito(lugar.id);
+                          setFavoritosVersion(v => v + 1);
+                        }}
+                        title={fav ? "Quitar de favoritos" : "Guardar en favoritos"}
+                        className="absolute top-3 right-3 p-2 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md transition-all active:scale-90"
+                      >
+                        <Heart className={`w-4 h-4 ${fav ? 'fill-rose-500 text-rose-500' : ''}`} />
+                      </button>
+                    )}
 
                     <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-white text-xs">
                       <span className="text-[11px] opacity-90 truncate">{lugar.categoria}</span>
@@ -531,24 +535,49 @@ export function Home() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
-              <Link to="/explorar" className="w-full sm:w-auto">
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
-                >
-                  Explorar Catálogo
-                </Button>
-              </Link>
-              <Link to="/mis-planes" className="w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
-                >
-                  Crear Mi Primer Plan
-                </Button>
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <Link to="/explorar" className="w-full sm:w-auto">
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
+                    >
+                      Explorar Catálogo
+                    </Button>
+                  </Link>
+                  <Link to="/mis-planes" className="w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
+                    >
+                      Crear Mi Primer Plan
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/mapa" className="w-full sm:w-auto">
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
+                    >
+                      Ver Mapa Interactivo
+                    </Button>
+                  </Link>
+                  <Link to="/acceso" className="w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
+                    >
+                      Iniciar Sesión para Planes
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

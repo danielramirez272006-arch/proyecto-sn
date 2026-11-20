@@ -35,8 +35,8 @@ function verifyToken(token) {
 }
 
 function authenticateOptional(req, res, next) {
-  const authHeader = req.headers.authorization;
-  const guestHeader = req.headers['x-guest-token'];
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  const guestHeader = req.headers['x-guest-token'] || req.headers['X-Guest-Token'];
 
   req.user = null;
   req.guestToken = null;

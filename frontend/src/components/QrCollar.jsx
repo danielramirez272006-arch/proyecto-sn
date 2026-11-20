@@ -8,7 +8,10 @@ export function QrCollar({ mascota }) {
   const [copiado, setCopiado] = useState(false);
   const [imprimiendo, setImprimiendo] = useState(false);
 
-  const qrUrl = `https://gotox.cr/sos/${mascota.microchipId}`;
+  const nombreMascota = mascota?.nombre || 'Mi Mascota';
+  const microchip = mascota?.microchipId || 'PENDIENTE';
+  const telefonoTutor = mascota?.tutor?.telefono || 'Sin registrar';
+  const qrUrl = `https://gotox.cr/sos/${microchip}`;
 
   const handleCopiarEnlace = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -22,7 +25,7 @@ export function QrCollar({ mascota }) {
     setImprimiendo(true);
     setTimeout(() => {
       setImprimiendo(false);
-      alert(`Preparado archivo vectorial de placa para collar de ${mascota.nombre}. Resolución: 300 DPI.`);
+      alert(`Preparado archivo vectorial de placa para collar de ${nombreMascota}. Resolución: 300 DPI.`);
     }, 800);
   };
 
@@ -38,7 +41,7 @@ export function QrCollar({ mascota }) {
             Placa QR de Identificación Inmediata
           </h3>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Cualquier persona que escanee la medalla con la cámara de su teléfono accede al historial médico y contacto de emergencia de {mascota.nombre} sin instalar apps.
+            Cualquier persona que escanee la medalla con la cámara de su teléfono accede al historial médico y contacto de emergencia de {nombreMascota} sin instalar apps.
           </p>
         </div>
         <Badge variant="burdeos">Nivel 1 SOS</Badge>
@@ -109,10 +112,10 @@ export function QrCollar({ mascota }) {
 
           <div className="text-center">
             <span className="text-[11px] font-bold text-[#111827] block">
-              {mascota.nombre}
+              {nombreMascota}
             </span>
             <span className="text-[9px] text-[#501228] font-mono">
-              SOS: {mascota.tutor.telefono}
+              SOS: {telefonoTutor}
             </span>
           </div>
         </div>

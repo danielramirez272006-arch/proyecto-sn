@@ -60,6 +60,27 @@ class AdminService {
     return { ok: true, merged_into: primaryId, removed: duplicateId };
   }
 
+  async listUsers() {
+    const users = await query(
+      `SELECT u.id, u.name, u.email, u.role, u.gps_trust_score, u.created_at,
+              v.zone, v.phone, v.has_pet
+       FROM users u
+       LEFT JOIN user_vaults v ON v.user_id = u.id
+       ORDER BY u.created_at DESC`
+    );
+    return (users || []).map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      gps_trust_score: u.gps_trust_score,
+      zone: u.zone || 'San José, Costa Rica',
+      phone: u.phone || null,
+      has_pet: Boolean(u.has_pet),
+      created_at: u.created_at
+    }));
+  }
+
   async getAuditLogs() {
     const history = await query('SELECT * FROM plan_history ORDER BY created_at DESC LIMIT 50');
     return history.map(h => {

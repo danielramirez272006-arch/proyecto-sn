@@ -138,6 +138,22 @@ export function PanelDetalleLugar({
 
       {/* Cuerpo scrollable */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 overscroll-contain">
+        {lugar.imagen && (
+          <div className={`rounded-xl overflow-hidden border ${tokens.bordeSuave}`}>
+            <img
+              src={lugar.imagen}
+              alt={lugar.nombre}
+              loading="lazy"
+              className="w-full h-36 object-cover"
+            />
+            {lugar.fotoCredito && (
+              <p className={`px-2.5 py-1 text-[10px] ${tokens.textoMuted}`}>
+                Fotografía: {lugar.fotoCredito}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Aviso explícito de procedencia / no verificación oficial */}
         <div className={`p-3 rounded-xl border text-xs space-y-1 ${tokens.superficieSecundaria}`}>
           <p className={`font-bold ${tokens.textoTitulo}`}>Procedencia de la información</p>

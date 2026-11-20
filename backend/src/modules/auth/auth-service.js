@@ -62,6 +62,15 @@ class AuthService {
       throw new Error('INVALID_CREDENTIALS');
     }
 
+    // Auto-upgrade transparente de hashes legacy (SHA-256 sin sal) a PBKDF2-SHA512 con sal aleatoria
+    if (user.password_hash && !String(user.password_hash).includes(':')) {
+      const upgradedHash = this.hashPassword(password);
+      await execute(
+        'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [upgradedHash, user.id]
+      ).catch(() => {});
+    }
+
     const tokenPayload = {
       id: user.id,
       email: user.email,

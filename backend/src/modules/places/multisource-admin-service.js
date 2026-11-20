@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { query, execute } = require('../../shared/config/database');
 const auditService = require('../../shared/audit/audit-service');
 const supabasePhotoStorage = require('./supabase-photo-storage');
+const { VALID_PHOTO_TYPES, inspectAndSanitizeImage } = require('./photo-security-validator');
 const cacheManager = require('../../shared/cache/ttl-cache-service');
 
 function badInput(code, message) {
@@ -290,6 +291,125 @@ class MultisourceAdminService {
     }).catch(() => {});
 
     return { id: photo_id, place_id: row.place_id, approval_status: status, reviewed_by: admin_id || 'admin', reviewed_at: now };
+  }
+
+  async uploadPendingPhotoFromBase64({
+    place_id,
+    branch_label = null,
+    photo_type = 'otro',
+    author,
+    license,
+    license_url = null,
+    source_page_url = null,
+    is_cover = false,
+    alt_text = null,
+    image_base64,
+    admin_id,
+    storage = supabasePhotoStorage,
+  }) {
+    const placeId = String(place_id || '').trim();
+    const cleanAuthor = String(author || '').trim();
+    const cleanLicense = String(license || '').trim();
+    const cleanType = String(photo_type || 'otro').trim().toLowerCase();
+
+    if (!placeId) throw badInput('MISSING_PLACE_ID', 'place_id es obligatorio.');
+    if (!cleanAuthor) throw badInput('MISSING_AUTHOR', 'author es obligatorio.');
+    if (!cleanLicense) throw badInput('MISSING_LICENSE', 'license es obligatorio.');
+    if (!VALID_PHOTO_TYPES.has(cleanType)) {
+      throw badInput('INVALID_PHOTO_TYPE', `photo_type debe ser uno de: ${Array.from(VALID_PHOTO_TYPES).join(', ')}`);
+    }
+    if (!image_base64 || typeof image_base64 !== 'string') {
+      throw badInput('MISSING_IMAGE_BASE64', 'image_base64 es obligatorio.');
+    }
+
+    const rawBase64 = image_base64.includes(',') ? image_base64.split(',')[1] : image_base64;
+    const buffer = Buffer.from(rawBase64.trim(), 'base64');
+    const inspected = inspectAndSanitizeImage(buffer);
+
+    const existingDup = await query(
+      `SELECT id, approval_status FROM place_photos WHERE place_id = ? AND content_hash = ? LIMIT 1`,
+      [placeId, inspected.contentHash]
+    );
+    if (existingDup && existingDup.length > 0) {
+      return {
+        id: existingDup[0].id,
+        place_id: placeId,
+        approval_status: existingDup[0].approval_status,
+        deduplicated: true,
+        content_hash: inspected.contentHash,
+      };
+    }
+
+    const uploaded = await storage.uploadPrivatePending({
+      placeId,
+      contentHash: inspected.contentHash,
+      ext: inspected.ext,
+      buffer: inspected.sanitizedBuffer,
+      contentType: inspected.mimeType,
+    });
+
+    const photoId = `ph_${crypto.randomBytes(8).toString('hex')}`;
+    const now = new Date().toISOString();
+    const attributionText = `${cleanAuthor} (${cleanLicense})`;
+
+    try {
+      await execute(
+        `INSERT INTO place_photos
+         (id, place_id, provider, photo_url, author, source_page_url, license, is_cover, approval_status,
+          branch_label, attribution_text, license_url, photo_type, content_hash, storage_bucket, storage_path,
+          mime_type, byte_size, width, height, exif_stripped, alt_text, created_at, updated_at)
+         VALUES (?, ?, 'gotox_owner', ?, ?, ?, ?, ?, 'pending_review', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          photoId,
+          placeId,
+          `storage://${uploaded.bucket}/${uploaded.path}`,
+          cleanAuthor,
+          source_page_url || null,
+          cleanLicense,
+          is_cover ? 1 : 0,
+          branch_label || null,
+          attributionText,
+          license_url || null,
+          cleanType,
+          inspected.contentHash,
+          uploaded.bucket,
+          uploaded.path,
+          inspected.mimeType,
+          inspected.byteSize,
+          inspected.width,
+          inspected.height,
+          inspected.exifStripped ? 1 : 0,
+          alt_text || `${placeId} - ${cleanType}`,
+          now,
+          now,
+        ]
+      );
+    } catch (dbErr) {
+      if (!uploaded.alreadyExisted) {
+        await storage.removeObject(uploaded.bucket, uploaded.path).catch(() => {});
+      }
+      throw dbErr;
+    }
+
+    await auditService.record({
+      actor: admin_id || 'admin',
+      action: 'UPLOAD_PENDING_PLACE_PHOTO',
+      resource: 'place_photos',
+      resourceId: photoId,
+      details: { place_id: placeId, storage_bucket: uploaded.bucket, content_hash: inspected.contentHash },
+    }).catch(() => {});
+
+    return {
+      id: photoId,
+      place_id: placeId,
+      approval_status: 'pending_review',
+      storage_bucket: uploaded.bucket,
+      storage_path: uploaded.path,
+      content_hash: inspected.contentHash,
+      width: inspected.width,
+      height: inspected.height,
+      exif_stripped: inspected.exifStripped,
+    };
   }
 }
 

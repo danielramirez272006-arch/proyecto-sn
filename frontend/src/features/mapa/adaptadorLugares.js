@@ -138,9 +138,20 @@ export function adaptarLugarExterno(item, ubicacionUsuario = null) {
   );
 
   let terraza = 'desconocido';
-  if (item.outdoor_seating === true || item.outdoor_seating === 'yes' || item.outdoor_seating === 'si') {
+  const seatingAccess = item.known_conditions?.seating_access;
+  if (
+    item.outdoor_seating === true ||
+    item.outdoor_seating === 'yes' ||
+    item.outdoor_seating === 'si' ||
+    seatingAccess === 'outdoor' ||
+    seatingAccess === 'both'
+  ) {
     terraza = 'disponible';
-  } else if (item.outdoor_seating === false || item.outdoor_seating === 'no') {
+  } else if (
+    item.outdoor_seating === false ||
+    item.outdoor_seating === 'no' ||
+    seatingAccess === 'indoor'
+  ) {
     terraza = 'no_disponible';
   }
 
@@ -151,6 +162,15 @@ export function adaptarLugarExterno(item, ubicacionUsuario = null) {
   } else if (item.tranquilidad === 'silencioso' || item.tranquilidad === 'moderado') {
     tranquilidad = item.tranquilidad;
   }
+
+  const confirmado =
+    item.verification_level === 'business_confirmation' ||
+    item.verification_level === 'admin_review';
+
+  const fotoUrl = item.photo?.url || item.imagen || null;
+  const fotoCredito = item.photo?.author
+    ? `${item.photo.author}${item.photo.license ? ` (${item.photo.license})` : ''}`
+    : null;
 
   return {
     id: `ext-${item.id || item.external_id || `${lat}-${lng}`}`,
@@ -175,10 +195,15 @@ export function adaptarLugarExterno(item, ubicacionUsuario = null) {
     telefono: item.phone || null,
     horarioRecomendado: item.opening_hours || null,
     cuisine: item.cuisine || null,
+    imagen: fotoUrl,
+    fotoCredito,
+    condicionesMascotas: item.explanation || item.known_conditions?.notes || null,
     esDemo: false,
-    confirmadoPorEstablecimiento: false,
-    etiquetaProcedencia: 'Señal de proveedor externo (sin confirmación del local)',
-    fuente: item.provider || 'OpenStreetMap / Proveedor externo',
+    confirmadoPorEstablecimiento: confirmado,
+    etiquetaProcedencia: confirmado
+      ? 'Verificado por evidencia administrativa / confirmación del local'
+      : 'Señal de proveedor externo (sin confirmación del local)',
+    fuente: item.source_attribution?.primary_provider || item.provider || 'Coordinador Multi-fuente',
   };
 }
 

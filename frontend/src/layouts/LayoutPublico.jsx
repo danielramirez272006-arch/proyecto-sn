@@ -3,6 +3,7 @@ import { useReducedMotion } from 'motion/react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Footer } from '../components/Footer';
+import { BannerCookies } from '../components/BannerCookies';
 
 const STORAGE_KEY_SIDEBAR = 'gotox_sidebar_compacta';
 
@@ -42,6 +43,7 @@ export function LayoutPublico() {
           <Outlet />
         </main>
         <Footer />
+        <BannerCookies />
       </div>
     </div>
   );

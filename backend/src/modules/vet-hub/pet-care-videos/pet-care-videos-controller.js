@@ -167,12 +167,13 @@ class PetCareVideosController {
    */
   async listLiveVideos(req, res, next) {
     try {
-      const { q, step, limit, refresh } = req.query || {};
+      const { q, step, limit, refresh, exclude } = req.query || {};
       const result = await petCareVideosService.getLiveRecommendedVideos({
         queryText: q,
         step: step !== undefined ? parseInt(step, 10) : undefined,
         limit: limit ? parseInt(limit, 10) : 6,
-        refresh: refresh === '1' || refresh === 'true'
+        refresh: refresh === '1' || refresh === 'true',
+        excludeIds: exclude ? String(exclude).split(',') : []
       });
       return success(res, result);
     } catch (err) {

@@ -23,7 +23,10 @@ async function initDatabase() {
           poolConfig = { 
             connectionString: cleanedUrl, 
             ssl: { rejectUnauthorized: false },
+            max: Number(process.env.PG_POOL_MAX) || 10,
+            idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 5000,
+            allowExitOnIdle: true,
             options: '-c search_path=app_private,public'
           };
         } else {
@@ -34,11 +37,17 @@ async function initDatabase() {
             password: env.db.password,
             database: env.db.database,
             ssl: { rejectUnauthorized: false },
+            max: Number(process.env.PG_POOL_MAX) || 10,
+            idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 5000,
+            allowExitOnIdle: true,
             options: '-c search_path=app_private,public'
           };
         }
         const pool = new Pool(poolConfig);
+        pool.on('error', (poolErr) => {
+          console.error('[DB] Error en conexión inactiva del pool PostgreSQL:', poolErr.message);
+        });
         const testConn = await pool.connect();
         await testConn.query('SET search_path TO app_private, public').catch(() => {});
         testConn.release();
@@ -48,6 +57,9 @@ async function initDatabase() {
         console.log('[DB] Conectado exitosamente a Supabase PostgreSQL');
         return { client: dbClient, dialect: activeDialect };
       } catch (err) {
+        if (env.isProd) {
+          throw new Error(`[DB] Fallo crítico conectando a Supabase PostgreSQL en producción: ${err.message}`);
+        }
         console.warn(`[DB] Supabase PostgreSQL no disponible (${err.message}). Evaluando MySQL o SQLite de respaldo.`);
       }
     }
@@ -242,6 +254,25 @@ async function runMigrations() {
   const migrationsDir = path.join(__dirname, '../../../db/migrations');
   const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
 
+  // Tabla auditable de control de migraciones aplicadas
+  if (dialect === 'postgres') {
+    await client.query('CREATE SCHEMA IF NOT EXISTS app_private;').catch(() => {});
+    await client.query(`
+      SET search_path TO app_private, public;
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename VARCHAR(160) PRIMARY KEY,
+        applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `).catch(() => {});
+  } else if (dialect === 'sqlite') {
+    client.exec(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename VARCHAR(160) PRIMARY KEY,
+        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  }
+
   for (const file of files) {
     const fullPath = path.join(migrationsDir, file);
     let sql = fs.readFileSync(fullPath, 'utf8');
@@ -252,7 +283,6 @@ async function runMigrations() {
     }
 
     if (dialect === 'postgres') {
-      await client.query('CREATE SCHEMA IF NOT EXISTS app_private;').catch(() => {});
       sql = sql.replace(/TINYINT\(1\)/gi, 'BOOLEAN');
       sql = sql.replace(/CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP/gi, 'CURRENT_TIMESTAMP');
       const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
@@ -268,6 +298,10 @@ async function runMigrations() {
         ALTER TABLE plans ADD COLUMN IF NOT EXISTS budget_crc INTEGER DEFAULT 0;
         ALTER TABLE plans ALTER COLUMN organizer_email DROP NOT NULL;
       `).catch(() => {});
+      await client.query(
+        'INSERT INTO app_private.schema_migrations (filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING',
+        [file]
+      ).catch(() => {});
     } else if (dialect === 'mysql') {
       const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
       for (const stmt of statements) {
@@ -284,6 +318,10 @@ async function runMigrations() {
           }
         }
       }
+      await execute(
+        'INSERT OR IGNORE INTO schema_migrations (filename) VALUES (?)',
+        [file]
+      ).catch(() => {});
     }
   }
   return { success: true, dialect, filesApplied: files };
@@ -320,8 +358,25 @@ async function runSeeds() {
   return { success: true, dialect, filesApplied: files };
 }
 
+async function closeDatabase() {
+  if (!dbClient) return;
+  try {
+    if (activeDialect === 'postgres' || activeDialect === 'mysql') {
+      await dbClient.end();
+    } else if (typeof dbClient.close === 'function') {
+      dbClient.close();
+    }
+  } catch (err) {
+    console.warn('[DB] Aviso cerrando conexiones:', err.message);
+  } finally {
+    dbClient = null;
+    initializationPromise = null;
+  }
+}
+
 module.exports = {
   initDatabase,
+  closeDatabase,
   query,
   execute,
   transaction,

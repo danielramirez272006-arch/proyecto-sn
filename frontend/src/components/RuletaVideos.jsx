@@ -199,7 +199,10 @@ export function RuletaVideos() {
   const [videosLista, setVideosLista] = useState(VIDEOS_RULETA);
   const totalVideos = videosLista.length;
   const [actualizandoVideos, setActualizandoVideos] = useState(false);
-  const pasoActualizacionRef = useRef(0);
+  const actualizandoRef = useRef(false);
+  const pasoActualizacionRef = useRef(Math.floor(Date.now() / (10 * 60 * 1000)));
+  const ultimaRotacionRef = useRef(Date.now());
+  const videosListaRef = useRef(VIDEOS_RULETA);
 
   // Estado del chat de búsqueda (PetSearch)
   const [consultaGemini, setConsultaGemini] = useState('');
@@ -208,6 +211,15 @@ export function RuletaVideos() {
   const [mensajesChat, setMensajesChat] = useState([]);
   const [ultimoTema, setUltimoTema] = useState(null);
   const [busquedaActiva, setBusquedaActiva] = useState(false);
+  const busquedaActivaRef = useRef(false);
+
+  useEffect(() => {
+    videosListaRef.current = videosLista;
+  }, [videosLista]);
+
+  useEffect(() => {
+    busquedaActivaRef.current = busquedaActiva;
+  }, [busquedaActiva]);
 
   /* Reproductor único (carrusel, Lista y chat comparten este estado).
      fase: 'abriendo' → 'abierto' → 'cerrando' → null */
@@ -267,8 +279,13 @@ export function RuletaVideos() {
       const aprobados = aprobadosRes.status === 'fulfilled' && Array.isArray(aprobadosRes.value)
         ? aprobadosRes.value
         : [];
-      const liveData = liveRes.status === 'fulfilled' && liveRes.value?.is_live && Array.isArray(liveRes.value.videos)
-        ? liveRes.value.videos
+      const livePayload = liveRes.status === 'fulfilled' ? liveRes.value : null;
+      if (Number.isInteger(livePayload?.step)) {
+        pasoActualizacionRef.current = livePayload.step;
+      }
+      ultimaRotacionRef.current = Date.now();
+      const liveData = Array.isArray(livePayload?.videos) && livePayload.videos.length > 0
+        ? livePayload.videos
         : [];
 
       const entrantes = [...liveData, ...aprobados];
@@ -289,21 +306,31 @@ export function RuletaVideos() {
     };
   }, [mapearVideosBackend]);
 
-  const actualizarVideosEnVivo = useCallback(async ({ automatico = false } = {}) => {
-    if (actualizandoVideos) return;
+  const actualizarVideosEnVivo = useCallback(async (opts = {}) => {
+    const automatico = Boolean(opts && opts.automatico === true);
+    if (actualizandoRef.current) return;
+    actualizandoRef.current = true;
     setActualizandoVideos(true);
     pasoActualizacionRef.current += 1;
     try {
-      const resp = await api.get(`/pet-videos/live?limit=6&refresh=1&step=${pasoActualizacionRef.current}`);
+      const idsActuales = (videosListaRef.current || [])
+        .slice(0, 6)
+        .map((v) => v.id)
+        .filter(Boolean)
+        .join(',');
+      const resp = await api.get(
+        `/pet-videos/live?limit=6&refresh=1&step=${pasoActualizacionRef.current}&exclude=${encodeURIComponent(idsActuales)}`
+      );
       const listaLive = Array.isArray(resp?.videos) ? resp.videos : [];
       if (listaLive.length > 0) {
+        ultimaRotacionRef.current = Date.now();
         setCatalogoBase((prev) => {
           const { nuevos } = mapearVideosBackend(listaLive, prev);
           const mapa = new Map(prev.map((v) => [v.id, v]));
           for (const n of nuevos) mapa.set(n.id, n);
 
           // En actualización automática cada 10 min, no interrumpir si hay video abierto o búsqueda activa
-          if (!automatico || (!reproductorRef.current && !busquedaActiva)) {
+          if (!automatico || (!reproductorRef.current && !busquedaActivaRef.current)) {
             posRef.current = 0;
             targetRef.current = 0;
             activoRef.current = null;
@@ -325,17 +352,34 @@ export function RuletaVideos() {
     } catch {
       // Mantiene la selección actual si falla la red
     } finally {
+      actualizandoRef.current = false;
       setActualizandoVideos(false);
     }
-  }, [actualizandoVideos, busquedaActiva, mapearVideosBackend]);
+  }, [mapearVideosBackend]);
 
-  // Actualización automática del carrusel cada 10 minutos
+  // Actualización automática del carrusel cada 10 minutos (resistente a pestañas en segundo plano)
   useEffect(() => {
-    const INTERVALO_MS = 10 * 60 * 1000;
-    const timer = setInterval(() => {
-      actualizarVideosEnVivo({ automatico: true });
-    }, INTERVALO_MS);
-    return () => clearInterval(timer);
+    const INTERVALO_ROTACION_MS = 10 * 60 * 1000;
+    const verificarYRotar = () => {
+      if (Date.now() - ultimaRotacionRef.current >= INTERVALO_ROTACION_MS) {
+        actualizarVideosEnVivo({ automatico: true });
+      }
+    };
+
+    const timer = setInterval(verificarYRotar, 15000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        verificarYRotar();
+      }
+    };
+    window.addEventListener('focus', verificarYRotar);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', verificarYRotar);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [actualizarVideosEnVivo]);
 
   const aplicarResultadosAlCarrusel = (nuevaLista) => {
@@ -1176,7 +1220,7 @@ export function RuletaVideos() {
           <button
             type="button"
             className="gxw__refresh"
-            onClick={actualizarVideosEnVivo}
+            onClick={() => actualizarVideosEnVivo({ automatico: false })}
             disabled={actualizandoVideos}
             aria-label="Actualizar videos desde YouTube"
           >

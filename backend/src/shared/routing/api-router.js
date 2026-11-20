@@ -12,6 +12,11 @@ const { openApiSpec, renderSwaggerUiHtml } = require('../docs/swagger-ui-handler
 const placesRepository = require('../../modules/places/places-repository');
 const auditService = require('../audit/audit-service');
 const { requireAdmin } = require('../middlewares/auth-role-guard');
+const rateLimiter = require('../middlewares/rate-limiter');
+const envConfig = require('../config/env-config');
+
+// /metrics es público en desarrollo (Prometheus local) pero exige administrador en producción
+const requireAdminInProd = (req, res, next) => (envConfig.isProd ? requireAdmin(req, res, next) : next());
 
 // 1. Documentación Interactiva OpenAPI / Swagger UI
 router.get('/docs/openapi.json', (req, res) => {
@@ -25,7 +30,7 @@ router.get('/docs', (req, res) => {
 });
 
 // 2. Métricas Estándar Prometheus
-router.get('/metrics', (req, res) => {
+router.get('/metrics', requireAdminInProd, (req, res) => {
   res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
   return res.send(metricsCollector.toPrometheusFormat());
 });
@@ -62,7 +67,7 @@ router.get('/health/supabase', async (req, res) => {
 });
 
 // Chequeo de latencia profunda y benchmarks en milisegundos
-router.get('/health/deep', async (req, res) => {
+router.get('/health/deep', requireAdmin, async (req, res) => {
   const t0 = Date.now();
   const benchmarks = {};
 
@@ -108,7 +113,7 @@ router.get('/health/deep', async (req, res) => {
 });
 
 // Chequeo de telemetría completa del sistema
-router.get('/health/system', async (req, res, next) => {
+router.get('/health/system', requireAdmin, async (req, res, next) => {
   try {
     const mem = process.memoryUsage();
     const dbHealth = await checkHealth();
@@ -274,6 +279,22 @@ router.get('/admin/places/photos/pending', requireAdmin, async (req, res, next) 
   }
 });
 
+router.post('/admin/places/photos/upload', requireAdmin, async (req, res, next) => {
+  try {
+    const adminService = require('../../modules/places/multisource-admin-service');
+    const result = await adminService.uploadPendingPhotoFromBase64({
+      ...req.body,
+      admin_id: req.user?.id || req.user?.email || 'admin',
+    });
+    return success(res, result, {}, 201);
+  } catch (err) {
+    if (err.status === 400 || err.status === 404 || err.status === 503) {
+      return failure(res, err.message, err.code, null, err.status);
+    }
+    next(err);
+  }
+});
+
 router.post('/admin/places/photos/:photoId/approve', requireAdmin, async (req, res, next) => {
   try {
     const adminService = require('../../modules/places/multisource-admin-service');
@@ -412,7 +433,7 @@ router.get('/audit/history', requireAdmin, async (req, res, next) => {
 router.use('/i18n', require('../i18n/i18n-routes'));
 router.use('/storage', require('../../modules/storage').storageRoutes);
 router.post('/webhooks/supabase', (req, res) => require('../webhooks/supabase-webhook-handler').handleWebhook(req, res));
-router.get('/cache/stats', (req, res) => {
+router.get('/cache/stats', requireAdmin, (req, res) => {
   const { ttlCache } = require('../cache/ttl-cache-service');
   return success(res, ttlCache.getStats());
 });
@@ -449,7 +470,7 @@ router.get('/events/:id/export/ics', async (req, res, next) => {
 });
 
 // Escaneo inteligente de tickets y facturas con DeepSeek AI
-router.post('/social/scan-invoice', async (req, res, next) => {
+router.post('/social/scan-invoice', rateLimiter.aiLimiter, async (req, res, next) => {
   try {
     const { text, content_base64 } = req.body || {};
     let invoiceText = text;
@@ -465,7 +486,7 @@ router.post('/social/scan-invoice', async (req, res, next) => {
 });
 
 // Matcher inteligente de mascotas extraviadas con DeepSeek AI
-router.post('/rescue/match-pet', async (req, res, next) => {
+router.post('/rescue/match-pet', rateLimiter.aiLimiter, async (req, res, next) => {
   try {
     const { lost_pet, found_pets, max_distance_km } = req.body || {};
     const petMatcher = require('../../autonomous-agents/consensus-moderator-agent/lost-pet-visual-matcher');
@@ -481,7 +502,7 @@ router.post('/rescue/match-pet', async (req, res, next) => {
 // ============================================================================
 const hashChainService = require('../audit/hash-chain-service');
 
-router.get('/audit/verify-chain', async (req, res, next) => {
+router.get('/audit/verify-chain', requireAdmin, async (req, res, next) => {
   try {
     const verification = await hashChainService.verifyChain();
     return success(res, verification);
@@ -490,7 +511,7 @@ router.get('/audit/verify-chain', async (req, res, next) => {
   }
 });
 
-router.post('/audit/chain', async (req, res, next) => {
+router.post('/audit/chain', requireAdmin, async (req, res, next) => {
   try {
     const { record_id, entity_type, action, actor_id, data } = req.body || {};
     if (!record_id || !entity_type || !action) {
@@ -509,7 +530,7 @@ router.post('/audit/chain', async (req, res, next) => {
   }
 });
 
-router.get('/audit/chain/:entityType/:recordId', async (req, res, next) => {
+router.get('/audit/chain/:entityType/:recordId', requireAdmin, async (req, res, next) => {
   try {
     const trail = await hashChainService.getTrail(req.params.entityType, req.params.recordId);
     return success(res, trail, { total: trail.length });
@@ -542,7 +563,7 @@ router.post('/notifications/subscribe', async (req, res, next) => {
   }
 });
 
-router.post('/notifications/queue', async (req, res, next) => {
+router.post('/notifications/queue', requireAdmin, async (req, res, next) => {
   try {
     const { channel, recipient, type, payload, title, priority } = req.body || {};
     if (!recipient || !type) {
@@ -562,7 +583,7 @@ router.post('/notifications/queue', async (req, res, next) => {
   }
 });
 
-router.post('/notifications/outbox/process', async (req, res, next) => {
+router.post('/notifications/outbox/process', requireAdmin, async (req, res, next) => {
   try {
     const results = await multichannelService.processOutboxBatch(req.body?.batch_size || 10);
     return success(res, results, { processed: results.length });
@@ -571,7 +592,7 @@ router.post('/notifications/outbox/process', async (req, res, next) => {
   }
 });
 
-router.get('/notifications/outbox/status', async (req, res, next) => {
+router.get('/notifications/outbox/status', requireAdmin, async (req, res, next) => {
   try {
     const stats = await multichannelService.getQueueStats();
     return success(res, stats);
@@ -681,7 +702,7 @@ router.get('/mobility/badges/:userId', async (req, res, next) => {
 // ============================================================================
 const merchantWebhooksService = require('../../modules/merchants/merchant-webhooks-service');
 
-router.post('/merchants/webhooks/subscriptions', async (req, res, next) => {
+router.post('/merchants/webhooks/subscriptions', requireAdmin, async (req, res, next) => {
   try {
     const { merchant_id, target_url, events } = req.body || {};
     const sub = await merchantWebhooksService.registerSubscription({
@@ -695,7 +716,7 @@ router.post('/merchants/webhooks/subscriptions', async (req, res, next) => {
   }
 });
 
-router.get('/merchants/webhooks/subscriptions', async (req, res, next) => {
+router.get('/merchants/webhooks/subscriptions', requireAdmin, async (req, res, next) => {
   try {
     const merchantId = req.query.merchant_id;
     if (!merchantId) {
@@ -708,7 +729,7 @@ router.get('/merchants/webhooks/subscriptions', async (req, res, next) => {
   }
 });
 
-router.delete('/merchants/webhooks/subscriptions/:id', async (req, res, next) => {
+router.delete('/merchants/webhooks/subscriptions/:id', requireAdmin, async (req, res, next) => {
   try {
     const del = await merchantWebhooksService.deleteSubscription(req.params.id, req.query.merchant_id);
     return success(res, del);
@@ -717,7 +738,7 @@ router.delete('/merchants/webhooks/subscriptions/:id', async (req, res, next) =>
   }
 });
 
-router.post('/merchants/webhooks/dispatch', async (req, res, next) => {
+router.post('/merchants/webhooks/dispatch', requireAdmin, async (req, res, next) => {
   try {
     const { event_type, payload } = req.body || {};
     if (!event_type) {
@@ -730,7 +751,7 @@ router.post('/merchants/webhooks/dispatch', async (req, res, next) => {
   }
 });
 
-router.get('/merchants/webhooks/deliveries', async (req, res, next) => {
+router.get('/merchants/webhooks/deliveries', requireAdmin, async (req, res, next) => {
   try {
     const deliveries = await merchantWebhooksService.getDeliveries({
       merchantId: req.query.merchant_id || null,

@@ -119,8 +119,15 @@ const env = {
   }
 };
 
-if (env.isProd && !process.env.JWT_SECRET) {
-  console.warn('[Security] ADVERTENCIA: NODE_ENV=production sin JWT_SECRET configurado. Define JWT_SECRET en .env.');
+if (env.isProd) {
+  const secreto = process.env.JWT_SECRET || '';
+  if (!secreto || secreto === 'dev_insecure_jwt_secret_change_in_production') {
+    // Con el secreto por defecto cualquiera podría falsificar tokens de administrador.
+    throw new Error('[Security] NODE_ENV=production exige un JWT_SECRET propio y seguro en .env. El servidor no iniciará sin él.');
+  }
+  if (secreto.length < 32) {
+    console.warn('[Security] ADVERTENCIA: JWT_SECRET tiene menos de 32 caracteres. Usa un valor aleatorio más largo.');
+  }
 }
 
 module.exports = env;

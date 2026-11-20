@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useSesion } from '../hooks/useSesion';
-import { Dog, ShieldCheck, Heart, Sparkles, MapPin } from 'lucide-react';
+import { abrirConfiguracionCookies } from '../shared/utils/cookie-consent';
+import { Dog, ShieldCheck, Heart, Sparkles, MapPin, Cookie } from 'lucide-react';
 
 export function Footer() {
   const { isLoggedIn } = useSesion();
@@ -74,6 +75,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/terminos" className="hover:text-[#501228] transition-colors font-semibold">
+                  Términos, Condiciones y Privacidad
+                </Link>
+              </li>
+              <li>
                 <span className="text-slate-400">Sensores Térmicos de Calzada</span>
               </li>
               <li>
@@ -101,9 +107,24 @@ export function Footer() {
 
         {/* Barra inferior */}
         <div className="pt-8 border-t border-slate-200/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>
-            &copy; {new Date().getFullYear()} GoToX Pet OS. Diseñado con calidez para las mascotas del GAM.
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p>
+              &copy; {new Date().getFullYear()} GoToX Pet OS. Diseñado con calidez para las mascotas del GAM.
+            </p>
+            <span>&bull;</span>
+            <Link to="/terminos" className="underline hover:text-[#501228] transition-colors font-medium">
+              Términos y Condiciones (Ley N° 8968 CR)
+            </Link>
+            <span>&bull;</span>
+            <button
+              type="button"
+              onClick={abrirConfiguracionCookies}
+              className="inline-flex items-center gap-1 underline hover:text-[#501228] transition-colors font-medium cursor-pointer"
+            >
+              <Cookie className="w-3.5 h-3.5" />
+              <span>Preferencias de Cookies</span>
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             <span>Hecho con</span>
             <Heart className="w-3.5 h-3.5 text-[#501228] fill-[#501228]" />

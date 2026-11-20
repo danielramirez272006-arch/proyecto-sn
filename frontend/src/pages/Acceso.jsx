@@ -27,8 +27,8 @@ export function Acceso() {
   const { tema, esClaro, esMorado, esOscuro } = useTema();
 
   const [modo, setModo] = useState('login'); // 'login' | 'onboarding-pet'
-  const [correo, setCorreo] = useState('mariana.rojas@gotox.cr');
-  const [clave, setClave] = useState('GoToX2026!');
+  const [correo, setCorreo] = useState('');
+  const [clave, setClave] = useState('');
   const [nombreTutor, setNombreTutor] = useState('Mariana Rojas');
 
   // Datos para onboarding de mascota
@@ -70,11 +70,15 @@ export function Acceso() {
       });
     }
 
+    // Solo una cuenta administradora verificada por el servidor puede ir al Centro de Mando
+    let destino = '/perfil';
+
     try {
       if (modo === 'onboarding-pet') {
         await registrarConBackend({ name: nombreTutor, email: correo, password: clave });
       } else {
-        await loginConBackend({ email: correo, password: clave });
+        const data = await loginConBackend({ email: correo, password: clave });
+        if (data?.user?.role === 'admin') destino = '/panel';
       }
     } catch {
       // Si es usuario demo o aún no registrado, autorizar sesión híbrida/invitado en backend
@@ -84,7 +88,7 @@ export function Acceso() {
     setExitoMensaje('¡Sesión autorizada en GoToX Pet OS!');
     setTimeout(() => {
       setCargando(false);
-      navigate('/panel');
+      navigate(destino);
     }, 500);
   };
 
@@ -182,7 +186,7 @@ export function Acceso() {
                     setCorreo('mariana.rojas@gotox.cr');
                     setNombreTutor('Mariana Rojas');
                     iniciarSesion('mariana.rojas@gotox.cr', 'Mariana Rojas');
-                    navigate('/panel');
+                    navigate('/perfil');
                   }}
                   className={`flex items-center justify-between p-3 rounded-xl border text-xs font-semibold transition-all shadow-2xs group ${
                     esClaro
@@ -204,7 +208,7 @@ export function Acceso() {
                     setCorreo('invitado.gam@gotox.cr');
                     setNombreTutor('Tutor Invitado');
                     iniciarSesion('invitado.gam@gotox.cr', 'Tutor Invitado');
-                    navigate('/panel');
+                    navigate('/perfil');
                   }}
                   className={`flex items-center justify-between p-3 rounded-xl border text-xs font-semibold transition-all shadow-2xs group ${
                     esClaro
@@ -306,6 +310,21 @@ export function Acceso() {
                   <span className="font-semibold">{exitoMensaje}</span>
                 </div>
               )}
+
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Al continuar, confirmas que conoces nuestros{' '}
+                <a
+                  href="/terminos"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate('/terminos');
+                  }}
+                  className="font-semibold underline text-[#501228] dark:text-[#F27B91]"
+                >
+                  Términos, Condiciones y Política de Privacidad (Ley N° 8968 CR)
+                </a>
+                .
+              </p>
 
               {/* Botón Prominente de Iniciar Sesión */}
               <Button

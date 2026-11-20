@@ -11,6 +11,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Tabla, Tr, Td } from '../components/ui/Tabla';
 import { ModeracionFotosPanel } from '../features/admin/ModeracionFotosPanel';
+import { ModalPoliticaPetAdmin } from '../features/admin/ModalPoliticaPetAdmin';
 import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
 import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useTelemetria } from '../hooks/useTelemetria';
@@ -106,6 +107,7 @@ export function Panel() {
 
   // Estados interactivos administrativos
   const [locales, setLocales] = useState(LOCALES_DATA);
+  const [localEditandoPolitica, setLocalEditandoPolitica] = useState(null);
   const [usuarios, setUsuarios] = useState(USUARIOS_INICIALES);
   const [incidencias, setIncidencias] = useState(INCIDENCIAS_INICIALES);
   const [auditoria, setAuditoria] = useState(AUDITORIA_INICIAL);
@@ -479,12 +481,31 @@ export function Panel() {
                           >
                             <XCircle className="w-3.5 h-3.5" />
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setLocalEditandoPolitica(local)}
+                            title="Editar Evidencia y Política Pet-Friendly"
+                            className="px-2 py-1 rounded-lg bg-[#501228]/20 text-[#F27B91] hover:bg-[#501228]/40 text-[11px] font-bold transition-colors flex items-center gap-1"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>Política Pet</span>
+                          </button>
                         </div>
                       </Td>
                     </Tr>
                   );
                 })}
               </Tabla>
+
+              {localEditandoPolitica && (
+                <ModalPoliticaPetAdmin
+                  local={localEditandoPolitica}
+                  onCerrar={() => setLocalEditandoPolitica(null)}
+                  onActualizado={(placeId) => {
+                    registrarAuditoria('Política Pet-Friendly Actualizada', `${localEditandoPolitica.nombre} (${placeId})`);
+                  }}
+                />
+              )}
             </div>
           )}
 

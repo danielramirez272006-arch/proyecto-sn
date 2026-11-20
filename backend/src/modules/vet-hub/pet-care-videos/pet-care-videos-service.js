@@ -9,8 +9,16 @@ const petVideoSmartSearch = require('./pet-video-smart-search');
 const LIVE_VIDEO_QUERIES = [
   'primeros auxilios perros y gatos veterinario',
   'como banar y cuidar el pelaje de tu perro veterinario',
-  'juegos y enriquecimiento para perros y gatos en casa',
-  'alimentacion y cuidados basicos para mascotas veterinaria'
+  'juegos y enriquecimiento ambiental para gatos en casa',
+  'alimentacion y nutricion saludable para perros y gatos veterinaria',
+  'higiene dental y cepillado de dientes en perros y gatos',
+  'como prevenir golpes de calor y quemaduras de almohadillas en perros',
+  'socializacion y paseo seguro con correa para cachorros',
+  'cuidados esenciales para perros y gatos senior ancianos',
+  'como acostumbrar a tu gato o perro a la transportadora sin estres',
+  'prevencion de pulgas garrapatas y desparasitacion en mascotas',
+  'lenguaje corporal canino y felino como entender a tu mascota',
+  'que hacer ante intoxicaciones o atragantamiento en mascotas veterinario'
 ];
 
 const LIVE_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -18,6 +26,7 @@ const LIVE_CACHE_TTL_MS = 10 * 60 * 1000;
 class PetCareVideosService {
   constructor() {
     this.liveCache = new Map();
+    this.lastServedIds = new Set();
   }
 
   /**
@@ -30,25 +39,56 @@ class PetCareVideosService {
   /**
    * Obtiene recomendaciones actualizadas de YouTube Data API para el carrusel público
    */
-  async getLiveRecommendedVideos({ queryText = '', step = undefined, limit = 6, refresh = false } = {}) {
+  async getLiveRecommendedVideos({ queryText = '', step = undefined, limit = 6, refresh = false, excludeIds = [] } = {}) {
     const safeLimit = Math.max(3, Math.min(10, Number(limit) || 6));
-    const slotAutomatico = Math.floor(Date.now() / LIVE_CACHE_TTL_MS);
+    const now = Date.now();
+    const slotAutomatico = Math.floor(now / LIVE_CACHE_TTL_MS);
     const safeStep = step === undefined || step === null || Number.isNaN(Number(step))
       ? slotAutomatico
       : Math.abs(Math.round(Number(step)));
-    const selectedQuery = String(queryText || '').trim() || LIVE_VIDEO_QUERIES[safeStep % LIVE_VIDEO_QUERIES.length];
-    const cacheKey = `${selectedQuery}:${safeLimit}`;
+    const queryIndex = safeStep % LIVE_VIDEO_QUERIES.length;
+    const selectedQuery = String(queryText || '').trim() || LIVE_VIDEO_QUERIES[queryIndex];
+    const cacheKey = `${selectedQuery}:${safeLimit}:${queryIndex}`;
+
+    const excludeSet = new Set(
+      (Array.isArray(excludeIds) ? excludeIds : String(excludeIds || '').split(','))
+        .map((id) => String(id || '').trim().replace(/^yt_/, ''))
+        .filter(Boolean)
+    );
 
     const cached = this.liveCache.get(cacheKey);
-    if (!refresh && cached && Date.now() - cached.timestamp < LIVE_CACHE_TTL_MS) {
-      return { ...cached.payload, cached: true };
+    if (!refresh && excludeSet.size === 0 && cached && now - cached.timestamp < LIVE_CACHE_TTL_MS) {
+      return {
+        ...cached.payload,
+        step: safeStep,
+        slot: slotAutomatico,
+        rotation_interval_ms: LIVE_CACHE_TTL_MS,
+        next_rotation_at: (slotAutomatico + 1) * LIVE_CACHE_TTL_MS,
+        cached: true,
+      };
     }
 
-    const ytRes = await youtubeApiClient.searchVideos(selectedQuery, Math.min(safeLimit + 4, 12));
-    const rawList = Array.isArray(ytRes?.videos) ? ytRes.videos : [];
+    let ytRes = await youtubeApiClient.searchVideos(selectedQuery, Math.min(safeLimit + 8, 15));
+    let rawList = Array.isArray(ytRes?.videos) ? ytRes.videos : [];
 
-    const nonShorts = rawList.filter((v) => Number(v.duration_seconds || 0) >= 45);
-    const chosen = (nonShorts.length >= 3 ? nonShorts : rawList).slice(0, safeLimit);
+    // Filtrar videos ya mostrados recientemente para garantizar cambio visible en cada rotación de 10 min
+    const effectiveExcludes = excludeSet.size > 0 ? excludeSet : (refresh ? this.lastServedIds : new Set());
+    let withoutExcluded = rawList.filter((v) => v?.youtube_id && !effectiveExcludes.has(v.youtube_id));
+
+    // Si la consulta devolvió los mismos videos excluidos, probar con la siguiente consulta de la rotación
+    if (withoutExcluded.length < Math.min(3, safeLimit) && !String(queryText || '').trim()) {
+      const fallbackQuery = LIVE_VIDEO_QUERIES[(queryIndex + 1) % LIVE_VIDEO_QUERIES.length];
+      const nextRes = await youtubeApiClient.searchVideos(fallbackQuery, Math.min(safeLimit + 8, 15));
+      if (Array.isArray(nextRes?.videos) && nextRes.videos.length > 0) {
+        ytRes = nextRes;
+        rawList = nextRes.videos;
+        withoutExcluded = rawList.filter((v) => v?.youtube_id && !effectiveExcludes.has(v.youtube_id));
+      }
+    }
+
+    const candidatePool = withoutExcluded.length >= Math.min(3, safeLimit) ? withoutExcluded : rawList;
+    const nonShorts = candidatePool.filter((v) => Number(v.duration_seconds || 0) >= 45);
+    const chosen = (nonShorts.length >= 3 ? nonShorts : candidatePool).slice(0, safeLimit);
 
     const videos = chosen.map((v) => {
       const titleLower = String(v.title || '').toLowerCase();
@@ -78,17 +118,25 @@ class PetCareVideosService {
       };
     });
 
+    if (videos.length > 0) {
+      this.lastServedIds = new Set(videos.map((v) => v.youtube_id).filter(Boolean));
+    }
+
     const payload = {
       videos,
       total: videos.length,
-      is_live: Boolean(ytRes?.is_live),
+      is_live: Boolean(ytRes?.is_live || videos.length > 0),
       provider: ytRes?.provider || 'youtube_data_api_v3',
       query: selectedQuery,
+      step: safeStep,
+      slot: slotAutomatico,
+      rotation_interval_ms: LIVE_CACHE_TTL_MS,
+      next_rotation_at: (slotAutomatico + 1) * LIVE_CACHE_TTL_MS,
       cached: false,
     };
 
     if (videos.length > 0 && ytRes?.is_live) {
-      this.liveCache.set(cacheKey, { timestamp: Date.now(), payload });
+      this.liveCache.set(cacheKey, { timestamp: now, payload });
     }
 
     return payload;

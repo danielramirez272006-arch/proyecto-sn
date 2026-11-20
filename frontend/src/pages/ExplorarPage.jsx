@@ -28,6 +28,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { geolocalizacionPermitida } from '../shared/utils/cookie-consent';
 
 export function ExplorarPage() {
   const { esClaro, esMorado, esOscuro } = useTema();
@@ -71,7 +72,8 @@ export function ExplorarPage() {
       }
     };
 
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    // Uso automático de ubicación: solo con consentimiento de geolocalización; si no, centro del GAM
+    if (geolocalizacionPermitida({ accionExplicita: false }) && typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => cargar(pos.coords.latitude, pos.coords.longitude),
         () => cargar(9.9352, -84.0695),

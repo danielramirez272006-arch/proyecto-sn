@@ -318,23 +318,233 @@ ALTER TABLE app_private.pet_videos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_private.pet_video_fragments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_private.pet_video_broken_reports ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Permitir lectura publica de videos aprobados" ON app_private.pet_videos;
 CREATE POLICY "Permitir lectura publica de videos aprobados" ON app_private.pet_videos
     FOR SELECT TO public USING (status = 'approved');
 
+DROP POLICY IF EXISTS "Permitir lectura publica de fragmentos aprobados" ON app_private.pet_video_fragments;
 CREATE POLICY "Permitir lectura publica de fragmentos aprobados" ON app_private.pet_video_fragments
     FOR SELECT TO public USING (status = 'approved');
 
--- Conceder uso del esquema a los roles de Supabase
-GRANT USAGE ON SCHEMA app_private TO postgres, service_role, authenticated, anon;
+-- Conceder uso del esquema SOLO a los roles privilegiados del backend (Express / migraciones)
+REVOKE ALL ON SCHEMA app_private FROM PUBLIC, anon, authenticated;
+GRANT USAGE ON SCHEMA app_private TO postgres, service_role;
 
 -- Políticas de lectura pública para el catálogo (Lugares y Eventos)
+DROP POLICY IF EXISTS "Permitir lectura de lugares verificados" ON app_private.places;
 CREATE POLICY "Permitir lectura de lugares verificados" ON app_private.places
     FOR SELECT TO public USING (true);
 
+DROP POLICY IF EXISTS "Permitir lectura de eventos publicados" ON app_private.events;
 CREATE POLICY "Permitir lectura de eventos publicados" ON app_private.events
     FOR SELECT TO public USING (true);
 
 -- Permisos completos para el rol administrativo de Express (service_role / postgres)
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private TO postgres, service_role;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA app_private TO postgres, service_role;
+
+-- ============================================================================
+-- 10. Evidencia Pet-Friendly, Enlaces Multi-Fuente, Fotos en Storage y Bóvedas
+--     (Sincronizado con migraciones 008, 009, 010 y 011)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS app_private.schema_migrations (
+    filename VARCHAR(160) PRIMARY KEY,
+    applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.place_pet_evidence (
+    id VARCHAR(64) PRIMARY KEY,
+    place_id VARCHAR(64) NOT NULL,
+    source_type VARCHAR(64) NOT NULL,
+    access_status VARCHAR(32) NOT NULL DEFAULT 'unknown',
+    conditions_json TEXT NULL,
+    evidence_ref TEXT NULL,
+    verified_by VARCHAR(64) NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'active',
+    checked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.automation_events (
+    id VARCHAR(64) PRIMARY KEY,
+    event_type VARCHAR(64) NOT NULL,
+    place_id VARCHAR(64) NULL,
+    dedupe_key VARCHAR(160) UNIQUE,
+    status VARCHAR(32) NOT NULL DEFAULT 'pending',
+    payload_json TEXT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP WITH TIME ZONE NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_private.place_external_links (
+    id VARCHAR(64) PRIMARY KEY,
+    place_id VARCHAR(64) NOT NULL,
+    provider VARCHAR(64) NOT NULL,
+    external_id VARCHAR(160) NOT NULL,
+    shared_origin VARCHAR(160) NULL,
+    match_status VARCHAR(32) NOT NULL DEFAULT 'linked',
+    notes TEXT NULL,
+    reviewed_by VARCHAR(64) NULL,
+    reviewed_at TIMESTAMP WITH TIME ZONE NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (provider, external_id)
+);
+
+CREATE TABLE IF NOT EXISTS app_private.place_photos (
+    id VARCHAR(64) PRIMARY KEY,
+    place_id VARCHAR(64) NOT NULL,
+    provider VARCHAR(64) NOT NULL DEFAULT 'gotox_owner',
+    photo_url TEXT NOT NULL,
+    author VARCHAR(255) NOT NULL,
+    source_page_url TEXT NULL,
+    license VARCHAR(255) NOT NULL,
+    is_cover BOOLEAN DEFAULT FALSE,
+    approval_status VARCHAR(32) NOT NULL DEFAULT 'pending_review',
+    approved_by VARCHAR(64) NULL,
+    reviewed_at TIMESTAMP WITH TIME ZONE NULL,
+    branch_label VARCHAR(160) NULL,
+    attribution_text TEXT NULL,
+    license_url TEXT NULL,
+    attribution_requirements TEXT NULL,
+    captured_at VARCHAR(64) NULL,
+    photo_type VARCHAR(32) DEFAULT 'otro',
+    content_hash VARCHAR(64) NULL,
+    storage_bucket VARCHAR(128) NULL,
+    storage_path TEXT NULL,
+    mime_type VARCHAR(64) NULL,
+    byte_size INTEGER NULL,
+    width INTEGER NULL,
+    height INTEGER NULL,
+    exif_stripped BOOLEAN DEFAULT FALSE,
+    alt_text TEXT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_place_photos_place_content_hash
+    ON app_private.place_photos (place_id, content_hash)
+    WHERE content_hash IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS app_private.photo_import_batches (
+    id VARCHAR(64) PRIMARY KEY,
+    status VARCHAR(32) NOT NULL DEFAULT 'running',
+    source_manifest TEXT NULL,
+    base_dir TEXT NULL,
+    total_items INTEGER DEFAULT 0,
+    imported_count INTEGER DEFAULT 0,
+    skipped_count INTEGER DEFAULT 0,
+    pending_count INTEGER DEFAULT 0,
+    failed_count INTEGER DEFAULT 0,
+    last_processed_index INTEGER DEFAULT -1,
+    processed_keys_json TEXT NULL,
+    report_json TEXT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.user_vaults (
+    user_id VARCHAR(64) PRIMARY KEY,
+    pets_json TEXT NOT NULL DEFAULT '[]',
+    vehicle_plate_digit INTEGER NULL,
+    saved_routes_json TEXT NOT NULL DEFAULT '[]',
+    expenses_total_crc NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    badges_json TEXT NOT NULL DEFAULT '[]',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_private.ai_chat_messages (
+    id VARCHAR(64) PRIMARY KEY,
+    session_id VARCHAR(128) NOT NULL,
+    user_id VARCHAR(64) NULL,
+    provider VARCHAR(32) NOT NULL DEFAULT 'gemini',
+    role VARCHAR(32) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Activar Row Level Security en todas las tablas nuevas
+ALTER TABLE app_private.schema_migrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.place_pet_evidence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.automation_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.place_external_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.place_photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.photo_import_batches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.user_vaults ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_private.ai_chat_messages ENABLE ROW LEVEL SECURITY;
+
+-- Solo fotografías explícitamente aprobadas pueden leerse públicamente
+DROP POLICY IF EXISTS "Permitir lectura publica de fotos aprobadas" ON app_private.place_photos;
+CREATE POLICY "Permitir lectura publica de fotos aprobadas" ON app_private.place_photos
+    FOR SELECT TO public USING (approval_status = 'approved');
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private TO postgres, service_role;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA app_private TO postgres, service_role;
+
+-- ============================================================================
+-- 11. Endurecimiento de Seguridad en Base de Datos (Least Privilege, CHECKs e Inmutabilidad)
+-- ============================================================================
+
+-- 11.1 Revocar acceso directo desde la Data API pública (anon / authenticated) a app_private
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private FROM PUBLIC, anon, authenticated;
+REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA app_private FROM PUBLIC, anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA app_private REVOKE ALL ON TABLES FROM PUBLIC, anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA app_private GRANT ALL ON TABLES TO postgres, service_role;
+
+-- 11.2 Restricciones CHECK de integridad de dominio (idempotentes)
+DO $$
+BEGIN
+    ALTER TABLE app_private.users
+        ADD CONSTRAINT chk_users_role_valid
+        CHECK (role IN ('admin', 'organizer', 'merchant', 'business_owner', 'client', 'guest'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    ALTER TABLE app_private.place_photos
+        ADD CONSTRAINT chk_place_photos_status_valid
+        CHECK (approval_status IN ('pending_review', 'approved', 'rejected', 'retracted'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    ALTER TABLE app_private.place_pet_evidence
+        ADD CONSTRAINT chk_pet_evidence_access_valid
+        CHECK (access_status IN ('allowed', 'not_allowed', 'unknown'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+    ALTER TABLE app_private.places
+        ADD CONSTRAINT chk_places_coords_valid
+        CHECK (lat BETWEEN -90 AND 90 AND lng BETWEEN -180 AND 180);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- 11.3 Triggers de inmutabilidad en tablas de auditoría (impide UPDATE/DELETE incluso desde código)
+CREATE OR REPLACE FUNCTION app_private.prevent_audit_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Los registros de auditoría en %.% son inmutables y no pueden modificarse ni eliminarse.', TG_TABLE_SCHEMA, TG_TABLE_NAME;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_audit_trail_immutable ON app_private.audit_trail;
+CREATE TRIGGER trg_audit_trail_immutable
+    BEFORE UPDATE OR DELETE ON app_private.audit_trail
+    FOR EACH ROW EXECUTE FUNCTION app_private.prevent_audit_mutation();
+
+DROP TRIGGER IF EXISTS trg_audit_chain_ledger_immutable ON app_private.audit_chain_ledger;
+CREATE TRIGGER trg_audit_chain_ledger_immutable
+    BEFORE UPDATE OR DELETE ON app_private.audit_chain_ledger
+    FOR EACH ROW EXECUTE FUNCTION app_private.prevent_audit_mutation();
+
+
 

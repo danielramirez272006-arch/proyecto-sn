@@ -29,6 +29,66 @@ class YouTubeApiClient {
   getMockCatalog() {
     return [
       {
+        youtube_id: '4HFHEmtvoRg',
+        canonical_url: 'https://www.youtube.com/watch?v=4HFHEmtvoRg',
+        title: '¿Cada cuánto tiempo debo bañar a mi perro? - Lauvet',
+        channel_title: 'Lauvet Veterinaria',
+        duration_seconds: 249,
+        thumbnail_url: 'https://i.ytimg.com/vi/4HFHEmtvoRg/hqdefault.jpg',
+        species: 'perros',
+        topic: 'higiene'
+      },
+      {
+        youtube_id: 'NoifKxNNwlg',
+        canonical_url: 'https://www.youtube.com/watch?v=NoifKxNNwlg',
+        title: 'Primeros auxilios para gatos - Salud felina Royal Canin',
+        channel_title: 'Royal Canin España',
+        duration_seconds: 111,
+        thumbnail_url: 'https://i.ytimg.com/vi/NoifKxNNwlg/hqdefault.jpg',
+        species: 'gatos',
+        topic: 'primeros_auxilios'
+      },
+      {
+        youtube_id: 'MHLTo88pZyo',
+        canonical_url: 'https://www.youtube.com/watch?v=MHLTo88pZyo',
+        title: 'Primeros Auxilios para PERROS: Qué hacer en cada caso',
+        channel_title: 'ExpertoAnimal',
+        duration_seconds: 236,
+        thumbnail_url: 'https://i.ytimg.com/vi/MHLTo88pZyo/hqdefault.jpg',
+        species: 'perros',
+        topic: 'primeros_auxilios'
+      },
+      {
+        youtube_id: '4VSJkh3rQpI',
+        canonical_url: 'https://www.youtube.com/watch?v=4VSJkh3rQpI',
+        title: 'RCP y maniobra de Heimlich en mascotas (Atragantamiento)',
+        channel_title: 'Clínica Veterinaria',
+        duration_seconds: 636,
+        thumbnail_url: 'https://i.ytimg.com/vi/4VSJkh3rQpI/hqdefault.jpg',
+        species: 'gatos',
+        topic: 'primeros_auxilios'
+      },
+      {
+        youtube_id: 'SUjNL5V1XTs',
+        canonical_url: 'https://www.youtube.com/watch?v=SUjNL5V1XTs',
+        title: 'Primeros auxilios caninos: Guía veterinaria esencial',
+        channel_title: 'Salud Canina',
+        duration_seconds: 405,
+        thumbnail_url: 'https://i.ytimg.com/vi/SUjNL5V1XTs/hqdefault.jpg',
+        species: 'perros',
+        topic: 'primeros_auxilios'
+      },
+      {
+        youtube_id: 'tVlcKp3bWH8',
+        canonical_url: 'https://www.youtube.com/watch?v=tVlcKp3bWH8',
+        title: 'Cuidados diarios, juegos y bienestar para cachorros en casa',
+        channel_title: 'Bienestar Animal',
+        duration_seconds: 210,
+        thumbnail_url: 'https://i.ytimg.com/vi/tVlcKp3bWH8/hqdefault.jpg',
+        species: 'perros',
+        topic: 'bienestar'
+      },
+      {
         youtube_id: 'c2eWkJ3bA78',
         canonical_url: 'https://www.youtube.com/watch?v=c2eWkJ3bA78',
         title: 'Cómo bañar a tu perro en casa paso a paso sin causarle estrés',

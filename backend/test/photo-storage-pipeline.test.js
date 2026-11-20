@@ -325,6 +325,22 @@ test('PhotoPipeline: compensación ante fallo BD, bloqueo Storage, privacidad de
     assert.equal(placeAfter.photo.provider, 'gotox_owner'); // Prioridad sobre Wikimedia
     assert.equal(placeAfter.photo.restaurant_name, 'Café Propio');
     assert.equal(placeAfter.photo.author, 'Ana');
+
+    // C. Subida directa desde navegador admin (base64 -> sanitización EXIF -> bucket privado)
+    const directUpload = await adminService.uploadPendingPhotoFromBase64({
+      place_id: 'place-mod-1',
+      branch_label: 'Barrio Amón',
+      photo_type: 'interior',
+      author: 'Prensa Oficial',
+      license: 'Autorización del propietario',
+      image_base64: `data:image/jpeg;base64,${createTestJpegWithExif(640, 480).toString('base64')}`,
+      admin_id: 'admin-1',
+      storage: fakeStorage,
+    });
+    assert.equal(directUpload.approval_status, 'pending_review');
+    assert.equal(directUpload.exif_stripped, true);
+    assert.equal(directUpload.width, 640);
+    assert.equal(directUpload.height, 480);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -340,6 +356,13 @@ test('PhotoPipeline HTTP: rutas admin de moderación rechazan acceso sin token a
     const port = server.address().port;
     const resp = await fetch(`http://127.0.0.1:${port}/api/admin/places/photos/pending`);
     assert.equal(resp.status === 401 || resp.status === 403, true);
+
+    const uploadResp = await fetch(`http://127.0.0.1:${port}/api/admin/places/photos/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ place_id: 'LOC-001' }),
+    });
+    assert.equal(uploadResp.status === 401 || uploadResp.status === 403, true);
   } finally {
     await new Promise((r) => server.close(r));
   }

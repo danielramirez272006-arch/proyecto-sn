@@ -43,7 +43,19 @@ export const authService = {
    * Registra una nueva cuenta en el backend y guarda los tokens JWT devueltos.
    * @param {{ name: string, email: string, password: string, phone?: string, zone?: string, hasPet?: boolean, pet?: object }} payload
    */
-  async register({ name, email, password, phone, zone, hasPet, pet, acceptTerms = true, acceptPrivacy = true }) {
+  async register({
+    name,
+    email,
+    password,
+    phone,
+    zone,
+    hasPet,
+    pet,
+    acceptTerms = true,
+    acceptPrivacy = true,
+    termsVersion = '2026-11-v2',
+    cookiesPreferences = null
+  }) {
     const data = await api.post('/auth/register', {
       name,
       email,
@@ -53,7 +65,9 @@ export const authService = {
       hasPet,
       pet,
       acceptTerms,
-      acceptPrivacy
+      acceptPrivacy,
+      termsVersion,
+      cookiesPreferences
     });
     saveAuthTokens(data);
     return data;
@@ -87,8 +101,8 @@ export const authService = {
     const refreshToken =
       typeof localStorage !== 'undefined' ? localStorage.getItem(REFRESH_TOKEN_KEY) : null;
     try {
-      if (refreshToken) {
-        await api.post('/auth/logout', { refresh_token: refreshToken });
+      if (refreshToken || api.token) {
+        await api.post('/auth/logout', { refresh_token: refreshToken || null });
       }
     } finally {
       clearAuthTokens();

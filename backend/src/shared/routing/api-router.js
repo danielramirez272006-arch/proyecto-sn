@@ -712,6 +712,7 @@ router.post('/merchants/webhooks/subscriptions', requireAdmin, async (req, res, 
     });
     return success(res, sub, {}, 201);
   } catch (err) {
+    if (err.status === 400) return badRequest(res, err.message, { code: err.code });
     next(err);
   }
 });
@@ -972,6 +973,8 @@ router.use('/a11y', require('../../modules/accessibility').a11yRoutes);
 router.use('/weather', require('../../modules/weather-activities').weatherRoutes);
 router.use('/food', require('../../modules/food-radar').foodRoutes);
 router.use('/vet', require('../../modules/vet-hub').vetRoutes);
+router.use('/vet', require('../../routes/pet-vision-routes'));
+router.use('/pets', require('../../routes/pet-vision-routes'));
 router.use('/vet/videos', require('../../modules/vet-hub').petCareVideosRoutes);
 router.use('/pet-videos', require('../../modules/vet-hub').petCareVideosRoutes);
 router.use('/businesses', require('../../modules/businesses').businessesRoutes);

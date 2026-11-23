@@ -235,6 +235,158 @@ class GeminiSafeClient {
     return this.generateJson(params);
   }
 
+  /**
+   * Extrae { mimeType, base64Data } desde un Data URL (data:image/jpeg;base64,...) o Base64 puro.
+   */
+  parseBase64Image(imageInput, defaultMimeType = 'image/jpeg') {
+    const raw = String(imageInput || '').trim();
+    if (!raw) {
+      return { mimeType: defaultMimeType, base64Data: '' };
+    }
+    const dataUrlMatch = raw.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/);
+    if (dataUrlMatch) {
+      return {
+        mimeType: dataUrlMatch[1].toLowerCase(),
+        base64Data: dataUrlMatch[2].replace(/\s+/g, '')
+      };
+    }
+    return {
+      mimeType: defaultMimeType,
+      base64Data: raw.replace(/\s+/g, '')
+    };
+  }
+
+  /**
+   * Analiza una o varias imágenes multimodales (Base64) junto con instrucciones en texto usando Google Gemini Vision
+   * y devuelve un objeto JSON estructurado. Si no hay cuota o API key, retorna null para que el servicio
+   * active su motor heurístico especializado.
+   */
+  async generateMultimodalJson({
+    prompt,
+    imageBase64,
+    images = null,
+    mimeType = 'image/jpeg',
+    systemInstruction = null,
+    responseSchema = null,
+    model = null,
+    temperature = 0.2
+  }) {
+    const rawList = Array.isArray(images) && images.length > 0
+      ? images.slice(0, 3)
+      : [{ imageBase64, mimeType }];
+
+    const parsedImages = rawList
+      .map((item) => {
+        if (typeof item === 'string') {
+          return this.parseBase64Image(item, mimeType);
+        }
+        return this.parseBase64Image(item?.base64Data || item?.imageBase64 || '', item?.mimeType || mimeType);
+      })
+      .filter((img) => Boolean(img.base64Data));
+
+    if (parsedImages.length === 0) {
+      throw new Error('IMAGE_BASE64_EMPTY');
+    }
+
+    if (!this.checkQuota() || !this.isConfigured()) {
+      metricsCollector.recordGeminiCall(true);
+      return null;
+    }
+
+    const candidateModels = [
+      model || this.model,
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-flash-latest'
+    ].filter((m, idx, arr) => Boolean(m) && arr.indexOf(m) === idx);
+
+    const parts = [
+      { text: prompt },
+      ...parsedImages.map((img) => ({
+        inline_data: {
+          mime_type: img.mimeType,
+          data: img.base64Data
+        }
+      }))
+    ];
+
+    const generationConfig = {
+      temperature: temperature ?? 0.2,
+      responseMimeType: 'application/json'
+    };
+    if (responseSchema && typeof responseSchema === 'object') {
+      generationConfig.responseSchema = responseSchema;
+    }
+
+    const bodyPayload = {
+      contents: [
+        {
+          role: 'user',
+          parts
+        }
+      ],
+      generationConfig
+    };
+
+    if (systemInstruction) {
+      bodyPayload.systemInstruction = {
+        parts: [{ text: systemInstruction }]
+      };
+    }
+
+    this.requestCountToday++;
+    metricsCollector.recordGeminiCall(false);
+
+    let lastError = null;
+    for (const candidateModel of candidateModels) {
+      try {
+        const endpoint = `${this.baseUrl}/models/${candidateModel}:generateContent?key=${this.apiKey}`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyPayload)
+        });
+
+        if ((response.status === 404 || response.status === 503 || response.status === 429) && candidateModel !== candidateModels[candidateModels.length - 1]) {
+          continue;
+        }
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Gemini Vision API respondió con estado ${response.status}: ${errText}`);
+        }
+
+        const json = await response.json();
+        const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawText) {
+          throw new Error('Respuesta vacía recibida de Gemini Vision API');
+        }
+
+        const cleaned = rawText
+          .replace(/^```json\s*/i, '')
+          .replace(/^```\s*/i, '')
+          .replace(/\s*```$/i, '')
+          .trim();
+
+        const parsedJson = JSON.parse(cleaned);
+        return {
+          ...parsedJson,
+          _provider_meta: {
+            provider: 'Google Gemini Vision Cloud',
+            model: candidateModel,
+            fallback: false
+          }
+        };
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    console.warn(`[Gemini Vision Client] Fallo en llamada multimodal (${lastError?.message}). Activando motor heurístico local.`);
+    metricsCollector.recordGeminiCall(true);
+    return null;
+  }
+
   fallbackHeuristic(prompt = '') {
     const text = String(prompt).toLowerCase();
 

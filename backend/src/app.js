@@ -8,6 +8,7 @@ const rateLimiter = require('./shared/middlewares/rate-limiter');
 const securityHeaders = require('./shared/middlewares/security-headers');
 const requestTracer = require('./shared/middlewares/request-tracer');
 const { i18nMiddleware } = require('./shared/i18n/i18n-config');
+const { payloadSanitizer } = require('./shared/middlewares/payload-sanitizer');
 const errorHandler = require('./shared/middlewares/error-handler');
 
 const app = express();
@@ -35,10 +36,13 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-guest-token', 'x-request-id', 'x-language', 'accept-language', 'X-RateLimit-Limit', 'X-RateLimit-Remaining']
 }));
 
-// 3. Parsers de cuerpo con límite de tamaño (12 MB solo para la subida de fotografías admin)
+// 3. Parsers de cuerpo con límite de tamaño (12 MB para subida de fotografías admin y triaje visual de mascotas)
 app.use('/api/admin/places/photos/upload', express.json({ limit: '12mb' }));
+app.use('/api/pets/analyze-photo', express.json({ limit: '12mb' }));
+app.use('/api/vet/analyze-photo', express.json({ limit: '12mb' }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(payloadSanitizer);
 
 // 4. Escudo anti-spam / Rate limiting
 app.use(rateLimiter(300, 60000));

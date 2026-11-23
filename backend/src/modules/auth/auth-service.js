@@ -2,7 +2,14 @@ const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const env = require('../../shared/config/env-config');
 const { query, execute } = require('../../shared/config/database');
-const { generateToken, generateRefreshToken, verifyToken, getPermissionsForRole } = require('../../shared/middlewares/auth-role-guard');
+const {
+  generateToken,
+  generateRefreshToken,
+  verifyToken,
+  getPermissionsForRole,
+  revokeAccessToken,
+  revokeAllUserAccessTokens
+} = require('../../shared/middlewares/auth-role-guard');
 const auditService = require('../../shared/audit/audit-service');
 
 // Cuentas exclusivas administrativas y usuarios demo de desarrollo
@@ -486,6 +493,11 @@ class AuthService {
       await execute('UPDATE refresh_tokens SET revoked = TRUE WHERE token_hash = ?', [tokenHash]);
     }
 
+    const authHeader = req?.headers?.authorization || req?.headers?.Authorization;
+    if (authHeader) {
+      revokeAccessToken(authHeader);
+    }
+
     if (req?.user?.id) {
       await auditService.record({
         userId: req.user.id,
@@ -496,7 +508,7 @@ class AuthService {
       });
     }
 
-    return { success: true, message: 'Sesión cerrada correctamente' };
+    return { success: true, access_token_revoked: Boolean(authHeader), message: 'Sesión cerrada correctamente' };
   }
 
   async purgeExpiredRefreshTokens() {
@@ -610,6 +622,7 @@ class AuthService {
       'UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = ?',
       [user.id]
     ).catch(() => {});
+    revokeAllUserAccessTokens(user.id);
 
     await auditService.record({
       userId: user.id,
@@ -657,6 +670,7 @@ class AuthService {
     await execute('DELETE FROM user_pets WHERE user_id = ?', [user.id]).catch(() => {});
     await execute('DELETE FROM user_vaults WHERE user_id = ?', [user.id]).catch(() => {});
     await execute('DELETE FROM refresh_tokens WHERE user_id = ?', [user.id]).catch(() => {});
+    revokeAllUserAccessTokens(user.id);
     await execute('DELETE FROM password_reset_tokens WHERE user_id = ?', [user.id]).catch(() => {});
     await execute('DELETE FROM user_roles WHERE user_id = ?', [user.id]).catch(() => {});
     await execute('DELETE FROM ai_chat_messages WHERE user_id = ?', [user.id]).catch(() => {});

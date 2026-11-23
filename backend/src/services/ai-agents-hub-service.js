@@ -9,12 +9,14 @@ const lostPetVisualMatcher = require('../autonomous-agents/consensus-moderator-a
 const invoicePriceExtractor = require('../autonomous-agents/consensus-moderator-agent/invoice-price-extractor');
 const reportConsensusJob = require('../autonomous-agents/consensus-moderator-agent/report-consensus-job');
 const geminiVideoClient = require('../shared/clients/gemini-video-client');
+const { sanitizePromptInjection } = require('../shared/middlewares/payload-sanitizer');
 
 /**
- * Anonimiza PII (correos, teléfonos de CR, cédulas) antes de construir prompts o guardar bitácoras.
+ * Anonimiza PII (correos, teléfonos de CR, cédulas) y neutraliza Prompt Injection antes de construir prompts o guardar bitácoras.
  */
 function sanitizePiiForPrompt(text) {
-  return String(text || '')
+  const { cleanText } = sanitizePromptInjection(String(text || ''), 600);
+  return cleanText
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[EMAIL_REDACTADO]')
     .replace(/\b(?:\+?506[\s-]?)?[24678]\d{3}[\s-]?\d{4}\b/g, '[TELEFONO_REDACTADO]')
     .replace(/\b\d-\d{4}-\d{4}\b/g, '[CEDULA_REDACTADA]')

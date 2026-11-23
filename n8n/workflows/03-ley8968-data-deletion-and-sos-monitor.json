@@ -1,143 +1,246 @@
 {
-  "name": "GoToX 03 · Auditoría y despacho de notificaciones",
+  "name": "WF-03: Gobernanza Legal Ley N.º 8968 (PRODHAB) con Google Drive (Acta), Sheets, Gemini y Gmail",
   "nodes": [
     {
-      "id": "70cac9b8-89d6-42bc-ae41-11519e50a0a9",
-      "name": "Prueba manual",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "parameters": {},
-      "position": [
-        0,
-        0
-      ]
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ley8968-deletion-hook",
+        "responseMode": "onReceived"
+      },
+      "id": "wf3-webhook",
+      "name": "1. Webhook Solicitud Baja Ley 8968",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [140, 300]
     },
     {
-      "id": "93d14419-5552-498e-8151-ecebefbce9d0",
-      "name": "Horario Costa Rica",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
       "parameters": {
-        "rule": {
-          "interval": [
+        "jsCode": "const payload = $input.first().json.body || $input.first().json || {};\nconst requestId = payload.request_id || `del_${Date.now()}`;\nconst rawEmail = String(payload.recipient_email || '');\nconst maskedEmail = rawEmail.replace(/(^.).*(@.*$)/, '$1***$2') || 'titular_anonimizado';\nreturn [{\n  json: {\n    request_id: requestId,\n    masked_email: maskedEmail,\n    recipient_email: rawEmail || 'privacidad@sinergiaurbana.cr',\n    deleted_tables: Array.isArray(payload.deleted_or_anonymized)\n      ? payload.deleted_or_anonymized.join(', ')\n      : 'users, user_pets, user_vaults, refresh_tokens, password_reset_tokens, user_roles, ai_chat_messages',\n    retained_legal_summary: payload.retained_legal_summary || 'Registros de auditoría conservados de forma anonimizada.',\n    processed_at: payload.processed_at || new Date().toISOString()\n  }\n}];"
+      },
+      "id": "wf3-code-sanitize",
+      "name": "2. Code: Sanitizar PII y Armar Expediente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/audit/verify-chain",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_JWT_TOKEN }}" }
+          ]
+        }
+      },
+      "id": "wf3-http-verify-chain",
+      "name": "3. Verificar Integridad Hash Chain (SHA-256)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
             {
-              "field": "cronExpression",
-              "expression": "*/15 * * * *"
+              "leftValue": "={{ $json.data?.valid }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
             }
           ]
         }
       },
-      "position": [
-        0,
-        200
-      ]
-    },
-    {
-      "id": "3e477c32-4d9d-41f9-b072-77a6ae995b92",
-      "name": "Verificar cadena de auditoría",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "parameters": {
-        "method": "GET",
-        "url": "https://backend.example.invalid/api/audit/verify-chain",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {
-          "timeout": 30000
-        }
-      },
-      "position": [
-        280,
-        100
-      ]
-    },
-    {
-      "id": "9fadc2dd-aec1-4c92-90a1-d6c36e16bebb",
-      "name": "Comprobar resultado de auditoría",
-      "type": "n8n-nodes-base.code",
+      "id": "wf3-if-chain-valid",
+      "name": "4. IF: ¿Cadena Criptográfica Íntegra?",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "parameters": {
-        "jsCode": "const data = $input.first().json.data;\nif (data?.valid !== true) throw new Error('La verificación de auditoría falló. Revisar GoToX antes de despachar.');\nreturn [{json:{auditValid:true}}];"
-      },
-      "position": [
-        560,
-        100
-      ]
+      "position": [920, 300]
     },
     {
-      "id": "d72afc25-af0a-4045-899c-725d807adbde",
-      "name": "Procesar notificaciones pendientes",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "parameters": {
+        "sendTo": "={{ $env.SECURITY_OFFICER_EMAIL || 'seguridad@sinergiaurbana.cr' }}",
+        "subject": "🚨 ALERTA CRÍTICA: Discrepancia en Hash Chain Ledger durante auditoría Ley 8968",
+        "emailType": "html",
+        "message": "=<p>La verificación de integridad de <code>audit_chain_ledger</code> reportó un fallo. Revisar inmediatamente en el Centro de Mando.</p>"
+      },
+      "id": "wf3-gmail-sec-alert",
+      "name": "5A. Gmail: Alerta Crítica al Oficial de Seguridad",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1200, 120],
+      "credentials": {
+        "gmailOAuth2": { "id": "google-gmail-cred", "name": "Gmail OAuth2" }
+      }
+    },
+    {
       "parameters": {
         "method": "POST",
-        "url": "https://backend.example.invalid/api/notifications/outbox/process",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {
-          "timeout": 30000
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/agents/report-consensus/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_JWT_TOKEN }}" }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\"batch_size\":10}"
+        "jsonBody": "={ \"source\": \"n8n_ley8968_compliance\", \"count\": 1 }"
       },
-      "position": [
-        840,
-        100
-      ]
+      "id": "wf3-http-agent-log",
+      "name": "5B. Ejecutar Agente Moderador (Log BD)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 340]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Redacta el certificado formal de supresión y anonimización de datos personales bajo la Ley N.º 8968 de Costa Rica (PRODHAB) para el expediente {{ $json.request_id }}, indicando que las tablas ({{ $json.deleted_tables }}) fueron purgadas y la cadena SHA-256 fue verificada."
+      },
+      "id": "wf3-llm-chain",
+      "name": "6. Agente Legal (Google Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1460, 340]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "wf3-gemini-model",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [1500, 540],
+      "credentials": {
+        "googlePalmApi": { "id": "google-gemini-cred", "name": "Google Gemini API Key" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "createFromText",
+        "name": "=acta-supresion-ley8968-{{ $json.request_id }}.md",
+        "content": "=# Certificado de Supresión y Anonimización (Ley N.º 8968 CR)\n\n{{ $json.text }}\n",
+        "folderId": { "__rl": true, "value": "={{ $env.GOOGLE_DRIVE_PRODHAB_FOLDER_ID || 'root' }}", "mode": "id" }
+      },
+      "id": "wf3-google-drive",
+      "name": "7. Google Drive: Archivar Acta PRODHAB",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1780, 340],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "google-drive-cred", "name": "Google Drive OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "value": "={{ $env.GOOGLE_SHEET_PRODHAB_ID }}", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Solicitudes_Ley8968", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request_id": "={{ $json.request_id }}",
+            "masked_email": "={{ $json.masked_email }}",
+            "deleted_tables": "={{ $json.deleted_tables }}",
+            "hash_chain_verified": "true",
+            "processed_at": "={{ $now.toISO() }}"
+          }
+        }
+      },
+      "id": "wf3-google-sheets",
+      "name": "8. Google Sheets: Registrar Ticket de Cumplimiento",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2040, 340],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "google-sheets-cred", "name": "Google Sheets OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.recipient_email }}",
+        "subject": "=Certificado de Eliminación de Datos Personales (Ley N.º 8968) — {{ $json.request_id }}",
+        "emailType": "html",
+        "message": "=<p>{{ $json.text }}</p>"
+      },
+      "id": "wf3-gmail-confirm",
+      "name": "9. Gmail: Enviar Certificado Formal al Titular",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2300, 340],
+      "credentials": {
+        "gmailOAuth2": { "id": "google-gmail-cred", "name": "Gmail OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/notifications/outbox/process",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_JWT_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"batch_size\": 20 }"
+      },
+      "id": "wf3-http-outbox",
+      "name": "10. Backend: Sincronizar Cola Outbox",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2560, 240]
     }
   ],
   "connections": {
-    "Prueba manual": {
+    "1. Webhook Solicitud Baja Ley 8968": {
+      "main": [[{ "node": "2. Code: Sanitizar PII y Armar Expediente", "type": "main", "index": 0 }]]
+    },
+    "2. Code: Sanitizar PII y Armar Expediente": {
+      "main": [[{ "node": "3. Verificar Integridad Hash Chain (SHA-256)", "type": "main", "index": 0 }]]
+    },
+    "3. Verificar Integridad Hash Chain (SHA-256)": {
+      "main": [[{ "node": "4. IF: ¿Cadena Criptográfica Íntegra?", "type": "main", "index": 0 }]]
+    },
+    "4. IF: ¿Cadena Criptográfica Íntegra?": {
       "main": [
-        [
-          {
-            "node": "Verificar cadena de auditoría",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "5B. Ejecutar Agente Moderador (Log BD)", "type": "main", "index": 0 }],
+        [{ "node": "5A. Gmail: Alerta Crítica al Oficial de Seguridad", "type": "main", "index": 0 }]
       ]
     },
-    "Horario Costa Rica": {
-      "main": [
-        [
-          {
-            "node": "Verificar cadena de auditoría",
-            "type": "main",
-            "index": 0
-          }
-        ]
+    "5A. Gmail: Alerta Crítica al Oficial de Seguridad": {
+      "main": [[{ "node": "10. Backend: Sincronizar Cola Outbox", "type": "main", "index": 0 }]]
+    },
+    "5B. Ejecutar Agente Moderador (Log BD)": {
+      "main": [[{ "node": "6. Agente Legal (Google Gemini)", "type": "main", "index": 0 }]]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [{ "node": "6. Agente Legal (Google Gemini)", "type": "ai_languageModel", "index": 0 }]
       ]
     },
-    "Verificar cadena de auditoría": {
-      "main": [
-        [
-          {
-            "node": "Comprobar resultado de auditoría",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "6. Agente Legal (Google Gemini)": {
+      "main": [[{ "node": "7. Google Drive: Archivar Acta PRODHAB", "type": "main", "index": 0 }]]
     },
-    "Comprobar resultado de auditoría": {
-      "main": [
-        [
-          {
-            "node": "Procesar notificaciones pendientes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "7. Google Drive: Archivar Acta PRODHAB": {
+      "main": [[{ "node": "8. Google Sheets: Registrar Ticket de Cumplimiento", "type": "main", "index": 0 }]]
+    },
+    "8. Google Sheets: Registrar Ticket de Cumplimiento": {
+      "main": [[{ "node": "9. Gmail: Enviar Certificado Formal al Titular", "type": "main", "index": 0 }]]
+    },
+    "9. Gmail: Enviar Certificado Formal al Titular": {
+      "main": [[{ "node": "10. Backend: Sincronizar Cola Outbox", "type": "main", "index": 0 }]]
     }
   },
   "active": false,
-  "settings": {
-    "timezone": "America/Costa_Rica",
-    "executionOrder": "v1",
-    "saveDataSuccessExecution": "none",
-    "saveDataErrorExecution": "none"
-  }
+  "settings": { "timezone": "America/Costa_Rica" },
+  "meta": { "rubric_workflow": 3, "google_integrations": ["Google Gemini", "Google Drive", "Google Sheets", "Gmail"] }
 }

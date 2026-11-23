@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const bcrypt = require('bcryptjs');
 const env = require('../../shared/config/env-config');
 const { query, execute } = require('../../shared/config/database');
 const { generateToken, generateRefreshToken, verifyToken, getPermissionsForRole } = require('../../shared/middlewares/auth-role-guard');
@@ -63,33 +64,41 @@ const DEFAULT_ACCOUNTS = [
 
 class AuthService {
   hashPassword(password) {
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-    return `${salt}:${hash}`;
+    return bcrypt.hashSync(String(password), 10);
   }
 
   verifyPassword(password, storedHash) {
     if (!storedHash) return false;
+    const raw = String(storedHash);
 
-    // Formato PBKDF2 robusto (salt:hash)
-    if (storedHash.includes(':')) {
-      const [salt, key] = storedHash.split(':');
-      const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+    // 1. Formato estándar bcrypt ($2a$ / $2b$ / $2y$)
+    if (raw.startsWith('$2a$') || raw.startsWith('$2b$') || raw.startsWith('$2y$')) {
       try {
-        return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(key, 'hex'));
-      } catch (e) {
+        return bcrypt.compareSync(String(password), raw);
+      } catch {
         return false;
       }
     }
 
-    // Compatibilidad con hashes simples de desarrollo / semillas SQL
-    if (storedHash.startsWith('sha256_')) {
-      const legacy = `sha256_${crypto.createHash('sha256').update(password).digest('hex')}`;
-      return legacy === storedHash;
+    // 2. Fallback PBKDF2 previo (salt:hash)
+    if (raw.includes(':')) {
+      const [salt, key] = raw.split(':');
+      const hash = crypto.pbkdf2Sync(String(password), salt, 100000, 64, 'sha512').toString('hex');
+      try {
+        return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(key, 'hex'));
+      } catch {
+        return false;
+      }
     }
 
-    const simpleHash = crypto.createHash('sha256').update(password).digest('hex');
-    return simpleHash === storedHash;
+    // 3. Compatibilidad con hashes simples de desarrollo / semillas SQL
+    if (raw.startsWith('sha256_')) {
+      const legacy = `sha256_${crypto.createHash('sha256').update(String(password)).digest('hex')}`;
+      return legacy === raw;
+    }
+
+    const simpleHash = crypto.createHash('sha256').update(String(password)).digest('hex');
+    return simpleHash === raw;
   }
 
   async ensureDefaultAccounts() {
@@ -277,8 +286,9 @@ class AuthService {
       throw new Error('INVALID_CREDENTIALS');
     }
 
-    // Auto-upgrade transparente de hashes legacy (SHA-256 sin sal) a PBKDF2-SHA512 con sal aleatoria
-    if (user.password_hash && !String(user.password_hash).includes(':')) {
+    // Auto-upgrade transparente de hashes legacy (SHA-256 / PBKDF2) a bcrypt (cost 10)
+    const storedStr = String(user.password_hash || '');
+    if (storedStr && !storedStr.startsWith('$2a$') && !storedStr.startsWith('$2b$') && !storedStr.startsWith('$2y$')) {
       const upgradedHash = this.hashPassword(password);
       await execute(
         'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -324,7 +334,18 @@ class AuthService {
     };
   }
 
-  async register({ name, email, password, role = 'client', phone = null, zone = null, hasPet = false, pet = null }, req = null) {
+  async register({
+    name,
+    email,
+    password,
+    role = 'client',
+    phone = null,
+    zone = null,
+    hasPet = false,
+    pet = null,
+    termsVersion = '2026-11-v2',
+    cookiesPreferences = null,
+  }, req = null) {
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const cleanName = String(name || '').trim();
     // El registro público siempre asigna 'client' (o 'business_owner'); nunca 'admin'
@@ -336,13 +357,36 @@ class AuthService {
     }
 
     const id = `usr_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-    const pbkdf2Hash = this.hashPassword(password || 'secret');
+    const bcryptHash = this.hashPassword(password || 'secret');
 
     await execute(
       `INSERT INTO users (id, name, email, password_hash, role)
        VALUES (?, ?, ?, ?, ?)`,
-      [id, cleanName, normalizedEmail, pbkdf2Hash, safeRole]
+      [id, cleanName, normalizedEmail, bcryptHash, safeRole]
     );
+
+    // Relación 3FN en user_roles + registro de consentimiento Ley N.º 8968
+    await execute(
+      `INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)`,
+      [id, `role_${safeRole}`]
+    ).catch(() => {});
+
+    const consentId = `cns_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const ipAddress = req?.socket?.remoteAddress || null;
+    const userAgent = req?.headers?.['user-agent'] || null;
+    await execute(
+      `INSERT INTO user_consents
+       (id, user_id, terms_version, privacy_accepted, cookies_preferences_json, ip_address, user_agent)
+       VALUES (?, ?, ?, TRUE, ?, ?, ?)`,
+      [
+        consentId,
+        id,
+        termsVersion,
+        cookiesPreferences ? JSON.stringify(cookiesPreferences) : null,
+        ipAddress,
+        userAgent,
+      ]
+    ).catch(() => {});
 
     const hasPetEffective = Boolean(hasPet && (pet?.name || pet?.nombre));
     await this._saveInitialUserVaultAndPet(id, {
@@ -464,6 +508,200 @@ class AuthService {
     return { purged_at: nowSql };
   }
 
+  /**
+   * Flujo de recuperación de contraseña (genera token temporal de 15 min hasheado en BD)
+   */
+  async forgotPassword(email, req = null) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const rows = await query('SELECT id, name, email FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
+
+    // Respuesta neutra para no revelar si el correo existe en producción
+    if (!rows || rows.length === 0) {
+      return {
+        sent: true,
+        expires_in_minutes: 15,
+        message: 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.'
+      };
+    }
+
+    const user = rows[0];
+    const rawToken = crypto.randomBytes(24).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const tokenId = `prt_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+
+    await execute(
+      `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at)
+       VALUES (?, ?, ?, ?)`,
+      [tokenId, user.id, tokenHash, expiresAt]
+    );
+
+    const outboxId = `ntf_reset_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    await execute(
+      `INSERT INTO notification_outbox (id, recipient_email, subject, body, status)
+       VALUES (?, ?, ?, ?, 'pending')`,
+      [
+        outboxId,
+        user.email,
+        'Recuperación de contraseña — GoToX Pet OS',
+        `Solicitaste restablecer tu contraseña. Tu código temporal (válido 15 minutos) es: ${rawToken}`
+      ]
+    ).catch(() => {});
+
+    await auditService.record({
+      userId: user.id,
+      action: 'PASSWORD_RESET_REQUESTED',
+      resource: 'password_reset_tokens',
+      resourceId: tokenId,
+      details: { expires_at: expiresAt },
+      req
+    }).catch(() => {});
+
+    const response = {
+      sent: true,
+      expires_in_minutes: 15,
+      message: 'Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.'
+    };
+    if (!env.isProd) {
+      response.dev_reset_token = rawToken;
+    }
+    return response;
+  }
+
+  async resetPassword({ email, token, newPassword }, req = null) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const userRows = await query('SELECT id, email FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
+    if (!userRows || userRows.length === 0) {
+      throw new Error('INVALID_RESET_TOKEN');
+    }
+    const user = userRows[0];
+    const tokenHash = crypto.createHash('sha256').update(String(token || '').trim()).digest('hex');
+    const nowSql = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+    const tokenRows = await query(
+      `SELECT id, expires_at, used_at FROM password_reset_tokens
+       WHERE user_id = ? AND token_hash = ? AND used_at IS NULL
+       ORDER BY created_at DESC LIMIT 1`,
+      [user.id, tokenHash]
+    );
+
+    if (!tokenRows || tokenRows.length === 0) {
+      throw new Error('INVALID_RESET_TOKEN');
+    }
+
+    const record = tokenRows[0];
+    const expiresStr = record.expires_at instanceof Date
+      ? record.expires_at.toISOString().replace('T', ' ').slice(0, 19)
+      : String(record.expires_at);
+    if (expiresStr < nowSql) {
+      throw new Error('EXPIRED_RESET_TOKEN');
+    }
+
+    const newHash = this.hashPassword(newPassword);
+    await execute(
+      'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [newHash, user.id]
+    );
+    await execute(
+      'UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [record.id]
+    );
+    await execute(
+      'UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = ?',
+      [user.id]
+    ).catch(() => {});
+
+    await auditService.record({
+      userId: user.id,
+      action: 'PASSWORD_RESET_COMPLETED',
+      resource: 'users',
+      resourceId: user.id,
+      details: { sessions_revoked: true },
+      req
+    }).catch(() => {});
+
+    return {
+      reset: true,
+      sessions_revoked: true,
+      message: 'Contraseña actualizada correctamente. Inicia sesión con tu nueva clave.'
+    };
+  }
+
+  /**
+   * Baja del sistema y eliminación/anonimización de datos personales (Ley N.º 8968 CR)
+   */
+  async deleteAccount(userId, { password, reason = 'Solicitud del titular (Ley N.º 8968)' } = {}, req = null) {
+    const rows = await query('SELECT id, email, name, password_hash FROM users WHERE id = ?', [userId]);
+    if (!rows || rows.length === 0) {
+      throw new Error('USER_NOT_FOUND');
+    }
+    const user = rows[0];
+
+    if (!this.verifyPassword(password, user.password_hash)) {
+      throw new Error('INVALID_CREDENTIALS');
+    }
+
+    const reqId = `del_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const originalEmail = user.email;
+    const anonymizedEmail = `deleted_${user.id}@anonymized.gotox.local`;
+    const retainedSummary = 'Registros inmutables de auditoría (audit_trail / audit_chain_ledger) conservados de forma anonimizada por obligación legal.';
+
+    await execute(
+      `INSERT INTO data_deletion_requests
+       (id, user_id, email, reason, status, retained_legal_summary, processed_at)
+       VALUES (?, ?, ?, ?, 'completed', ?, CURRENT_TIMESTAMP)`,
+      [reqId, user.id, originalEmail, reason, retainedSummary]
+    );
+
+    // Eliminar datos personales en tablas satélites y revocar sesiones
+    await execute('DELETE FROM user_vaults WHERE user_id = ?', [user.id]).catch(() => {});
+    await execute('DELETE FROM refresh_tokens WHERE user_id = ?', [user.id]).catch(() => {});
+    await execute('DELETE FROM password_reset_tokens WHERE user_id = ?', [user.id]).catch(() => {});
+    await execute('DELETE FROM user_roles WHERE user_id = ?', [user.id]).catch(() => {});
+    await execute('DELETE FROM ai_chat_messages WHERE user_id = ?', [user.id]).catch(() => {});
+
+    // Anonimizar fila principal de users para preservar integridad referencial de auditoría
+    await execute(
+      `UPDATE users
+       SET name = 'Usuario Eliminado (Ley 8968)',
+           email = ?,
+           password_hash = 'ACCOUNT_DELETED_REVOKED',
+           role = 'guest',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [anonymizedEmail, user.id]
+    );
+
+    const outboxId = `ntf_del_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    await execute(
+      `INSERT INTO notification_outbox (id, recipient_email, subject, body, status)
+       VALUES (?, ?, ?, ?, 'pending')`,
+      [
+        outboxId,
+        originalEmail,
+        'Confirmación de eliminación de datos personales (Ley N.º 8968) — GoToX',
+        `Tu solicitud (${reqId}) fue procesada. Tus datos personales y sesiones fueron eliminados/anonimizados.`
+      ]
+    ).catch(() => {});
+
+    await auditService.record({
+      userId: user.id,
+      action: 'ACCOUNT_DELETED_LEY_8968',
+      resource: 'data_deletion_requests',
+      resourceId: reqId,
+      details: { anonymized: true },
+      req
+    }).catch(() => {});
+
+    return {
+      request_id: reqId,
+      status: 'completed',
+      deleted_or_anonymized: ['users', 'user_vaults', 'refresh_tokens', 'password_reset_tokens', 'user_roles', 'ai_chat_messages'],
+      retained_legal_summary: retainedSummary,
+      processed_at: new Date().toISOString()
+    };
+  }
+
   async createGuestSession(alias = '') {
     const guestId = `gst_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const guestAlias = alias && alias.trim() ? alias.trim() : `Invitado-${crypto.randomBytes(2).toString('hex')}`;
@@ -498,7 +736,9 @@ class AuthService {
           if (rows && rows.length > 0) {
             userRecord = rows[0];
           }
-        } catch (_) {}
+        } catch (dbErr) {
+          // Mantener datos del JWT si la consulta no aplica en este contexto
+        }
 
         const profileDetails = await this._loadUserProfileDetails(userRecord.id);
 

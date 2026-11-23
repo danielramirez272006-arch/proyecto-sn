@@ -98,7 +98,7 @@ export const authService = {
         message:
           data?.message ||
           'Se ha enviado un código de verificación a tu correo registrado para restablecer tu contraseña.',
-        demoToken: data?.demoToken || data?.reset_token || null
+        demoToken: data?.dev_reset_token || data?.demoToken || data?.reset_token || null
       };
     } catch (err) {
       // Si el backend devuelve 404 porque el endpoint está pendiente de despliegue por el equipo backend
@@ -160,7 +160,7 @@ export const authService = {
       return {
         ok: true,
         receiptId: data?.receiptId || data?.request_id || receiptId,
-        processedAt: data?.processedAt || timestamp,
+        processedAt: data?.processedAt || data?.processed_at || timestamp,
         message:
           data?.message ||
           'Tu solicitud de eliminación y anonimización de datos personales ha sido procesada conforme a la Ley N.º 8968.'

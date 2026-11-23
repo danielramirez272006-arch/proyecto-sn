@@ -185,7 +185,6 @@ export function Acceso() {
       }
       return;
     }
-
     if (modo === 'login') {
       if (!validarLogin()) return;
       setCargando(true);

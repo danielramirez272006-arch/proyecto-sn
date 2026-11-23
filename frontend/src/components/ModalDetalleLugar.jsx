@@ -70,7 +70,6 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
     setMensajeExito('¡Check-in comunitario registrado en vivo en Synodos!');
     setTimeout(() => setMensajeExito(''), 3500);
   };
-
   const galeria = Array.isArray(lugar.galeria) && lugar.galeria.length > 0
     ? lugar.galeria.filter(Boolean)
     : lugar.imagen

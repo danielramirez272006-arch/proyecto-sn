@@ -32,7 +32,7 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
   const { isLoggedIn, esAdmin, usuario, cerrarSesion } = useSesion();
-  const { tema, setTema, esClaro, esMorado } = useTema();
+  const { tema, setTema, esClaro, esMorado, esOscuro } = useTema();
 
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
   const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);

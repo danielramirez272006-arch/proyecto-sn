@@ -1,5 +1,7 @@
+const crypto = require('node:crypto');
 const env = require('./env-config');
 const metricsCollector = require('../telemetry/metrics-collector');
+const { execute } = require('./database');
 
 class GeminiSafeClient {
   constructor() {
@@ -101,11 +103,13 @@ class GeminiSafeClient {
     }
 
     history.push({ role: 'user', content: message });
+    this._persistChatMessage(sessionId, 'user', message);
 
     if (!this.checkQuota() || !this.isConfigured()) {
       metricsCollector.recordGeminiCall(true);
       const reply = this.fallbackChatResponse(message, history);
       history.push({ role: 'model', content: reply.response });
+      this._persistChatMessage(sessionId, 'model', reply.response);
       return {
         session_id: sessionId,
         model: model || this.model,
@@ -171,6 +175,7 @@ class GeminiSafeClient {
       const assistantMessage = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No se obtuvo respuesta.';
 
       history.push({ role: 'model', content: assistantMessage });
+      this._persistChatMessage(sessionId, 'model', assistantMessage);
 
       return {
         session_id: sessionId,
@@ -183,6 +188,7 @@ class GeminiSafeClient {
       metricsCollector.recordGeminiCall(true);
       const fallback = this.fallbackChatResponse(message, history);
       history.push({ role: 'model', content: fallback.response });
+      this._persistChatMessage(sessionId, 'model', fallback.response);
       return {
         session_id: sessionId,
         model: model || this.model,
@@ -192,6 +198,14 @@ class GeminiSafeClient {
         history_length: history.length
       };
     }
+  }
+
+  _persistChatMessage(sessionId, role, content) {
+    const id = `msg_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    execute(
+      `INSERT INTO ai_chat_messages (id, session_id, provider, role, content) VALUES (?, ?, 'gemini', ?, ?)`,
+      [id, String(sessionId || 'default'), role, String(content || '').slice(0, 2000)]
+    ).catch(() => {});
   }
 
   fallbackChatResponse(prompt = '', history = []) {

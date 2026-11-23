@@ -720,6 +720,77 @@ module.exports = {
           "200": { description: "Video archivado" }
         }
       }
+    },
+    "/auth/forgot-password": {
+      post: {
+        tags: ["Autenticación y Gobernanza (Ley 8968)"],
+        summary: "Solicitar código temporal de recuperación de contraseña (15 min)",
+        responses: { "200": { description: "Solicitud procesada y encolada en notification_outbox" } }
+      }
+    },
+    "/auth/reset-password": {
+      post: {
+        tags: ["Autenticación y Gobernanza (Ley 8968)"],
+        summary: "Restablecer contraseña con token temporal y revocar sesiones anteriores",
+        responses: { "200": { description: "Contraseña actualizada con bcrypt" } }
+      }
+    },
+    "/auth/delete-account": {
+      post: {
+        tags: ["Autenticación y Gobernanza (Ley 8968)"],
+        summary: "Baja de cuenta y eliminación/anonimización de datos personales (JWT + contraseña)",
+        responses: { "200": { description: "Solicitud registrada en data_deletion_requests y datos eliminados" } }
+      }
+    },
+    "/places/multisource/search": {
+      get: {
+        tags: ["Lugares Multi-Fuente Pet-Friendly"],
+        summary: "Búsqueda radial combinando catálogo interno, OSM, Geoapify, Foursquare y Wikimedia",
+        responses: { "200": { description: "Establecimientos con estado pet-friendly y foto verificada" } }
+      }
+    },
+    "/admin/places/photos/pending": {
+      get: {
+        tags: ["Moderación de Fotografías (Supabase Storage)"],
+        summary: "Listar fotografías en pending_review con URL firmada privada (Solo Admin)",
+        responses: { "200": { description: "Cola de revisión de fotografías" } }
+      }
+    },
+    "/admin/places/photos/upload": {
+      post: {
+        tags: ["Moderación de Fotografías (Supabase Storage)"],
+        summary: "Subir fotografía en Base64 con sanitización EXIF al bucket privado (Solo Admin)",
+        responses: { "201": { description: "Fotografía subida en estado pending_review" } }
+      }
+    },
+    "/admin/places/photos/{photoId}/approve": {
+      post: {
+        tags: ["Moderación de Fotografías (Supabase Storage)"],
+        summary: "Aprobar fotografía y promoverla al bucket público (Solo Admin)",
+        responses: { "200": { description: "Fotografía aprobada y publicada" } }
+      }
+    },
+    "/agents": {
+      get: {
+        tags: ["8 Agentes de IA"],
+        summary: "Listar los 8 agentes de IA registrados, modelos y roles autorizados",
+        responses: { "200": { description: "Catálogo de los 8 agentes de IA" } }
+      }
+    },
+    "/agents/{agentName}/run": {
+      post: {
+        tags: ["8 Agentes de IA"],
+        summary: "Ejecutar un agente de IA por nombre con anonimización PII y bitácora obligatoria en BD",
+        parameters: [{ name: "agentName", in: "path", required: true, schema: { type: "string" } }],
+        responses: { "200": { description: "Resultado del agente y log_id en ai_interaction_logs" } }
+      }
+    },
+    "/agents/logs": {
+      get: {
+        tags: ["8 Agentes de IA"],
+        summary: "Consultar bitácora de ejecuciones en ai_interaction_logs (Solo Admin)",
+        responses: { "200": { description: "Historial de ejecuciones de los agentes de IA" } }
+      }
     }
   }
 };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CarnetDigital } from '../components/CarnetDigital';
 import { SelectorFotoMascota } from '../components/SelectorFotoMascota';
+import { ModalRecuperarClave } from '../components/ModalRecuperarClave';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { PageWrapper } from '../components/PageWrapper';
@@ -58,6 +59,7 @@ export function Acceso() {
   const [errores, setErrores] = useState({});
   const [errorBackend, setErrorBackend] = useState('');
   const [exitoMensaje, setExitoMensaje] = useState('');
+  const [modalRecuperarAbierto, setModalRecuperarAbierto] = useState(false);
   const [cargando, setCargando] = useState(false);
 
   const redirigirSegunRol = (role) => {
@@ -608,7 +610,25 @@ export function Acceso() {
                   ? 'Iniciar Sesión en GoToX'
                   : 'Crear Cuenta de Usuario'}
               </Button>
+
+              {modo === 'login' && (
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setModalRecuperarAbierto(true)}
+                    className="text-xs font-semibold underline text-[#501228] dark:text-[#F27B91] hover:opacity-80"
+                  >
+                    ¿Olvidaste tu contraseña? Recuperar acceso
+                  </button>
+                </div>
+              )}
             </form>
+
+            <ModalRecuperarClave
+              abierto={modalRecuperarAbierto}
+              correoInicial={correoLogin}
+              onCerrar={() => setModalRecuperarAbierto(false)}
+            />
           </div>
 
           {/* LADO DERECHO: Tarjeta Translúcida con Carnet 3D y Telemetría */}

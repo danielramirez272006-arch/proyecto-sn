@@ -654,6 +654,7 @@ class AuthService {
     );
 
     // Eliminar datos personales en tablas satélites y revocar sesiones
+    await execute('DELETE FROM user_pets WHERE user_id = ?', [user.id]).catch(() => {});
     await execute('DELETE FROM user_vaults WHERE user_id = ?', [user.id]).catch(() => {});
     await execute('DELETE FROM refresh_tokens WHERE user_id = ?', [user.id]).catch(() => {});
     await execute('DELETE FROM password_reset_tokens WHERE user_id = ?', [user.id]).catch(() => {});
@@ -696,7 +697,7 @@ class AuthService {
     return {
       request_id: reqId,
       status: 'completed',
-      deleted_or_anonymized: ['users', 'user_vaults', 'refresh_tokens', 'password_reset_tokens', 'user_roles', 'ai_chat_messages'],
+      deleted_or_anonymized: ['users', 'user_pets', 'user_vaults', 'refresh_tokens', 'password_reset_tokens', 'user_roles', 'ai_chat_messages'],
       retained_legal_summary: retainedSummary,
       processed_at: new Date().toISOString()
     };

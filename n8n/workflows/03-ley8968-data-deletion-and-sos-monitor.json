@@ -1,82 +1,143 @@
 {
-  "name": "GoToX WF-03: Gobernanza Ley 8968 (Baja de Datos) y Auditoría de Cadena",
+  "name": "GoToX 03 · Auditoría y despacho de notificaciones",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "gotox-ley8968-deletion-hook",
-        "responseMode": "onReceived"
-      },
-      "id": "node-webhook-03",
-      "name": "Webhook Solicitud Ley 8968",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [220, 300]
+      "id": "70cac9b8-89d6-42bc-ae41-11519e50a0a9",
+      "name": "Prueba manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ]
     },
     {
+      "id": "93d14419-5552-498e-8151-ecebefbce9d0",
+      "name": "Horario Costa Rica",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
       "parameters": {
-        "method": "GET",
-        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/audit/verify-chain",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/15 * * * *"
+            }
           ]
         }
       },
-      "id": "node-verify-03",
-      "name": "Verificar Integridad Hash Chain",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [500, 300]
+      "position": [
+        0,
+        200
+      ]
     },
     {
+      "id": "3e477c32-4d9d-41f9-b072-77a6ae995b92",
+      "name": "Verificar cadena de auditoría",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "https://backend.example.invalid/api/audit/verify-chain",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "position": [
+        280,
+        100
+      ]
+    },
+    {
+      "id": "9fadc2dd-aec1-4c92-90a1-d6c36e16bebb",
+      "name": "Comprobar resultado de auditoría",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const data = $input.first().json.data;\nif (data?.valid !== true) throw new Error('La verificación de auditoría falló. Revisar GoToX antes de despachar.');\nreturn [{json:{auditValid:true}}];"
+      },
+      "position": [
+        560,
+        100
+      ]
+    },
+    {
+      "id": "d72afc25-af0a-4045-899c-725d807adbde",
+      "name": "Procesar notificaciones pendientes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/agents/report-consensus/run",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
-          ]
+        "url": "https://backend.example.invalid/api/notifications/outbox/process",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"source\": \"n8n_ley8968_audit\", \"chain_valid\": $json.data.valid }"
+        "jsonBody": "{\"batch_size\":10}"
       },
-      "id": "node-consensus-03",
-      "name": "Registrar Revisión con Agente Moderador",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [780, 300]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ $env.GOTOX_API_URL || 'http://localhost:4000' }}/api/notifications/outbox/process",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.GOTOX_ADMIN_JWT }}" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "{ \"batch_size\": 20 }"
-      },
-      "id": "node-dispatch-03",
-      "name": "Enviar Confirmación al Titular",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1040, 300]
+      "position": [
+        840,
+        100
+      ]
     }
   ],
   "connections": {
-    "Webhook Solicitud Ley 8968": { "main": [[{ "node": "Verificar Integridad Hash Chain", "type": "main", "index": 0 }]] },
-    "Verificar Integridad Hash Chain": { "main": [[{ "node": "Registrar Revisión con Agente Moderador", "type": "main", "index": 0 }]] },
-    "Registrar Revisión con Agente Moderador": { "main": [[{ "node": "Enviar Confirmación al Titular", "type": "main", "index": 0 }]] }
+    "Prueba manual": {
+      "main": [
+        [
+          {
+            "node": "Verificar cadena de auditoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Horario Costa Rica": {
+      "main": [
+        [
+          {
+            "node": "Verificar cadena de auditoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar cadena de auditoría": {
+      "main": [
+        [
+          {
+            "node": "Comprobar resultado de auditoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comprobar resultado de auditoría": {
+      "main": [
+        [
+          {
+            "node": "Procesar notificaciones pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": false,
-  "settings": { "timezone": "America/Costa_Rica" },
-  "meta": { "project": "GoToX Pet OS", "rubric_workflow": 3 }
+  "settings": {
+    "timezone": "America/Costa_Rica",
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none"
+  }
 }

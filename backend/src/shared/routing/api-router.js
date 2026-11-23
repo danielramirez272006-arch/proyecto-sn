@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
-const { checkHealth, query } = require('../config/database');
+const { checkHealth, query, getDatabaseSecurityStats } = require('../config/database');
+const { getOrmSecurityCatalog } = require('../../models');
 const { success, badRequest, failure } = require('../utils/http-response');
 const deepSeekClient = require('../config/deepseek-config');
 const geminiClient = require('../config/gemini-config');
@@ -412,7 +413,19 @@ router.get('/places', async (req, res, next) => {
   }
 });
 
-// 5. Pista de Auditoría Enterprise (Admin)
+// 5. Pista de Auditoría Enterprise (Admin) y Estado de Seguridad ORM/BD
+router.get('/admin/db/security-status', requireAdmin, async (req, res) => {
+  const dbHealth = await checkHealth();
+  const securityStats = getDatabaseSecurityStats();
+  const ormModels = getOrmSecurityCatalog();
+  return success(res, {
+    database_health: dbHealth,
+    security_telemetry: securityStats,
+    orm_models_count: ormModels.length,
+    orm_models: ormModels
+  });
+});
+
 router.get('/audit/history', requireAdmin, async (req, res, next) => {
   try {
     const { resource, resource_id, user_id, limit, offset } = req.query;

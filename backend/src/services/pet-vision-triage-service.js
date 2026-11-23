@@ -6,7 +6,7 @@ const multichannelService = require('../modules/notifications/multichannel-notif
 const { inspectAndSanitizeImage } = require('../modules/places/photo-security-validator');
 const { sanitizePromptInjection, assertSafeOutboundUrl } = require('../shared/middlewares/payload-sanitizer');
 const { generateNavigationLinks } = require('../shared/utils/navigation-links');
-const { execute, query } = require('../shared/config/database');
+const { AiInteractionLogModel } = require('../models');
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB límite decodificado
 
@@ -1175,45 +1175,33 @@ class PetVisionTriageService {
       this.recentAnalysesMemory.length = 50;
     }
 
-    await execute(
-      `INSERT INTO ai_interaction_logs
-       (id, agent_name, invoked_by, invoked_role, input_summary, output_summary, provider, model, latency_ms, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        logEntry.id,
-        logEntry.agent_name,
-        logEntry.invoked_by,
-        logEntry.invoked_role,
-        logEntry.input_summary,
-        logEntry.output_summary,
-        logEntry.provider,
-        logEntry.model,
-        logEntry.latency_ms,
-        logEntry.status
-      ]
-    ).catch(() => {});
+    await AiInteractionLogModel.create({
+      id: logEntry.id,
+      agent_name: logEntry.agent_name,
+      invoked_by: logEntry.invoked_by,
+      invoked_role: logEntry.invoked_role,
+      input_summary: logEntry.input_summary,
+      output_summary: logEntry.output_summary,
+      provider: logEntry.provider,
+      model: logEntry.model,
+      latency_ms: logEntry.latency_ms,
+      status: logEntry.status
+    }).catch(() => {});
   }
 
   async getRecentAnalyses({ actor = null, limit = 10 } = {}) {
     const safeLimit = Math.max(1, Math.min(50, Number(limit) || 10));
-    let dbRows = [];
+    const where = { agent_name: 'pet-vision-triage' };
     if (actor?.id && actor.role !== 'admin') {
-      dbRows = await query(
-        `SELECT id, agent_name, invoked_by, invoked_role, input_summary, output_summary, provider, model, latency_ms, status, created_at
-         FROM ai_interaction_logs
-         WHERE agent_name = 'pet-vision-triage' AND invoked_by = ?
-         ORDER BY created_at DESC LIMIT ?`,
-        [actor.id, safeLimit]
-      ).catch(() => []);
-    } else {
-      dbRows = await query(
-        `SELECT id, agent_name, invoked_by, invoked_role, input_summary, output_summary, provider, model, latency_ms, status, created_at
-         FROM ai_interaction_logs
-         WHERE agent_name = 'pet-vision-triage'
-         ORDER BY created_at DESC LIMIT ?`,
-        [safeLimit]
-      ).catch(() => []);
+      where.invoked_by = actor.id;
     }
+
+    const dbRows = await AiInteractionLogModel.findAll({
+      where,
+      orderBy: 'created_at',
+      orderDir: 'DESC',
+      limit: safeLimit
+    }).catch(() => []);
 
     if (Array.isArray(dbRows) && dbRows.length > 0) {
       return dbRows;

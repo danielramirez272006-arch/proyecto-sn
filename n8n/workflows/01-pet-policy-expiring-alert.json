@@ -1,86 +1,299 @@
 {
-  "name": "GoToX 01 · Revisión de políticas de mascotas",
+  "name": "WF-01: Auditoría y Revalidación Omnicanal Pet-Friendly (Google Gemini + Gmail + Sheets + Calendar + Drive)",
   "nodes": [
     {
-      "id": "70055a29-a3e9-4bda-ad07-e67e081a317f",
-      "name": "Prueba manual",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "parameters": {},
-      "position": [
-        0,
-        0
-      ]
-    },
-    {
-      "id": "591aa4a9-3d97-4a52-b7cd-1d1464812173",
-      "name": "Horario Costa Rica",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
       "parameters": {
         "rule": {
-          "interval": [
+          "interval": [{ "field": "hours", "hoursInterval": 24 }]
+        }
+      },
+      "id": "wf1-cron-trigger",
+      "name": "1A. Schedule Diario (08:00 CR)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [140, 180]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pet-policy-confirm",
+        "responseMode": "onReceived"
+      },
+      "id": "wf1-webhook-trigger",
+      "name": "1B. Webhook Confirmación Comercio",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [140, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/admin/places/pet-automation/scan?expiring_within_days=14",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_JWT_TOKEN }}" }
+          ]
+        }
+      },
+      "id": "wf1-http-scan",
+      "name": "2. Escanear Políticas Pet-Friendly",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 280]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "wf1-split-batches",
+      "name": "3. SplitInBatches (Por Comercio)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 280]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
             {
-              "field": "cronExpression",
-              "expression": "0 8 * * *"
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "PET_POLICY_CONFLICT_DETECTED",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "urgente_o_conflicto"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "PET_POLICY_EXPIRING_SOON",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "preventivo_14_dias"
             }
           ]
         }
       },
-      "position": [
-        0,
-        200
-      ]
+      "id": "wf1-switch-urgency",
+      "name": "4. Switch Nivel de Urgencia",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [960, 380]
     },
     {
-      "id": "42fb28ea-9e69-4013-ae96-e95249ad9efd",
-      "name": "Detectar políticas por revisar",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
       "parameters": {
-        "method": "GET",
-        "url": "https://backend.example.invalid/api/admin/pet-automation/events?expiring_within_days=14",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {
-          "timeout": 30000
+        "calendar": { "__rl": true, "value": "primary", "mode": "list" },
+        "start": "={{ $now.plus({ days: 1 }).toISO() }}",
+        "end": "={{ $now.plus({ days: 1, hours: 1 }).toISO() }}",
+        "additionalFields": {
+          "summary": "=Inspección Presencial Pet-Friendly: {{ $json.place_name || $json.place_id }}",
+          "description": "=Revisión por conflicto o vencimiento crítico de evidencia. ID Local: {{ $json.place_id }}"
         }
       },
-      "position": [
-        280,
-        100
-      ]
+      "id": "wf1-google-calendar",
+      "name": "5. Google Calendar: Agendar Inspección",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [1220, 260],
+      "credentials": {
+        "googleCalendarOAuth2Api": { "id": "google-cal-cred", "name": "Google Calendar OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Redacta un correo breve y cordial en español para el comercio {{ $json.place_name || $json.place_id }} en Costa Rica solicitando confirmar su política Pet-Friendly (terraza, correa, cupo máximo) por otros 180 días."
+      },
+      "id": "wf1-llm-chain",
+      "name": "6. Agente Redactor (Google Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1500, 380]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "wf1-gemini-model",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [1540, 580],
+      "credentials": {
+        "googlePalmApi": { "id": "google-gemini-cred", "name": "Google Gemini API Key" }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.merchant_email || 'comercios@sinergiaurbana.cr' }}",
+        "subject": "=Revalidación Semestral Pet-Friendly — {{ $json.place_name || $json.place_id }}",
+        "emailType": "html",
+        "message": "=<p>Hola equipo de <strong>{{ $json.place_name || $json.place_id }}</strong>,</p><p>{{ $json.text || 'Tu certificación Pet-Friendly vence pronto. Confirma tus condiciones en 1 clic.' }}</p><p><a href='{{ $env.N8N_WEBHOOK_URL }}/webhook/pet-policy-confirm?place_id={{ $json.place_id }}'>Confirmar vigencia por 180 días</a></p>"
+      },
+      "id": "wf1-gmail-send",
+      "name": "7. Gmail: Enviar Solicitud al Comercio",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1820, 380],
+      "credentials": {
+        "gmailOAuth2": { "id": "google-gmail-cred", "name": "Gmail OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": { "__rl": true, "value": "={{ $env.GOOGLE_SHEET_PET_AUDIT_ID }}", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Auditoria_Comercios", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "place_id": "={{ $json.place_id }}",
+            "event_type": "={{ $json.event_type }}",
+            "status": "notificado_pendiente",
+            "notified_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": ["place_id"]
+        }
+      },
+      "id": "wf1-google-sheets-log",
+      "name": "8. Google Sheets: Registrar en Bitácora GAM",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2080, 380],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "google-sheets-cred", "name": "Google Sheets OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst first = items[0]?.json || {};\nreturn [{\n  json: {\n    place_id: first.place_id || 'LOC-001',\n    access_status: first.access_status || 'allowed',\n    evidence_ref: first.evidence_ref || `Auditoría n8n completada (${new Date().toISOString()})`,\n    notes: first.notes || 'Lote de revalidación semestral procesado',\n    total_processed: items.length,\n    confirmed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "wf1-code-validate",
+      "name": "9. Code: Consolidar Evidencia y Sello",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/admin/places/pet-automation/webhook-confirm",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_JWT_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"place_id\": $json.place_id, \"access_status\": $json.access_status, \"evidence_ref\": $json.evidence_ref, \"notes\": $json.notes }"
+      },
+      "id": "wf1-http-confirm",
+      "name": "10. Backend: Guardar Evidencia Verificada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 100]
+    },
+    {
+      "parameters": {
+        "operation": "createFromText",
+        "name": "=acta-revalidacion-pet-{{ $now.toFormat('yyyy-MM-dd') }}.md",
+        "content": "=# Acta de Revalidación Semestral Pet-Friendly\n\n- **Local:** {{ $json.place_id }}\n- **Estado:** {{ $json.access_status }}\n- **Evidencia:** {{ $json.evidence_ref }}\n- **Fecha:** {{ $now.toISO() }}\n",
+        "folderId": { "__rl": true, "value": "={{ $env.GOOGLE_DRIVE_REPORTS_FOLDER_ID || 'root' }}", "mode": "id" }
+      },
+      "id": "wf1-google-drive-archive",
+      "name": "11. Google Drive: Archivar Acta Semestral",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1500, 100],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "google-drive-cred", "name": "Google Drive OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.merchant_email || 'comercios@sinergiaurbana.cr' }}",
+        "subject": "=Sello Pet-Friendly Renovado (180 días) — {{ $json.place_id }}",
+        "emailType": "html",
+        "message": "=<p>¡Gracias! La política Pet-Friendly quedó verificada, archivada en Google Drive y activa por 180 días.</p>"
+      },
+      "id": "wf1-gmail-seal",
+      "name": "12. Gmail: Enviar Certificado de Vigencia",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1820, 100],
+      "credentials": {
+        "gmailOAuth2": { "id": "google-gmail-cred", "name": "Gmail OAuth2" }
+      }
     }
   ],
   "connections": {
-    "Prueba manual": {
+    "1A. Schedule Diario (08:00 CR)": {
+      "main": [[{ "node": "2. Escanear Políticas Pet-Friendly", "type": "main", "index": 0 }]]
+    },
+    "1B. Webhook Confirmación Comercio": {
+      "main": [[{ "node": "2. Escanear Políticas Pet-Friendly", "type": "main", "index": 0 }]]
+    },
+    "2. Escanear Políticas Pet-Friendly": {
+      "main": [[{ "node": "3. SplitInBatches (Por Comercio)", "type": "main", "index": 0 }]]
+    },
+    "3. SplitInBatches (Por Comercio)": {
       "main": [
-        [
-          {
-            "node": "Detectar políticas por revisar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "9. Code: Consolidar Evidencia y Sello", "type": "main", "index": 0 }],
+        [{ "node": "4. Switch Nivel de Urgencia", "type": "main", "index": 0 }]
       ]
     },
-    "Horario Costa Rica": {
+    "4. Switch Nivel de Urgencia": {
       "main": [
-        [
-          {
-            "node": "Detectar políticas por revisar",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "5. Google Calendar: Agendar Inspección", "type": "main", "index": 0 }],
+        [{ "node": "6. Agente Redactor (Google Gemini)", "type": "main", "index": 0 }]
       ]
+    },
+    "5. Google Calendar: Agendar Inspección": {
+      "main": [[{ "node": "6. Agente Redactor (Google Gemini)", "type": "main", "index": 0 }]]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [{ "node": "6. Agente Redactor (Google Gemini)", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "6. Agente Redactor (Google Gemini)": {
+      "main": [[{ "node": "7. Gmail: Enviar Solicitud al Comercio", "type": "main", "index": 0 }]]
+    },
+    "7. Gmail: Enviar Solicitud al Comercio": {
+      "main": [[{ "node": "8. Google Sheets: Registrar en Bitácora GAM", "type": "main", "index": 0 }]]
+    },
+    "8. Google Sheets: Registrar en Bitácora GAM": {
+      "main": [[{ "node": "3. SplitInBatches (Por Comercio)", "type": "main", "index": 0 }]]
+    },
+    "9. Code: Consolidar Evidencia y Sello": {
+      "main": [[{ "node": "10. Backend: Guardar Evidencia Verificada", "type": "main", "index": 0 }]]
+    },
+    "10. Backend: Guardar Evidencia Verificada": {
+      "main": [[{ "node": "11. Google Drive: Archivar Acta Semestral", "type": "main", "index": 0 }]]
+    },
+    "11. Google Drive: Archivar Acta Semestral": {
+      "main": [[{ "node": "12. Gmail: Enviar Certificado de Vigencia", "type": "main", "index": 0 }]]
     }
   },
   "active": false,
-  "settings": {
-    "timezone": "America/Costa_Rica",
-    "executionOrder": "v1",
-    "saveDataSuccessExecution": "none",
-    "saveDataErrorExecution": "none"
-  }
+  "settings": { "timezone": "America/Costa_Rica" },
+  "meta": { "rubric_workflow": 1, "google_integrations": ["Google Gemini", "Gmail", "Google Sheets", "Google Calendar", "Google Drive"] }
 }

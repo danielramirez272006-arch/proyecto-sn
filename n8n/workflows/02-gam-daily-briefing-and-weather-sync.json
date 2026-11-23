@@ -1,89 +1,269 @@
 {
-  "name": "GoToX 02 · Boletín diario GAM",
+  "name": "WF-02: Telemetría Climática en Paralelo, Boletín Google Gemini y Archivo en Google Drive + Sheets + Gmail",
   "nodes": [
     {
-      "id": "671905cb-045e-4800-a086-134ae4adc48f",
-      "name": "Prueba manual",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "parameters": {},
-      "position": [
-        0,
-        0
-      ]
-    },
-    {
-      "id": "070a8c83-c9ec-4931-a3d9-c9487cc2e83c",
-      "name": "Horario Costa Rica",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
       "parameters": {
         "rule": {
-          "interval": [
+          "interval": [{ "field": "hours", "hoursInterval": 6 }]
+        }
+      },
+      "id": "wf2-cron",
+      "name": "1. Schedule Cada 6 Horas (GAM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [140, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/weather/comfort-index?lat=9.9355&lng=-84.0652"
+      },
+      "id": "wf2-http-comfort",
+      "name": "2A. Consultar Confort Térmico y Lluvia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 120]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/weather/air-quality?lat=9.9355&lng=-84.0652"
+      },
+      "id": "wf2-http-air",
+      "name": "2B. Consultar Calidad del Aire e Índice UV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/calendar/holidays/status"
+      },
+      "id": "wf2-http-holidays",
+      "name": "2C. Consultar Feriados y Restricción CR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 480]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3
+      },
+      "id": "wf2-merge-parallel",
+      "name": "3. Merge: Unificar 3 Fuentes del GAM",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst snap = items[0]?.json?.data || {};\nconst ambientTemp = Number(snap.temperature_c || 25);\nconst asphaltTemp = Number((ambientTemp * 1.22).toFixed(1));\nconst rainProb = Number(snap.precipitation_probability || 20);\nconst severity = (asphaltTemp >= 30 || rainProb >= 75) ? 'CRITICAL' : (asphaltTemp >= 27 ? 'MODERATE' : 'OPTIMAL');\nreturn [{\n  json: {\n    date: new Date().toISOString().slice(0, 10),\n    timestamp: new Date().toISOString(),\n    ambient_temp_c: ambientTemp,\n    asphalt_temp_c: asphaltTemp,\n    rain_probability_pct: rainProb,\n    severity,\n    safe_walk_recommendation: severity === 'CRITICAL'\n      ? 'Evitar asfalto expuesto entre 10:00 y 15:00; priorizar terrazas techadas.'\n      : 'Ventana óptima para paseo con hidratación regular.'\n  }\n}];"
+      },
+      "id": "wf2-code-risk",
+      "name": "4. Code: Calcular Riesgo Podal y Severidad",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/agents/daily-briefing/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_JWT_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"weather_snapshot\": $json }"
+      },
+      "id": "wf2-http-agent",
+      "name": "5. Ejecutar Agente IA Daily Briefing (Log BD)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sintetiza este reporte ambiental del GAM Costa Rica en un boletín preventivo para tutores de mascotas (Escalante, Sabana, Rohrmoser y Escazú): Asfalto {{ $json.asphalt_temp_c }} °C, Lluvia {{ $json.rain_probability_pct }}%, Severidad {{ $json.severity }}."
+      },
+      "id": "wf2-llm-chain",
+      "name": "6. Agente Editor (Google Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [1480, 300]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {
+          "temperature": 0.25
+        }
+      },
+      "id": "wf2-gemini-model",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [1520, 520],
+      "credentials": {
+        "googlePalmApi": { "id": "google-gemini-cred", "name": "Google Gemini API Key" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "__rl": true, "value": "={{ $env.GOOGLE_SHEET_TELEMETRY_ID }}", "mode": "id" },
+        "sheetName": { "__rl": true, "value": "Historico_Clima_GAM", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $now.toISO() }}",
+            "asphalt_temp_c": "={{ $json.asphalt_temp_c }}",
+            "rain_probability_pct": "={{ $json.rain_probability_pct }}",
+            "severity": "={{ $json.severity }}"
+          }
+        }
+      },
+      "id": "wf2-google-sheets",
+      "name": "7. Google Sheets: Guardar Serie Histórica",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1820, 120],
+      "credentials": {
+        "googleSheetsOAuth2Api": { "id": "google-sheets-cred", "name": "Google Sheets OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "createFromText",
+        "name": "=boletin-ambiental-gam-{{ $now.toFormat('yyyy-MM-dd-HHmm') }}.md",
+        "content": "=# Boletín Ambiental y Podal GAM\n\n- **Fecha:** {{ $now.toISO() }}\n- **Síntesis Gemini:** {{ $json.text }}\n",
+        "folderId": { "__rl": true, "value": "={{ $env.GOOGLE_DRIVE_REPORTS_FOLDER_ID || 'root' }}", "mode": "id" }
+      },
+      "id": "wf2-google-drive",
+      "name": "8. Google Drive: Archivar Reporte Diario",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1820, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": { "id": "google-drive-cred", "name": "Google Drive OAuth2" }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
             {
-              "field": "cronExpression",
-              "expression": "0 7 * * *"
+              "leftValue": "={{ $json.severity }}",
+              "rightValue": "CRITICAL",
+              "operator": { "type": "string", "operation": "equals" }
             }
           ]
         }
       },
-      "position": [
-        0,
-        200
-      ]
+      "id": "wf2-if-critical",
+      "name": "9. IF: ¿Alerta Térmica o Aguacero Crítico?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1820, 480]
     },
     {
-      "id": "a5b98774-eedb-43b9-bf3a-5c56c8acbc70",
-      "name": "Actualizar boletín GAM",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "parameters": {
+        "sendTo": "={{ $env.ALERT_RECIPIENTS_EMAIL || 'operaciones@sinergiaurbana.cr' }}",
+        "subject": "=⚠️ Alerta Ambiental GAM — Boletín Preventivo",
+        "emailType": "html",
+        "message": "=<p>{{ $json.text }}</p>"
+      },
+      "id": "wf2-gmail-alert",
+      "name": "10. Gmail: Enviar Alerta Preventiva",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [2080, 420],
+      "credentials": {
+        "gmailOAuth2": { "id": "google-gmail-cred", "name": "Gmail OAuth2" }
+      }
+    },
+    {
       "parameters": {
         "method": "POST",
-        "url": "https://backend.example.invalid/api/agents/daily-briefing/run",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {
-          "timeout": 30000
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/notifications/outbox/process",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_JWT_TOKEN }}" }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{}"
+        "jsonBody": "{ \"batch_size\": 25 }"
       },
-      "position": [
-        280,
-        100
-      ]
+      "id": "wf2-http-outbox",
+      "name": "11. Backend: Despachar Cola Outbox",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2340, 480]
     }
   ],
   "connections": {
-    "Prueba manual": {
+    "1. Schedule Cada 6 Horas (GAM)": {
       "main": [
         [
-          {
-            "node": "Actualizar boletín GAM",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "2A. Consultar Confort Térmico y Lluvia", "type": "main", "index": 0 },
+          { "node": "2B. Consultar Calidad del Aire e Índice UV", "type": "main", "index": 0 },
+          { "node": "2C. Consultar Feriados y Restricción CR", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Horario Costa Rica": {
+    "2A. Consultar Confort Térmico y Lluvia": {
+      "main": [[{ "node": "3. Merge: Unificar 3 Fuentes del GAM", "type": "main", "index": 0 }]]
+    },
+    "2B. Consultar Calidad del Aire e Índice UV": {
+      "main": [[{ "node": "3. Merge: Unificar 3 Fuentes del GAM", "type": "main", "index": 1 }]]
+    },
+    "2C. Consultar Feriados y Restricción CR": {
+      "main": [[{ "node": "3. Merge: Unificar 3 Fuentes del GAM", "type": "main", "index": 2 }]]
+    },
+    "3. Merge: Unificar 3 Fuentes del GAM": {
+      "main": [[{ "node": "4. Code: Calcular Riesgo Podal y Severidad", "type": "main", "index": 0 }]]
+    },
+    "4. Code: Calcular Riesgo Podal y Severidad": {
+      "main": [[{ "node": "5. Ejecutar Agente IA Daily Briefing (Log BD)", "type": "main", "index": 0 }]]
+    },
+    "5. Ejecutar Agente IA Daily Briefing (Log BD)": {
+      "main": [[{ "node": "6. Agente Editor (Google Gemini)", "type": "main", "index": 0 }]]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [{ "node": "6. Agente Editor (Google Gemini)", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "6. Agente Editor (Google Gemini)": {
       "main": [
         [
-          {
-            "node": "Actualizar boletín GAM",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "7. Google Sheets: Guardar Serie Histórica", "type": "main", "index": 0 },
+          { "node": "8. Google Drive: Archivar Reporte Diario", "type": "main", "index": 0 },
+          { "node": "9. IF: ¿Alerta Térmica o Aguacero Crítico?", "type": "main", "index": 0 }
         ]
       ]
+    },
+    "9. IF: ¿Alerta Térmica o Aguacero Crítico?": {
+      "main": [
+        [{ "node": "10. Gmail: Enviar Alerta Preventiva", "type": "main", "index": 0 }],
+        [{ "node": "11. Backend: Despachar Cola Outbox", "type": "main", "index": 0 }]
+      ]
+    },
+    "10. Gmail: Enviar Alerta Preventiva": {
+      "main": [[{ "node": "11. Backend: Despachar Cola Outbox", "type": "main", "index": 0 }]]
     }
   },
   "active": false,
-  "settings": {
-    "timezone": "America/Costa_Rica",
-    "executionOrder": "v1",
-    "saveDataSuccessExecution": "none",
-    "saveDataErrorExecution": "none"
-  }
+  "settings": { "timezone": "America/Costa_Rica" },
+  "meta": { "rubric_workflow": 2, "google_integrations": ["Google Gemini", "Google Sheets", "Google Drive", "Gmail"] }
 }

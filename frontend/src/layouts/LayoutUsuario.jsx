@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import {
-  Dog,
   Home,
   ArrowLeft,
   ShieldCheck,
@@ -19,6 +18,7 @@ import {
 import { BotonTema } from '../components/BotonTema';
 import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
 import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
+import { LogoSynodos } from '../components/LogoSynodos';
 import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
 
@@ -223,9 +223,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
               title="Ir a la página principal de Synodos"
               className={`flex items-center justify-start pl-1.5 shrink-0 group cursor-pointer rounded-xl ${clasesTema.focusRing}`}
             >
-              <div className="w-10 h-10 shrink-0 rounded-xl bg-[#501228] border border-[#F27B91]/35 flex items-center justify-center text-white shadow-sm group-hover:bg-[#6E1E3A] transition-colors">
-                <Dog className="w-5 h-5 text-[#FDF2F4]" />
-              </div>
+              <LogoSynodos size="md" alt="Synodos" />
               <div
                 className={`flex flex-col transition-[opacity,max-width,padding] ease-[cubic-bezier(0.22,1,0.36,1)] ${
                   compacta ? 'pl-0' : 'pl-3'
@@ -420,9 +418,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
           ============================================================ */}
       <header className={`md:hidden sticky top-0 z-40 border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${clasesTema.sidebar}`}>
         <Link to="/" title="Ir a la página principal" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#501228] flex items-center justify-center text-white">
-            <Dog className="w-4 h-4 text-[#FDF2F4]" />
-          </div>
+          <LogoSynodos size="sm" alt="Synodos" />
           <span className={`font-serif font-bold text-sm ${clasesTema.textoMarca}`}>Synodos</span>
         </Link>
 
@@ -450,9 +446,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
                   onClick={() => setSidebarMovilAbierto(false)}
                   className="flex items-center gap-2"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[#501228] flex items-center justify-center text-white">
-                    <Dog className="w-4 h-4 text-[#FDF2F4]" />
-                  </div>
+                  <LogoSynodos size="sm" alt="Synodos" />
                   <span className={`font-serif font-bold text-sm ${clasesTema.textoMarca}`}>Synodos</span>
                 </Link>
                 <button

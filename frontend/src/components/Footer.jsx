@@ -2,7 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useSesion } from '../hooks/useSesion';
 import { abrirConfiguracionCookies } from '../shared/utils/cookie-consent';
-import { Dog, ShieldCheck, Heart, MapPin, Cookie } from 'lucide-react';
+import { LogoSynodos } from './LogoSynodos';
+import { ShieldCheck, Heart, MapPin, Cookie } from 'lucide-react';
 
 export function Footer() {
   const { isLoggedIn, esAdmin } = useSesion();
@@ -12,10 +13,8 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           {/* Columna Marca */}
           <div className="md:col-span-1 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#501228] flex items-center justify-center text-white">
-                <Dog className="w-4 h-4 text-[#FDF2F4]" />
-              </div>
+            <div className="flex items-center gap-2.5">
+              <LogoSynodos size="sm" alt="Synodos Pet OS" />
               <span className="font-serif font-black text-lg text-[#111827]">
                 Synodos Pet OS
               </span>

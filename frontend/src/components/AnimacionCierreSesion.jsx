@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Lock, ShieldCheck, Dog, Sparkles } from 'lucide-react';
+import { Lock, ShieldCheck } from 'lucide-react';
+import { LogoSynodos } from './LogoSynodos';
 
 /**
  * Modal animado de cierre de sesión con estética minimalista premium (Apple-like).
@@ -55,10 +56,11 @@ export function AnimacionCierreSesion({ visible, nombreUsuario = 'Tutor', onComp
           <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-[#55152D] to-[#6E1E3A] text-white flex items-center justify-center shadow-lg shadow-[#55152D]/35">
             <Lock className="w-9 h-9 text-[#FDF2F4] animate-pulse" />
 
-            {/* Insignia pequeña de mascota */}
-            <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white dark:bg-[#111827] text-[#55152D] dark:text-[#F27B91] border-2 border-white dark:border-[#111827] flex items-center justify-center shadow-sm">
-              <Dog className="w-3.5 h-3.5" />
-            </div>
+            {/* Emblema oficial de Synodos */}
+            <LogoSynodos
+              size="xs"
+              className="absolute -bottom-1 -right-1 border-2 border-white dark:border-[#111827] shadow-sm"
+            />
           </div>
         </div>
 

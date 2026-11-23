@@ -8,7 +8,6 @@ import {
   Sparkles,
   Users,
   ShieldCheck,
-  Dog,
   Activity,
   LogIn,
   LogOut,
@@ -26,6 +25,7 @@ import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
 import { ModalConfirmarCierre } from './ModalConfirmarCierre';
 import { AnimacionCierreSesion } from './AnimacionCierreSesion';
+import { LogoSynodos } from './LogoSynodos';
 
 export function Sidebar({ compacta = false, onToggleCompacta }) {
   const location = useLocation();
@@ -244,9 +244,7 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
               aria-label="Synodos Pet OS - Inicio"
               className={`flex items-center justify-start shrink-0 group rounded-xl pl-1.5 ${clasesTema.focusRing}`}
             >
-              <div className="w-10 h-10 shrink-0 rounded-xl bg-[#501228] border border-[#F27B91]/35 flex items-center justify-center text-white shadow-md shadow-[#501228]/35 group-hover:bg-[#6E1E3A] transition-colors">
-                <Dog className="w-5 h-5 text-[#FDF2F4]" aria-hidden="true" />
-              </div>
+              <LogoSynodos size="md" alt="Synodos" />
 
               {/* Texto de marca siempre renderizado en el DOM; sin padding residual al colapsar */}
               <div
@@ -608,9 +606,7 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
         }`}
       >
         <Link to="/" className={`flex items-center gap-2.5 rounded-lg ${clasesTema.focusRing}`}>
-          <div className="w-8 h-8 rounded-lg bg-[#501228] border border-[#F27B91]/35 flex items-center justify-center text-white">
-            <Dog className="w-4 h-4 text-[#FDF2F4]" aria-hidden="true" />
-          </div>
+          <LogoSynodos size="sm" alt="Synodos" />
           <span className={`font-serif font-black text-base tracking-tight flex items-center gap-1.5 ${clasesTema.textoMarca}`}>
             Synodos
             <span className={`text-[9px] uppercase font-sans font-semibold tracking-wider px-1 py-0.5 rounded ${clasesTema.badgePetOs}`}>

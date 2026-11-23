@@ -70,6 +70,18 @@ export function CarnetDigital({ mascota, interactivo = true }) {
     textoPie: esClaro ? 'text-slate-500' : esMorado ? 'text-[#D8C3CC]' : 'text-slate-400',
   };
 
+  const fotoMascota = mascota?.foto || mascota?.photoUrl || mascota?.photo_url || null;
+  const idCorto = String(mascota?.id || 'PET-CR-0001').split('-').slice(-2).join('-');
+  const alergiasTexto = Array.isArray(mascota?.alergias)
+    ? mascota.alergias.join(', ')
+    : typeof mascota?.alergias === 'string'
+    ? mascota.alergias
+    : '';
+  const nombreMascota = mascota?.nombre || 'Mi Mascota';
+  const aseguradora = mascota?.polizaMedica?.aseguradora || 'Bóveda Médica GoToX';
+  const numeroPoliza = mascota?.polizaMedica?.numeroPoliza || 'PET-GAM-ACTIVO';
+  const telefonoTutor = mascota?.tutor?.telefono || 'Sin registrar';
+
   return (
     <div className="perspective-1000 w-full max-w-md mx-auto select-none">
       <div
@@ -92,15 +104,25 @@ export function CarnetDigital({ mascota, interactivo = true }) {
         {/* Encabezado del Carnet */}
         <div className={`flex items-start justify-between pb-4 border-b relative z-10 ${clasesCarnet.bordeInterno}`}>
           <div className="flex items-center gap-3">
-            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-md ${clasesCarnet.iconoHeader}`}>
-              <Dog className="w-6 h-6" />
-            </div>
+            {fotoMascota ? (
+              <div className="w-13 h-13 rounded-2xl overflow-hidden shadow-md border-2 border-[#F27B91]/40 shrink-0 bg-slate-800">
+                <img
+                  src={fotoMascota}
+                  alt={nombreMascota}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-md shrink-0 ${clasesCarnet.iconoHeader}`}>
+                <Dog className="w-6 h-6" />
+              </div>
+            )}
             <div>
               <span className={`text-[10px] tracking-widest uppercase font-semibold block ${clasesCarnet.subtituloHeader}`}>
                 Bóveda Biométrica &bull; GAM
               </span>
               <h3 className={`font-serif font-black text-xl ${clasesCarnet.titulo}`}>
-                {mascota.nombre}
+                {nombreMascota}
               </h3>
             </div>
           </div>
@@ -110,7 +132,7 @@ export function CarnetDigital({ mascota, interactivo = true }) {
               Pet-OS Verificado
             </Badge>
             <span className="text-[9px] opacity-60 block mt-1 tabular-nums">
-              ID: {mascota.id.split('-').slice(-2).join('-')}
+              ID: {idCorto}
             </span>
           </div>
         </div>
@@ -120,14 +142,14 @@ export function CarnetDigital({ mascota, interactivo = true }) {
           <div className="grid grid-cols-2 gap-3">
             <div className={`p-2.5 rounded-xl border shadow-2xs ${clasesCarnet.cajaDato}`}>
               <span className="text-[10px] uppercase font-semibold opacity-60 block">Raza & Manto</span>
-              <p className="font-bold text-xs truncate mt-0.5">{mascota.raza}</p>
-              <span className="text-[10px] opacity-75">{mascota.colorManto}</span>
+              <p className="font-bold text-xs truncate mt-0.5">{mascota?.raza || 'Mestizo'}</p>
+              <span className="text-[10px] opacity-75">{mascota?.colorManto || 'Variado'}</span>
             </div>
 
             <div className={`p-2.5 rounded-xl border shadow-2xs ${clasesCarnet.cajaDato}`}>
               <span className="text-[10px] uppercase font-semibold opacity-60 block">Biometría</span>
-              <p className="font-bold text-xs mt-0.5">{mascota.pesoKg} kg &bull; {mascota.edadAnos} años</p>
-              <span className="text-[10px] text-emerald-500 font-medium">Sangre: {mascota.grupoSanguineo}</span>
+              <p className="font-bold text-xs mt-0.5">{mascota?.pesoKg || 15} kg &bull; {mascota?.edadAnos || 2} años</p>
+              <span className="text-[10px] text-emerald-500 font-medium">Sangre: {mascota?.grupoSanguineo || 'Por definir'}</span>
             </div>
           </div>
 
@@ -136,7 +158,7 @@ export function CarnetDigital({ mascota, interactivo = true }) {
             <div className="space-y-0.5">
               <span className="text-[10px] uppercase font-semibold opacity-60 block">Microchip Universal</span>
               <span className="font-mono text-xs font-bold tracking-wider">
-                {mascota.microchipId}
+                {mascota?.microchipId || 'En trámite'}
               </span>
             </div>
             <ShieldCheck className="w-5 h-5 text-emerald-500" />
@@ -146,14 +168,14 @@ export function CarnetDigital({ mascota, interactivo = true }) {
           <div className={`p-3 rounded-xl border space-y-1 ${clasesCarnet.cajaPoliza}`}>
             <div className="flex items-center justify-between">
               <span className={`text-[10px] font-bold uppercase tracking-wide ${esClaro ? 'text-[#501228]' : 'text-[#F27B91]'}`}>
-                {mascota.polizaMedica.aseguradora}
+                {aseguradora}
               </span>
               <span className="text-[10px] text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded font-medium border border-emerald-500/20">
                 Activa
               </span>
             </div>
             <p className="text-[11px] opacity-90">
-              Póliza: <strong>{mascota.polizaMedica.numeroPoliza}</strong> &bull; Cobertura emergencias activa
+              Registro: <strong>{numeroPoliza}</strong> &bull; Cobertura de emergencia
             </p>
           </div>
 
@@ -161,7 +183,7 @@ export function CarnetDigital({ mascota, interactivo = true }) {
           <div className={`carnet-alergias flex items-start gap-2 p-2 rounded-xl border text-[11px] ${clasesCarnet.cajaAlergias}`}>
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 opacity-80" />
             <div>
-              <span className="font-semibold">Alergias registradas:</span> {mascota.alergias.join(', ')}.
+              <span className="font-semibold">Alergias registradas:</span> {alergiasTexto || 'Ninguna registrada'}.
             </div>
           </div>
         </div>
@@ -170,7 +192,7 @@ export function CarnetDigital({ mascota, interactivo = true }) {
         <div className={`pt-3 border-t flex items-center justify-between text-[11px] relative z-10 ${clasesCarnet.bordeInterno} ${clasesCarnet.textoPie}`}>
           <div className="flex items-center gap-1.5">
             <Phone className={`w-3.5 h-3.5 ${esClaro ? 'text-[#501228]' : 'text-[#F27B91]'}`} />
-            <span>Tutor: <strong>{mascota.tutor.telefono}</strong></span>
+            <span>Tutor: <strong>{telefonoTutor}</strong></span>
           </div>
           <span className="text-[10px] opacity-60">
             {interactivo ? 'Haz click para alternar' : 'Válido en red GAM'}

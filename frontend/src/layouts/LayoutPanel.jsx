@@ -294,7 +294,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
           {/* Tarjeta del Operador y Cerrar Sesión */}
           <div className="space-y-2">
             <div className={`flex items-center justify-between p-2.5 rounded-xl border shadow-2xs ${clasesTema.tarjetaUsuario}`}>
-              <Link to="/perfil" className="flex items-center gap-2.5 min-w-0 group flex-1">
+              <Link to="/usuario?tab=cuenta" className="flex items-center gap-2.5 min-w-0 group flex-1">
                 <div className="relative">
                   <div className="w-8 h-8 rounded-lg bg-[#501228] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs group-hover:bg-[#6E1E3A] transition-colors">
                     {usuario?.nombre?.charAt(0) || 'U'}
@@ -303,17 +303,17 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                 </div>
                 <div className="truncate text-left">
                   <p className="text-xs font-bold truncate group-hover:text-[#F27B91] transition-colors">
-                    {usuario?.nombre || 'Mariana Rojas'}
+                    {usuario?.nombre || 'Administrador'}
                   </p>
                   <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
                     <Shield className="w-2.5 h-2.5 text-emerald-500" />
-                    <span>Operador Nivel 1</span>
+                    <span>Administrador Exclusivo</span>
                   </p>
                 </div>
               </Link>
               <Link
-                to="/perfil"
-                title="Ir a Bóveda Pet"
+                to="/usuario?tab=cuenta"
+                title="Ir a Mi Cuenta"
                 className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -425,7 +425,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                   <span>Volver a Web Pública</span>
                 </Link>
                 <Link
-                  to="/perfil"
+                  to="/usuario?tab=cuenta"
                   onClick={() => setSidebarMovilAbierto(false)}
                   className="flex items-center gap-2 px-3 py-2 text-xs opacity-75 hover:opacity-100 rounded-xl"
                 >

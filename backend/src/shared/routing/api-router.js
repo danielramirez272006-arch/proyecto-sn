@@ -11,7 +11,7 @@ const { scheduler } = require('../../autonomous-agents');
 const { openApiSpec, renderSwaggerUiHtml } = require('../docs/swagger-ui-handler');
 const placesRepository = require('../../modules/places/places-repository');
 const auditService = require('../audit/audit-service');
-const { requireAdmin } = require('../middlewares/auth-role-guard');
+const { requireAuth, requireAdmin } = require('../middlewares/auth-role-guard');
 const rateLimiter = require('../middlewares/rate-limiter');
 const envConfig = require('../config/env-config');
 
@@ -977,6 +977,10 @@ router.use('/pet-videos', require('../../modules/vet-hub').petCareVideosRoutes);
 router.use('/businesses', require('../../modules/businesses').businessesRoutes);
 router.use('/live', require('../../modules/live-map-waze').liveMapRoutes);
 router.use('/rescue', require('../../modules/urban-rescue').rescueRoutes);
+router.delete('/client/account', requireAuth, rateLimiter.authLimiter, (req, res, next) =>
+  require('../../modules/auth/auth-controller').deleteAccount(req, res, next)
+);
 router.use('/client', require('../../modules/client-dashboard').clientRoutes);
+router.use('/agents', require('../../routes/agents-routes'));
 
 module.exports = router;

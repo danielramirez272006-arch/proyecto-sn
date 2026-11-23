@@ -2,13 +2,11 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import { LayoutPublico } from '../layouts/LayoutPublico';
-import { Home } from '../pages/Home';
+import { RutaPrivada } from './RutaPrivada';
 import { RutaAdmin } from './RutaAdmin';
+import { Home } from '../pages/Home';
 
-const ExplorarPage = lazy(() => import('../pages/ExplorarPage').then((m) => ({ default: m.ExplorarPage || m.default })));
-const MisPlanesPage = lazy(() => import('../pages/MisPlanesPage').then((m) => ({ default: m.MisPlanesPage || m.default })));
-const FavoritosPage = lazy(() => import('../pages/FavoritosPage').then((m) => ({ default: m.FavoritosPage || m.default })));
-const MiMascotaPage = lazy(() => import('../pages/MiMascotaPage').then((m) => ({ default: m.MiMascotaPage || m.default })));
+const UsuarioPanel = lazy(() => import('../pages/UsuarioPanel').then((m) => ({ default: m.UsuarioPanel || m.default })));
 const MapaPage = lazy(() => import('../pages/MapaPage').then((m) => ({ default: m.MapaPage || m.default })));
 const TerrazasPage = lazy(() => import('../pages/TerrazasPage').then((m) => ({ default: m.TerrazasPage || m.default })));
 const CopilotoPage = lazy(() => import('../pages/CopilotoPage').then((m) => ({ default: m.CopilotoPage || m.default })));
@@ -17,7 +15,6 @@ const TerminosCondiciones = lazy(() =>
   import('../pages/TerminosCondiciones').then((m) => ({ default: m.TerminosCondiciones || m.default }))
 );
 const Acceso = lazy(() => import('../pages/Acceso').then((m) => ({ default: m.Acceso || m.default })));
-const Perfil = lazy(() => import('../pages/Perfil').then((m) => ({ default: m.Perfil || m.default })));
 const Panel = lazy(() => import('../pages/Panel').then((m) => ({ default: m.Panel || m.default })));
 
 export function AnimatedRoutes() {
@@ -33,26 +30,73 @@ export function AnimatedRoutes() {
         }
       >
         <Routes location={location} key={location.pathname}>
-          {/* Vistas principales bajo LayoutPublico */}
+          {/* Rutas Públicas de GoToX */}
           <Route element={<LayoutPublico />}>
             <Route path="/" element={<Home />} />
-            <Route path="/explorar" element={<ExplorarPage />} />
-            <Route path="/mis-planes" element={<MisPlanesPage />} />
-            <Route path="/favoritos" element={<FavoritosPage />} />
-            <Route path="/mi-mascota" element={<MiMascotaPage />} />
             <Route path="/mapa" element={<MapaPage />} />
             <Route path="/terrazas" element={<TerrazasPage />} />
             <Route path="/copiloto" element={<CopilotoPage />} />
             <Route path="/nosotros" element={<Nosotros />} />
             <Route path="/terminos" element={<TerminosCondiciones />} />
             <Route path="/acceso" element={<Acceso />} />
-            <Route path="/perfil" element={<Perfil />} />
+
+            {/* Atajos de rutas de usuario redirigen al Portal Exclusivo de Usuarios */}
+            <Route
+              path="/explorar"
+              element={
+                <RutaPrivada modulo="Explorar Catálogo">
+                  <Navigate to="/usuario?tab=explorar" replace />
+                </RutaPrivada>
+              }
+            />
+            <Route
+              path="/mis-planes"
+              element={
+                <RutaPrivada modulo="Mis Planes">
+                  <Navigate to="/usuario?tab=planes" replace />
+                </RutaPrivada>
+              }
+            />
+            <Route
+              path="/favoritos"
+              element={
+                <RutaPrivada modulo="Mis Favoritos">
+                  <Navigate to="/usuario?tab=favoritos" replace />
+                </RutaPrivada>
+              }
+            />
+            <Route
+              path="/mi-mascota"
+              element={
+                <RutaPrivada modulo="Mi Mascota">
+                  <Navigate to="/usuario?tab=mascota" replace />
+                </RutaPrivada>
+              }
+            />
+            <Route
+              path="/perfil"
+              element={
+                <RutaPrivada modulo="Mi Cuenta & Bóveda">
+                  <Navigate to="/usuario?tab=cuenta" replace />
+                </RutaPrivada>
+              }
+            />
             {/* Compatibilidad con rutas anteriores */}
             <Route path="/servicios" element={<Navigate to="/explorar" replace />} />
             <Route path="/emergencias" element={<Navigate to="/mi-mascota" replace />} />
           </Route>
 
-          {/* Vista Privada: Panel de Control GAM (solo administradores verificados por el servidor) */}
+          {/* Página Exclusiva de Usuarios (Portal independiente) */}
+          <Route
+            path="/usuario"
+            element={
+              <RutaPrivada modulo="Mi Espacio de Usuario">
+                <UsuarioPanel />
+              </RutaPrivada>
+            }
+          />
+
+          {/* Página Exclusiva de Administración (solo cuentas role === 'admin' verificadas por el servidor) */}
           <Route
             path="/panel"
             element={

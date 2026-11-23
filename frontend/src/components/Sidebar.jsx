@@ -34,8 +34,8 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
   const location = useLocation();
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
-  const { isLoggedIn, usuario, cerrarSesion } = useSesion();
-  const { tema, setTema, esClaro, esMorado } = useTema();
+  const { isLoggedIn, esAdmin, usuario, cerrarSesion } = useSesion();
+  const { tema, setTema, esClaro, esMorado, esOscuro } = useTema();
 
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
   const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
@@ -47,16 +47,12 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
 
   const enlacesNavegacion = [
     { nombre: 'Inicio', ruta: '/', icon: Home },
-    { nombre: 'Explorar', ruta: '/explorar', icon: Compass },
-    { nombre: 'Mis Planes', ruta: '/mis-planes', icon: Calendar },
-    { nombre: 'Favoritos', ruta: '/favoritos', icon: Heart },
-    { nombre: 'Mi Mascota', ruta: '/mi-mascota', icon: Dog },
     { nombre: 'Mapa Interactivo', ruta: '/mapa', icon: Map, badge: 'GAM' },
     { nombre: 'Terrazas Verificadas', ruta: '/terrazas', icon: Coffee },
     { nombre: 'Copiloto Bruno', ruta: '/copiloto', icon: Sparkles },
     { nombre: 'Sobre Nosotros', ruta: '/nosotros', icon: Users },
     ...(isLoggedIn
-      ? [{ nombre: 'Bóveda Pet', ruta: '/perfil', icon: ShieldCheck, badge: 'Activo' }]
+      ? [{ nombre: 'Bóveda Pet', ruta: '/usuario', icon: ShieldCheck, badge: 'Activo' }]
       : [{ nombre: 'Bóveda Pet', ruta: '/acceso', icon: ShieldCheck }])
   ];
 
@@ -581,13 +577,21 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
         </Link>
 
         <div className="flex items-center gap-2">
-          {isLoggedIn ? (
+          {esAdmin ? (
             <Link
               to="/panel"
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#501228] border border-[#F27B91]/35 ${clasesTema.focusRing}`}
             >
               <Activity className="w-3.5 h-3.5 text-[#F27B91]" aria-hidden="true" />
               <span className="hidden xs:inline">Panel</span>
+            </Link>
+          ) : isLoggedIn ? (
+            <Link
+              to="/usuario"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-white bg-[#501228] border border-[#F27B91]/30"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#F27B91]" />
+              <span className="hidden xs:inline">Mi Espacio</span>
             </Link>
           ) : (
             <Link

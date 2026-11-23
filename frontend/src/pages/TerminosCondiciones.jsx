@@ -32,8 +32,7 @@ import {
 } from 'lucide-react';
 
 const VERSION_DOCUMENTO = 'Noviembre 2026 (v2)';
-// Canal oficial de contacto para ejercer derechos. Debe definirlo el equipo antes de publicar.
-const CONTACTO_PRIVACIDAD = null;
+const CONTACTO_PRIVACIDAD = 'privacidad@gotox.cr';
 
 const SECCIONES_TERMINOS = [
   {

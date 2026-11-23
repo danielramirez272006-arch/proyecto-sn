@@ -126,10 +126,13 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     assert.equal(check.length, 0, 'El rollback debe haber revertido el insert');
   });
 
-  await suite.test('4. Seguridad: PBKDF2 Password Hashing con Sal Aleatoria', () => {
+  await suite.test('4. Seguridad: Bcrypt Password Hashing con Sal Aleatoria', () => {
     const rawPass = 'PuraVida2026!';
     const hash = authService.hashPassword(rawPass);
-    assert.ok(hash.includes(':'), 'El hash debe contener formato salt:hash');
+    assert.ok(
+      hash.startsWith('$2a$') || hash.startsWith('$2b$'),
+      'El hash debe usar formato estándar bcrypt ($2a$/$2b$)'
+    );
     
     const isValid = authService.verifyPassword(rawPass, hash);
     assert.equal(isValid, true, 'La contraseña válida debe verificarse correctamente');
@@ -141,7 +144,7 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
   await suite.test('5. Rotación de Refresh Tokens y Renovación de Sesión (/api/auth/refresh)', async () => {
     const email = `test_${Date.now()}@cr.dev`;
     const regRes = await executeMockRequest('POST', '/api/auth/register', {
-      body: { name: 'Usuario Prueba', email, password: 'password123' }
+      body: { name: 'Usuario Prueba', email, password: 'password123', acceptTerms: true, acceptPrivacy: true }
     });
     assert.equal(regRes.status, 201);
     const refreshToken = regRes.body.data.refresh_token;
@@ -965,7 +968,7 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
 
     // 2. Registro exitoso (ignora role='admin' y asigna 'client')
     const regRes = await executeMockRequest('POST', '/api/auth/register', {
-      body: { name: 'Ana Test', email: 'Ana.Test@GoToX.cr', password: 'Password123!', role: 'admin' }
+      body: { name: 'Ana Test', email: 'Ana.Test@GoToX.cr', password: 'Password123!', role: 'admin', acceptTerms: true, acceptPrivacy: true }
     });
     assert.equal(regRes.status, 201);
     assert.equal(regRes.body.data.user.role, 'client');
@@ -975,7 +978,7 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
 
     // 3. Correo duplicado devuelve 409 Conflict
     const dupRes = await executeMockRequest('POST', '/api/auth/register', {
-      body: { name: 'Ana 2', email: 'ana.test@gotox.cr', password: 'Password123!' }
+      body: { name: 'Ana 2', email: 'ana.test@gotox.cr', password: 'Password123!', acceptTerms: true, acceptPrivacy: true }
     });
     assert.equal(dupRes.status, 409);
 
@@ -1025,5 +1028,97 @@ test('Suite Enterprise: Observabilidad, Transacciones, Seguridad y DeepSeek AI',
     const detailRes = await executeMockRequest('GET', `/api/live/places/${firstId}`);
     assert.equal(detailRes.status, 200);
     assert.equal(detailRes.body.data.id, firstId);
+  });
+
+  await suite.test('43. Cuentas exclusivas Admin vs Usuarios Normales, Mascota vinculada y Bóveda persistente', async () => {
+    // 1. Cuenta exclusiva Admin puede iniciar sesión y ver /api/admin/users
+    const adminLoginRes = await executeMockRequest('POST', '/api/auth/login', {
+      body: { email: 'admin@gotox.cr', password: process.env.ADMIN_PASSWORD || 'AdminGoToX2026!' }
+    });
+    assert.equal(adminLoginRes.status, 200);
+    assert.equal(adminLoginRes.body.data.user.role, 'admin');
+
+    const adminUsersRes = await executeMockRequest('GET', '/api/admin/users', {
+      headers: { Authorization: `Bearer ${adminLoginRes.body.data.token}` }
+    });
+    assert.equal(adminUsersRes.status, 200);
+    const adminUsersList = Array.isArray(adminUsersRes.body.data)
+      ? adminUsersRes.body.data
+      : adminUsersRes.body.data?.users;
+    assert.ok(Array.isArray(adminUsersList));
+    assert.ok(adminUsersList.some((u) => u.email === 'admin@gotox.cr'));
+
+    // 2. Registrar nuevo usuario con información de su mascota (ignora role='admin')
+    const clientRegRes = await executeMockRequest('POST', '/api/auth/register', {
+      body: {
+        name: 'Laura Jiménez',
+        email: 'laura.jimenez@gotox.cr',
+        password: 'MiClaveSegura2026!',
+        role: 'admin',
+        acceptTerms: true,
+        acceptPrivacy: true,
+        phone: '+506 8700-1122',
+        zone: 'Rohrmoser, Pavas',
+        hasPet: true,
+        pet: {
+          nombre: 'Max',
+          especie: 'Canino',
+          raza: 'Beagle',
+          pesoKg: 13.5,
+          microchipId: 'CRC-999-MAX-01',
+          foto: 'data:image/jpeg;base64,/9j/4AAQSkZJRg=='
+        }
+      }
+    });
+    assert.equal(clientRegRes.status, 201);
+    assert.equal(clientRegRes.body.data.user.role, 'client');
+    assert.equal(clientRegRes.body.data.user.pet.nombre, 'Max');
+    assert.equal(clientRegRes.body.data.user.pet.raza, 'Beagle');
+    assert.equal(clientRegRes.body.data.user.pet.foto, 'data:image/jpeg;base64,/9j/4AAQSkZJRg==');
+
+    const clientToken = clientRegRes.body.data.token;
+
+    // 3. Usuario normal puede leer y actualizar su propia bóveda (/api/client/vault)
+    const vaultGetRes = await executeMockRequest('GET', '/api/client/vault', {
+      headers: { Authorization: `Bearer ${clientToken}` }
+    });
+    assert.equal(vaultGetRes.status, 200);
+    assert.equal(vaultGetRes.body.data.user.name, 'Laura Jiménez');
+    assert.equal(vaultGetRes.body.data.pet.nombre, 'Max');
+    assert.equal(vaultGetRes.body.data.pet.foto, 'data:image/jpeg;base64,/9j/4AAQSkZJRg==');
+
+    const vaultUpdateRes = await executeMockRequest('POST', '/api/client/vault', {
+      headers: { Authorization: `Bearer ${clientToken}` },
+      body: {
+        zone: 'Santa Ana, San José',
+        pet: {
+          nombre: 'Max Jr',
+          raza: 'Beagle Tricolor',
+          pesoKg: 14.2,
+          foto: 'https://ejemplo.cr/max-jr.jpg'
+        }
+      }
+    });
+    assert.equal(vaultUpdateRes.status, 200);
+    assert.equal(vaultUpdateRes.body.data.user.zone, 'Santa Ana, San José');
+    assert.equal(vaultUpdateRes.body.data.pet.nombre, 'Max Jr');
+    assert.equal(vaultUpdateRes.body.data.pet.foto, 'https://ejemplo.cr/max-jr.jpg');
+
+    // 4. Usuario normal NO tiene acceso a rutas administrativas (403 Forbidden)
+    const forbiddenUsersRes = await executeMockRequest('GET', '/api/admin/users', {
+      headers: { Authorization: `Bearer ${clientToken}` }
+    });
+    assert.equal(forbiddenUsersRes.status, 403);
+
+    const forbiddenTelemetryRes = await executeMockRequest('GET', '/api/admin/telemetry', {
+      headers: { Authorization: `Bearer ${clientToken}` }
+    });
+    assert.equal(forbiddenTelemetryRes.status, 403);
+
+    // 5. Login con contraseña incorrecta devuelve 401
+    const badLoginRes = await executeMockRequest('POST', '/api/auth/login', {
+      body: { email: 'admin@gotox.cr', password: 'WrongPassword123' }
+    });
+    assert.equal(badLoginRes.status, 401);
   });
 });

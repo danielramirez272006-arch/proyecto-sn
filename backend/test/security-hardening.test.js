@@ -140,7 +140,14 @@ test('Seguridad: cabeceras endurecidas y sin X-Powered-By', async () => {
 test('Seguridad: el registro ignora la elevación a rol admin', async () => {
   await conServidor(async (base) => {
     const res = await pedir(base, 'POST', '/api/auth/register', {
-      body: { name: 'Intruso', email: `intruso_${Date.now()}@gotox.cr`, password: 'Password123!', role: 'admin' },
+      body: {
+        name: 'Intruso',
+        email: `intruso_${Date.now()}@gotox.cr`,
+        password: 'Password123!',
+        role: 'admin',
+        acceptTerms: true,
+        acceptPrivacy: true,
+      },
     });
     assert.equal(res.status, 201);
     const json = await res.json();
@@ -162,16 +169,21 @@ test('Base de datos: schema_migrations, persistencia real de user_vaults y auto-
   ]);
   assert.equal(migRows.length, 1);
 
-  // 2. Persistencia real en user_vaults (sobrevive limpieza de memoria)
+  // 2. Persistencia real en user_vaults y user_pets (sobrevive limpieza de memoria)
   const uid = `usr_vault_${Date.now()}`;
+  await execute(
+    `INSERT INTO users (id, name, email, password_hash, role) VALUES (?, 'Usuario Bóveda', ?, 'hash', 'client')`,
+    [uid, `${uid}@gotox.cr`]
+  );
   await clientService.updateVault(uid, {
-    pets: [{ name: 'Bruno', species: 'dog', weight_kg: 28 }],
+    has_pet: true,
+    pet: { nombre: 'Bruno', especie: 'Canino', pesoKg: 28 },
     vehicle_plate_digit: 5,
   });
   clientService.vaults.clear();
   const reloaded = await clientService.getVault(uid);
   assert.equal(reloaded.pets.length, 1);
-  assert.equal(reloaded.pets[0].name, 'Bruno');
+  assert.equal(reloaded.pets[0].nombre, 'Bruno');
   assert.equal(reloaded.vehicle_plate_digit, 5);
 
   // 3. Auto-upgrade de contraseña legacy sha256_ a PBKDF2-SHA512 al iniciar sesión
@@ -185,7 +197,10 @@ test('Base de datos: schema_migrations, persistencia real de user_vaults y auto-
 
   await authService.login(legacyEmail, plainPass);
   const updatedRows = await query('SELECT password_hash FROM users WHERE LOWER(email) = ?', [legacyEmail]);
-  assert.ok(updatedRows[0].password_hash.includes(':'), 'La contraseña legacy debe haberse migrado a PBKDF2 (salt:hash)');
+  assert.ok(
+    updatedRows[0].password_hash.startsWith('$2a$') || updatedRows[0].password_hash.startsWith('$2b$'),
+    'La contraseña legacy debe haberse migrado a bcrypt ($2a$/$2b$)'
+  );
 
   // 4. Limpieza de refresh_tokens revocados o expirados
   const activeId = `rt_active_${Date.now()}`;

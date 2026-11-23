@@ -17,6 +17,7 @@ async function bootstrap() {
       try {
         await runMigrations();
         await runSeeds();
+        await authService.ensureDefaultAccounts();
       } catch (dbErr) {
         console.warn('[Server] Aviso al auto-aplicar migraciones/seeds:', dbErr.message);
       }

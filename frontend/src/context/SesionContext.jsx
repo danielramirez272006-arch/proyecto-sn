@@ -1,19 +1,46 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { MASCOTA_ACTIVA_DEFECTO } from '../data/mascota';
 import { authService } from '../shared/services/auth-service';
+import { api } from '../shared/services/api-client';
 
 const CLAVE_STORAGE = 'gotox_sesion_activa';
 
 const SESION_DEFECTO = {
   isLoggedIn: false,
   usuario: {
-    nombre: "Mariana Rojas",
-    correo: "mariana.rojas@gotox.cr",
-    rol: "Tutor Certificado Pet-OS",
-    ciudad: "San José, Costa Rica",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+    id: null,
+    nombre: '',
+    correo: '',
+    role: 'client',
+    telefono: '',
+    ubicacion: 'San José, Costa Rica',
+    tieneMascota: false
   },
-  mascota: MASCOTA_ACTIVA_DEFECTO,
+  mascota: {
+    ...MASCOTA_ACTIVA_DEFECTO,
+    nombre: 'Sin mascota registrada',
+    raza: 'Sin especificar',
+    pesoKg: 0,
+    microchipId: '',
+    foto: null,
+    photoUrl: null,
+    tutor: {
+      ...MASCOTA_ACTIVA_DEFECTO.tutor,
+      nombre: '',
+      correo: '',
+      telefono: ''
+    }
+  },
+  boveda: {
+    budget_level: 'medio',
+    interests: ['Cafeterías de especialidad', 'Terrazas al aire libre'],
+    preferences: {
+      notificacionesLluvia: true,
+      notificacionesAcusticas: true,
+      notificacionesEventos: false,
+      compartirUbicacion: true
+    }
+  },
   ajustes: {
     alertasAsfaltoCaliente: true,
     umbralTemperaturaAsfalto: 28,
@@ -22,6 +49,45 @@ const SESION_DEFECTO = {
     alertaDecibeliosMax: 65
   }
 };
+
+function construirMascotaParaUsuario(petData, user) {
+  const baseTutor = {
+    ...MASCOTA_ACTIVA_DEFECTO.tutor,
+    nombre: user?.name || user?.nombre || 'Tutor GoToX',
+    correo: user?.email || user?.correo || '',
+    telefono: user?.phone || user?.telefono || '+506 0000-0000',
+    direccion: user?.zone || user?.ubicacion || 'San José, Costa Rica'
+  };
+
+  if (!petData || !(petData.nombre || petData.name)) {
+    return {
+      ...SESION_DEFECTO.mascota,
+      tutor: baseTutor
+    };
+  }
+
+  const fotoUrl = petData.foto || petData.photoUrl || petData.photo_url || petData.imagen || null;
+
+  return {
+    ...MASCOTA_ACTIVA_DEFECTO,
+    id: petData.id || `PET-CR-${Math.floor(1000 + Math.random() * 9000)}`,
+    nombre: petData.nombre || petData.name,
+    especie: petData.especie || petData.species || 'Canino',
+    raza: petData.raza || petData.breed || 'Mestizo',
+    pesoKg: Number(petData.pesoKg ?? petData.weight_kg ?? 15),
+    edadAnos: Number(petData.edadAnos ?? petData.age_years ?? 2),
+    microchipId: petData.microchipId || petData.microchip_id || 'En trámite',
+    colorManto: petData.colorManto || petData.color_coat || 'Variado',
+    foto: fotoUrl,
+    photoUrl: fotoUrl,
+    alergias: Array.isArray(petData.alergias)
+      ? petData.alergias
+      : (typeof petData.alergias === 'string' && petData.alergias
+          ? petData.alergias.split(',').map((s) => s.trim()).filter(Boolean)
+          : []),
+    tutor: baseTutor
+  };
+}
 
 function leerSesionInicial() {
   if (typeof window === 'undefined') return SESION_DEFECTO;
@@ -32,9 +98,13 @@ function leerSesionInicial() {
       return {
         ...SESION_DEFECTO,
         ...parseado,
-        // Garantizar que estructuras anidadas no sean undefined
         usuario: { ...SESION_DEFECTO.usuario, ...(parseado.usuario || {}) },
-        mascota: { ...SESION_DEFECTO.mascota, ...(parseado.mascota || {}) },
+        mascota: {
+          ...SESION_DEFECTO.mascota,
+          ...(parseado.mascota || {}),
+          tutor: { ...SESION_DEFECTO.mascota.tutor, ...(parseado.mascota?.tutor || {}) }
+        },
+        boveda: { ...SESION_DEFECTO.boveda, ...(parseado.boveda || {}) },
         ajustes: { ...SESION_DEFECTO.ajustes, ...(parseado.ajustes || {}) }
       };
     }
@@ -51,7 +121,6 @@ export function SesionProvider({ children }) {
   const [cargandoAuth, setCargandoAuth] = useState(false);
   const [errorAuth, setErrorAuth] = useState(null);
 
-  // Sincronizar automáticamente en localStorage al cambiar el estado
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -64,61 +133,55 @@ export function SesionProvider({ children }) {
 
   const aplicarUsuarioBackend = useCallback((user) => {
     if (!user) return;
-    setSesion(prev => ({
-      ...prev,
-      isLoggedIn: true,
-      usuario: {
-        ...prev.usuario,
-        id: user.id,
-        nombre: user.name || prev.usuario?.nombre || 'Tutor GoToX',
-        correo: user.email || prev.usuario?.correo,
-        rol: user.role || prev.usuario?.rol || 'Tutor Certificado Pet-OS'
-      }
-    }));
+    setSesion((prev) => {
+      const tieneMascota = user.hasPet !== undefined
+        ? Boolean(user.hasPet)
+        : Boolean(user.pet && (user.pet.nombre || user.pet.name));
+
+      return {
+        ...prev,
+        isLoggedIn: true,
+        usuario: {
+          id: user.id,
+          nombre: user.name || user.nombre || 'Usuario GoToX',
+          correo: user.email || user.correo || '',
+          role: user.role || 'client',
+          telefono: user.phone || user.telefono || '',
+          ubicacion: user.zone || user.ubicacion || 'San José, Costa Rica',
+          tieneMascota
+        },
+        mascota: construirMascotaParaUsuario(user.pet, user)
+      };
+    });
   }, []);
 
-  const iniciarSesion = useCallback((correo, nombre = "Usuario GoToX") => {
-    setSesion(prev => ({
-      ...prev,
-      isLoggedIn: true,
-      usuario: {
-        ...prev.usuario,
-        correo: correo || prev.usuario?.correo || 'mariana.rojas@gotox.cr',
-        nombre: nombre || prev.usuario?.nombre || 'Mariana Rojas'
-      }
-    }));
+  // Rehidratar sesión real desde el backend al cargar si hay token guardado
+  useEffect(() => {
+    const tokens = authService.getStoredTokens();
+    if (!tokens?.token) return;
 
-    authService.createGuestSession(nombre || correo).catch(() => {});
-  }, []);
+    let activo = true;
+    authService
+      .getMe()
+      .then((me) => {
+        if (!activo) return;
+        if (me?.authenticated && me?.type === 'registered_user' && me?.user) {
+          aplicarUsuarioBackend(me.user);
+        } else if (me && !me.authenticated) {
+          setSesion(SESION_DEFECTO);
+        }
+      })
+      .catch((err) => {
+        if (!activo) return;
+        if (err?.status === 401) {
+          setSesion(SESION_DEFECTO);
+        }
+      });
 
-  const cerrarSesion = useCallback(() => {
-    // 1. Limpiar estado de React de manera unificada
-    setSesion(prev => ({
-      ...prev,
-      isLoggedIn: false,
-      usuario: {
-        ...SESION_DEFECTO.usuario,
-        id: null
-      }
-    }));
-
-    // 2. Limpiar tokens y storage inmediatamente
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('token');
-        window.localStorage.removeItem('auth_user');
-        window.localStorage.setItem(
-          CLAVE_STORAGE,
-          JSON.stringify({ ...SESION_DEFECTO, isLoggedIn: false })
-        );
-      }
-    } catch (err) {
-      console.warn('[SesionContext] Error limpiando credenciales:', err);
-    }
-
-    // 3. Notificar al backend de forma no bloqueante
-    authService.logout().catch(() => {});
-  }, []);
+    return () => {
+      activo = false;
+    };
+  }, [aplicarUsuarioBackend]);
 
   const loginConBackend = useCallback(async ({ email, password }) => {
     setCargandoAuth(true);
@@ -128,43 +191,135 @@ export function SesionProvider({ children }) {
       aplicarUsuarioBackend(data?.user);
       return data;
     } catch (err) {
-      setErrorAuth(err.message || 'No se pudo iniciar sesión');
+      const msg = err?.message || 'Credenciales inválidas o error al conectar con el servidor.';
+      setErrorAuth(msg);
       throw err;
     } finally {
       setCargandoAuth(false);
     }
   }, [aplicarUsuarioBackend]);
 
-  const registrarConBackend = useCallback(async ({ name, email, password }) => {
+  const registrarConBackend = useCallback(async ({ name, email, password, phone, zone, hasPet, pet }) => {
     setCargandoAuth(true);
     setErrorAuth(null);
     try {
-      const data = await authService.register({ name, email, password });
+      const data = await authService.register({ name, email, password, phone, zone, hasPet, pet });
       aplicarUsuarioBackend(data?.user);
       return data;
     } catch (err) {
-      setErrorAuth(err.message || 'No se pudo completar el registro');
+      const msg = err?.message || 'No se pudo completar el registro de usuario.';
+      setErrorAuth(msg);
       throw err;
     } finally {
       setCargandoAuth(false);
     }
   }, [aplicarUsuarioBackend]);
 
-  const sincronizarPerfilBackend = useCallback(async () => {
-    try {
-      const me = await authService.getMe();
-      if (me?.authenticated && me?.user) {
-        aplicarUsuarioBackend(me.user);
-      }
-      return me;
-    } catch {
-      return null;
+  const cargarBovedaBackend = useCallback(async () => {
+    const tokens = authService.getStoredTokens();
+    if (!tokens?.token) return null;
+
+    const vault = await api.get('/client/vault');
+    if (vault) {
+      setSesion((prev) => ({
+        ...prev,
+        usuario: {
+          ...prev.usuario,
+          id: vault.user?.id || prev.usuario.id,
+          nombre: vault.user?.name || prev.usuario.nombre,
+          correo: vault.user?.email || prev.usuario.correo,
+          role: vault.user?.role || prev.usuario.role,
+          telefono: vault.user?.phone ?? prev.usuario.telefono,
+          ubicacion: vault.user?.zone ?? prev.usuario.ubicacion,
+          tieneMascota: vault.has_pet !== undefined ? Boolean(vault.has_pet) : prev.usuario.tieneMascota
+        },
+        mascota: vault.pet
+          ? construirMascotaParaUsuario(vault.pet, vault.user || prev.usuario)
+          : prev.mascota,
+        boveda: {
+          budget_level: vault.budget_level || prev.boveda.budget_level,
+          interests: Array.isArray(vault.interests) ? vault.interests : prev.boveda.interests,
+          preferences: vault.preferences ? { ...prev.boveda.preferences, ...vault.preferences } : prev.boveda.preferences
+        }
+      }));
     }
-  }, [aplicarUsuarioBackend]);
+    return vault;
+  }, []);
+
+  const guardarBovedaBackend = useCallback(async (payload) => {
+    const tokens = authService.getStoredTokens();
+    if (tokens?.token) {
+      const updated = await api.post('/client/vault', payload);
+      if (updated) {
+        setSesion((prev) => ({
+          ...prev,
+          usuario: {
+            ...prev.usuario,
+            nombre: updated.user?.name || payload.name || prev.usuario.nombre,
+            telefono: updated.user?.phone ?? payload.phone ?? prev.usuario.telefono,
+            ubicacion: updated.user?.zone ?? payload.zone ?? prev.usuario.ubicacion,
+            tieneMascota: updated.has_pet !== undefined ? Boolean(updated.has_pet) : Boolean(payload.has_pet)
+          },
+          mascota: updated.pet
+            ? construirMascotaParaUsuario(updated.pet, updated.user || prev.usuario)
+            : (payload.pet ? construirMascotaParaUsuario(payload.pet, prev.usuario) : prev.mascota),
+          boveda: {
+            budget_level: updated.budget_level || payload.budget_level || prev.boveda.budget_level,
+            interests: Array.isArray(updated.interests) ? updated.interests : (payload.interests || prev.boveda.interests),
+            preferences: updated.preferences || payload.preferences || prev.boveda.preferences
+          }
+        }));
+      }
+      return updated;
+    }
+
+    // Respaldo local si no hay JWT activo
+    setSesion((prev) => ({
+      ...prev,
+      usuario: {
+        ...prev.usuario,
+        nombre: payload.name || prev.usuario.nombre,
+        telefono: payload.phone ?? prev.usuario.telefono,
+        ubicacion: payload.zone ?? prev.usuario.ubicacion,
+        tieneMascota: payload.has_pet !== undefined ? Boolean(payload.has_pet) : prev.usuario.tieneMascota
+      },
+      mascota: payload.pet ? construirMascotaParaUsuario(payload.pet, prev.usuario) : prev.mascota,
+      boveda: {
+        budget_level: payload.budget_level || prev.boveda.budget_level,
+        interests: payload.interests || prev.boveda.interests,
+        preferences: payload.preferences || prev.boveda.preferences
+      }
+    }));
+    return null;
+  }, []);
+
+  const cerrarSesion = useCallback(() => {
+    setSesion(SESION_DEFECTO);
+    setErrorAuth(null);
+
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('token');
+        window.localStorage.removeItem('auth_user');
+        window.localStorage.removeItem('sn_auth_token');
+        window.localStorage.removeItem('sn_refresh_token');
+        window.localStorage.removeItem('sn_guest_token');
+        window.localStorage.setItem(CLAVE_STORAGE, JSON.stringify(SESION_DEFECTO));
+      }
+    } catch (err) {
+      console.warn('[SesionContext] Error limpiando credenciales:', err);
+    }
+
+    authService.logout().catch(() => {});
+  }, []);
 
   const actualizarMascota = useCallback((datosActualizados) => {
-    setSesion(prev => ({
+    setSesion((prev) => ({
       ...prev,
+      usuario: {
+        ...prev.usuario,
+        tieneMascota: true
+      },
       mascota: {
         ...prev.mascota,
         ...datosActualizados
@@ -173,7 +328,7 @@ export function SesionProvider({ children }) {
   }, []);
 
   const actualizarAjustes = useCallback((nuevosAjustes) => {
-    setSesion(prev => ({
+    setSesion((prev) => ({
       ...prev,
       ajustes: {
         ...prev.ajustes,
@@ -182,29 +337,34 @@ export function SesionProvider({ children }) {
     }));
   }, []);
 
+  const esAdmin = Boolean(sesion.isLoggedIn && sesion.usuario?.role === 'admin');
+
   const valor = useMemo(() => ({
     isLoggedIn: Boolean(sesion.isLoggedIn),
+    esAdmin,
     usuario: sesion.usuario,
     mascota: sesion.mascota,
+    boveda: sesion.boveda,
     ajustes: sesion.ajustes,
     cargandoAuth,
     errorAuth,
-    iniciarSesion,
     cerrarSesion,
     loginConBackend,
     registrarConBackend,
-    sincronizarPerfilBackend,
+    cargarBovedaBackend,
+    guardarBovedaBackend,
     actualizarMascota,
     actualizarAjustes
   }), [
     sesion,
+    esAdmin,
     cargandoAuth,
     errorAuth,
-    iniciarSesion,
     cerrarSesion,
     loginConBackend,
     registrarConBackend,
-    sincronizarPerfilBackend,
+    cargarBovedaBackend,
+    guardarBovedaBackend,
     actualizarMascota,
     actualizarAjustes
   ]);

@@ -1,0 +1,143 @@
+{
+  "name": "GoToX 03 · Auditoría y despacho de notificaciones",
+  "nodes": [
+    {
+      "id": "70cac9b8-89d6-42bc-ae41-11519e50a0a9",
+      "name": "Prueba manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "93d14419-5552-498e-8151-ecebefbce9d0",
+      "name": "Horario Costa Rica",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/15 * * * *"
+            }
+          ]
+        }
+      },
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "id": "3e477c32-4d9d-41f9-b072-77a6ae995b92",
+      "name": "Verificar cadena de auditoría",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "https://backend.example.invalid/api/audit/verify-chain",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "position": [
+        280,
+        100
+      ]
+    },
+    {
+      "id": "9fadc2dd-aec1-4c92-90a1-d6c36e16bebb",
+      "name": "Comprobar resultado de auditoría",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const data = $input.first().json.data;\nif (data?.valid !== true) throw new Error('La verificación de auditoría falló. Revisar GoToX antes de despachar.');\nreturn [{json:{auditValid:true}}];"
+      },
+      "position": [
+        560,
+        100
+      ]
+    },
+    {
+      "id": "d72afc25-af0a-4045-899c-725d807adbde",
+      "name": "Procesar notificaciones pendientes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://backend.example.invalid/api/notifications/outbox/process",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"batch_size\":10}"
+      },
+      "position": [
+        840,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Prueba manual": {
+      "main": [
+        [
+          {
+            "node": "Verificar cadena de auditoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Horario Costa Rica": {
+      "main": [
+        [
+          {
+            "node": "Verificar cadena de auditoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar cadena de auditoría": {
+      "main": [
+        [
+          {
+            "node": "Comprobar resultado de auditoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comprobar resultado de auditoría": {
+      "main": [
+        [
+          {
+            "node": "Procesar notificaciones pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "timezone": "America/Costa_Rica",
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none"
+  }
+}

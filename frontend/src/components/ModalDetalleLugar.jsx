@@ -13,20 +13,24 @@ import {
   ExternalLink,
   Phone,
   CheckCircle2,
-  Users
+  Users,
+  LogIn
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useTema } from '../context/TemaContext';
+import { useSesion } from '../hooks/useSesion';
 import { esFavorito, alternarFavorito, obtenerPlanes, agregarParadaAPlan } from '../servicios/almacenamientoCliente';
 import { LugarFoto } from './LugarFoto';
 
 export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
-  if (!lugar) return null;
-
   const { esClaro, esMorado, esOscuro } = useTema();
-  const [favorito, setFavorito] = useState(() => esFavorito(lugar.id));
+  const { isLoggedIn } = useSesion();
+  const [favorito, setFavorito] = useState(() => (lugar ? esFavorito(lugar.id) : false));
   const [fotoActiva, setFotoActiva] = useState(0);
   const [modalPlanAbierto, setModalPlanAbierto] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('');
+
+  if (!lugar) return null;
 
   const galeria = Array.isArray(lugar.galeria) && lugar.galeria.length > 0
     ? lugar.galeria.filter(Boolean)
@@ -122,19 +126,21 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
             </div>
           )}
 
-          {/* Botón Favorito Flotante */}
-          <button
-            type="button"
-            onClick={handleToggleFavorito}
-            title={favorito ? "Quitar de favoritos" : "Guardar en favoritos"}
-            className="absolute bottom-4 right-4 z-10 p-3 rounded-full bg-white/90 dark:bg-black/70 backdrop-blur-md shadow-lg transition-transform active:scale-90"
-          >
-            <Heart
-              className={`w-5 h-5 transition-colors ${
-                favorito ? 'fill-rose-500 text-rose-500' : 'text-slate-600 dark:text-slate-200'
-              }`}
-            />
-          </button>
+          {/* Botón Favorito Flotante (solo con sesión activa) */}
+          {isLoggedIn && (
+            <button
+              type="button"
+              onClick={handleToggleFavorito}
+              title={favorito ? "Quitar de favoritos" : "Guardar en favoritos"}
+              className="absolute bottom-4 right-4 z-10 p-3 rounded-full bg-white/90 dark:bg-black/70 backdrop-blur-md shadow-lg transition-transform active:scale-90"
+            >
+              <Heart
+                className={`w-5 h-5 transition-colors ${
+                  favorito ? 'fill-rose-500 text-rose-500' : 'text-slate-600 dark:text-slate-200'
+                }`}
+              />
+            </button>
+          )}
         </div>
 
         {/* Contenido Editorial */}
@@ -297,19 +303,30 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={() => setModalPlanAbierto(!modalPlanAbierto)}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/30 transition-all shadow-md active:scale-95"
-              >
-                <CalendarPlus className="w-4 h-4 text-[#F27B91]" />
-                <span>Añadir a Mis Planes</span>
-              </button>
+              {isLoggedIn ? (
+                <button
+                  type="button"
+                  onClick={() => setModalPlanAbierto(!modalPlanAbierto)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/30 transition-all shadow-md active:scale-95"
+                >
+                  <CalendarPlus className="w-4 h-4 text-[#F27B91]" />
+                  <span>Añadir a Mis Planes</span>
+                </button>
+              ) : (
+                <Link
+                  to="/acceso"
+                  onClick={onClose}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/30 transition-all shadow-md active:scale-95"
+                >
+                  <LogIn className="w-4 h-4 text-[#F27B91]" />
+                  <span>Inicia sesión para guardar en Favoritos y Planes</span>
+                </Link>
+              )}
             </div>
           </div>
 
           {/* Selector de Plan si se activa */}
-          {modalPlanAbierto && (
+          {isLoggedIn && modalPlanAbierto && (
             <div className="p-4 rounded-2xl bg-current/5 border border-current/15 space-y-3 animate-in fade-in">
               <span className="text-xs font-bold block">Selecciona el plan donde deseas agregar este lugar:</span>
               <div className="space-y-2">

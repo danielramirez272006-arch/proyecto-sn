@@ -1,0 +1,86 @@
+{
+  "name": "GoToX 01 · Revisión de políticas de mascotas",
+  "nodes": [
+    {
+      "id": "70055a29-a3e9-4bda-ad07-e67e081a317f",
+      "name": "Prueba manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "591aa4a9-3d97-4a52-b7cd-1d1464812173",
+      "name": "Horario Costa Rica",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "id": "42fb28ea-9e69-4013-ae96-e95249ad9efd",
+      "name": "Detectar políticas por revisar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "GET",
+        "url": "https://backend.example.invalid/api/admin/pet-automation/events?expiring_within_days=14",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "position": [
+        280,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Prueba manual": {
+      "main": [
+        [
+          {
+            "node": "Detectar políticas por revisar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Horario Costa Rica": {
+      "main": [
+        [
+          {
+            "node": "Detectar políticas por revisar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "timezone": "America/Costa_Rica",
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none"
+  }
+}

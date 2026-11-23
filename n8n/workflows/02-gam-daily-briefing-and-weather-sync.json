@@ -1,0 +1,89 @@
+{
+  "name": "GoToX 02 · Boletín diario GAM",
+  "nodes": [
+    {
+      "id": "671905cb-045e-4800-a086-134ae4adc48f",
+      "name": "Prueba manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "parameters": {},
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "070a8c83-c9ec-4931-a3d9-c9487cc2e83c",
+      "name": "Horario Costa Rica",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "id": "a5b98774-eedb-43b9-bf3a-5c56c8acbc70",
+      "name": "Actualizar boletín GAM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "https://backend.example.invalid/api/agents/daily-briefing/run",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}"
+      },
+      "position": [
+        280,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Prueba manual": {
+      "main": [
+        [
+          {
+            "node": "Actualizar boletín GAM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Horario Costa Rica": {
+      "main": [
+        [
+          {
+            "node": "Actualizar boletín GAM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "timezone": "America/Costa_Rica",
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none"
+  }
+}

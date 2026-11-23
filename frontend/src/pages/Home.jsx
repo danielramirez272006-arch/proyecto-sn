@@ -241,13 +241,12 @@ export function Home() {
 
         {/* Barra de Búsqueda Inteligente */}
         <div className="space-y-3">
-          <div className={`flex items-center gap-2 p-2 rounded-2xl border shadow-lg transition-all ${
-            esClaro
-              ? 'bg-white border-slate-200 focus-within:ring-2 focus-within:ring-[#501228]/20'
-              : esMorado
+          <div className={`flex items-center gap-2 p-2 rounded-2xl border shadow-lg transition-all ${esClaro
+            ? 'bg-white border-slate-200 focus-within:ring-2 focus-within:ring-[#501228]/20'
+            : esMorado
               ? 'bg-[#1F0C18] border-[#F27B91]/30 focus-within:ring-2 focus-within:ring-[#F27B91]/30'
               : 'bg-[#162032] border-white/10 focus-within:ring-2 focus-within:ring-white/20'
-          }`}>
+            }`}>
             <Search className="w-5 h-5 opacity-40 ml-2 shrink-0" aria-hidden="true" />
             <input
               type="text"
@@ -271,11 +270,10 @@ export function Home() {
               onClick={alternarVoz}
               aria-label={escuchandoVoz ? t('home.microfonoDetener') : t('home.microfonoHablar')}
               title={escuchandoVoz ? t('home.microfonoDetener') : t('home.microfonoHablar')}
-              className={`p-2.5 rounded-xl transition-all shrink-0 ${
-                escuchandoVoz
-                  ? 'bg-rose-600 text-white animate-pulse'
-                  : 'bg-current/5 hover:bg-current/10 border border-current/10'
-              }`}
+              className={`p-2.5 rounded-xl transition-all shrink-0 ${escuchandoVoz
+                ? 'bg-rose-600 text-white animate-pulse'
+                : 'bg-current/5 hover:bg-current/10 border border-current/10'
+                }`}
             >
               {escuchandoVoz ? <MicOff className="w-4 h-4" aria-hidden="true" /> : <Mic className="w-4 h-4" aria-hidden="true" />}
             </button>
@@ -326,11 +324,10 @@ export function Home() {
                   type="button"
                   aria-pressed={activa}
                   onClick={() => setCategoriaSeleccionada(cat.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${
-                    activa
-                      ? 'bg-[#501228] text-white border-[#F27B91]/40 shadow-sm'
-                      : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100 hover:bg-current/10'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${activa
+                    ? 'bg-[#501228] text-white border-[#F27B91]/40 shadow-sm'
+                    : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100 hover:bg-current/10'
+                    }`}
                 >
                   <Icono className="w-4 h-4" aria-hidden="true" />
                   <span>{etiquetaCat}</span>
@@ -373,20 +370,18 @@ export function Home() {
               return (
                 <div
                   key={lugar.id}
-                  className={`group rounded-3xl border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${
-                    esClaro
-                      ? 'bg-white border-slate-200'
-                      : esMorado
+                  className={`group rounded-3xl border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${esClaro
+                    ? 'bg-white border-slate-200'
+                    : esMorado
                       ? 'bg-[#1F0C18] border-[#F27B91]/20 hover:border-[#F27B91]/40'
                       : 'bg-[#162032] border-white/10 hover:border-white/20'
-                  }`}
+                    }`}
                 >
                   {/* Foto de Portada */}
                   <div
                     onClick={() => setLugarSeleccionado(lugar)}
-                    className={`relative h-44 w-full overflow-hidden cursor-pointer ${
-                      esClaro ? 'bg-[#FAF5F8]' : esMorado ? 'bg-[#251420]' : 'bg-[#162032]'
-                    }`}
+                    className={`relative h-44 w-full overflow-hidden cursor-pointer ${esClaro ? 'bg-[#FAF5F8]' : esMorado ? 'bg-[#251420]' : 'bg-[#162032]'
+                      }`}
                   >
                     <LugarFoto
                       src={lugar.imagen}
@@ -494,9 +489,8 @@ export function Home() {
       <section className="py-10 border-y border-current/10">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${
-              esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
-            }`}>
+            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
+              }`}>
               <div className="w-11 h-11 rounded-2xl bg-[#55152D] text-[#F27B91] border border-[#F27B91]/25 flex items-center justify-center shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
@@ -508,9 +502,8 @@ export function Home() {
               </div>
             </div>
 
-            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${
-              esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
-            }`}>
+            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
+              }`}>
               <div className="w-11 h-11 rounded-2xl bg-[#55152D] text-[#F27B91] border border-[#F27B91]/25 flex items-center justify-center shrink-0 shadow-xs">
                 <Navigation className="w-5 h-5" />
               </div>
@@ -522,9 +515,8 @@ export function Home() {
               </div>
             </div>
 
-            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${
-              esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
-            }`}>
+            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
+              }`}>
               <div className="w-11 h-11 rounded-2xl bg-[#55152D] text-[#F27B91] border border-[#F27B91]/25 flex items-center justify-center shrink-0 shadow-xs">
                 <Award className="w-5 h-5" />
               </div>

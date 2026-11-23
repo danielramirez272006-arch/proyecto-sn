@@ -619,13 +619,12 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
             onClick={abrirPanelAccesibilidad}
             aria-label={t('nav.accesibilidad')}
             title={t('nav.accesibilidad')}
-            className={`p-1.5 rounded-xl border transition-colors ${clasesTema.focusRing} ${
-              esClaro
-                ? 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100'
-                : esMorado
+            className={`p-1.5 rounded-xl border transition-colors ${clasesTema.focusRing} ${esClaro
+              ? 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100'
+              : esMorado
                 ? 'bg-[#1F0E19] border-[#F27B91]/35 text-[#FDF2F6] hover:bg-[#55152D]/40'
                 : 'bg-[#111827] border-white/20 text-slate-100 hover:bg-slate-800'
-            }`}
+              }`}
           >
             <Accessibility className="w-4 h-4 text-[#F27B91]" aria-hidden="true" />
           </button>

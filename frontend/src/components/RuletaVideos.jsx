@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { VIDEOS_RULETA } from '../data/videosRuleta';
 import { api } from '../shared/services/api-client';
+import { useIdioma } from '../context/IdiomaContext';
 import '../estilos/ruleta-videos.css';
 
 /**
@@ -194,6 +195,11 @@ const urlYouTube = (id, inicio) =>
 const formatoTiempo = (s) => `${Math.floor(s / 60)}:${pad(Math.floor(s % 60))}`;
 
 export function RuletaVideos() {
+  const { t } = useIdioma();
+  const temasTraducidos = TEMAS_CATALOGO.map((temaEs, idx) => ({
+    canonico: temaEs,
+    label: t(`videos.tema${idx + 1}`, temaEs)
+  }));
   const [vista, setVista] = useState('wheel');
   const [info, setInfo] = useState({ cur: 0, prev: null, front: 0 });
   const [fallidos, setFallidos] = useState({});
@@ -412,8 +418,9 @@ export function RuletaVideos() {
     setUltimoTema(null);
   };
 
-  const buscarVideoConGemini = async (textoManual) => {
+  const buscarVideoConGemini = async (textoManual, textoBusqueda = null) => {
     const q = (textoManual ?? consultaGemini).trim();
+    const qCatalogo = (textoBusqueda ?? textoManual ?? consultaGemini).trim();
     if (!q || buscandoGemini) return;
     setConsultaGemini('');
     setBuscandoGemini(true);
@@ -423,16 +430,16 @@ export function RuletaVideos() {
 
     try {
       // 1. Caso de refinamiento: «uno más corto»
-      if (esRefinamientoCorto(q)) {
+      if (esRefinamientoCorto(qCatalogo)) {
         if (!ultimoTema || !ultimoTema.videos || ultimoTema.videos.length === 0) {
           setMensajesChat((prev) => [
             ...prev,
             {
               id: `a_${Date.now()}`,
               rol: 'asistente',
-              texto: 'Dime primero qué tema buscas (por ejemplo, baño de perros o primeros auxilios) y luego puedo buscar una versión más corta.',
+              texto: t('videos.msgPedirTema'),
               sinCoincidencias: true,
-              temasSugeridos: TEMAS_CATALOGO.slice(0, 4)
+              temasSugeridos: temasTraducidos.slice(0, 4)
             }
           ]);
           return;
@@ -453,7 +460,12 @@ export function RuletaVideos() {
             {
               id: `a_${Date.now()}`,
               rol: 'asistente',
-              texto: `Aquí tienes una opción más corta sobre «${ultimoTema.query}»: «${masCorto.video.titulo}» (${formatoTiempo(masCorto.video.duracion || 0)}). ${frag ? frag.respuesta : masCorto.video.resumen || ''}`,
+              texto: t('videos.msgMasCorto', {
+                tema: ultimoTema.query,
+                titulo: masCorto.video.titulo,
+                duracion: formatoTiempo(masCorto.video.duracion || 0),
+                extra: frag ? frag.respuesta : masCorto.video.resumen || ''
+              }),
               videoPrincipal: masCorto.video,
               fragmento: frag
             }
@@ -464,7 +476,11 @@ export function RuletaVideos() {
             {
               id: `a_${Date.now()}`,
               rol: 'asistente',
-              texto: `«${videoActual?.titulo || 'Este video'}» (${formatoTiempo(duracionActual)}) ya es el video más corto que tenemos en el catálogo aprobado sobre «${ultimoTema.query}».`,
+              texto: t('videos.msgYaMasCorto', {
+                titulo: videoActual?.titulo || '',
+                duracion: formatoTiempo(duracionActual),
+                tema: ultimoTema.query
+              }),
               videoPrincipal: videoActual,
               fragmento: ultimoTema.videos[0]?.fragmento || null
             }
@@ -476,7 +492,7 @@ export function RuletaVideos() {
       // 2. Consulta al flujo de búsqueda existente (/api/pet-videos/smart-search sin inventar externos)
       let respBackend = null;
       try {
-        respBackend = await api.post('/pet-videos/smart-search', { text: q, allow_youtube: false });
+        respBackend = await api.post('/pet-videos/smart-search', { text: qCatalogo, allow_youtube: false });
       } catch {
         respBackend = null;
       }
@@ -485,7 +501,7 @@ export function RuletaVideos() {
       setModoDemo(!usaGeminiReal);
 
       // Cruzar coincidencias verificadas del catálogo aprobado
-      const coincidencias = buscarEnCatalogo(q, catalogoBase);
+      const coincidencias = buscarEnCatalogo(qCatalogo, catalogoBase);
 
       if (coincidencias.length > 0) {
         const top3 = coincidencias.slice(0, 3).map((c) => c.video);
@@ -493,7 +509,7 @@ export function RuletaVideos() {
         const frag = principal.fragmento;
 
         // Si el backend dio una respuesta directa de Gemini y corresponde al mismo video, enriquecer el texto
-        let textoRespuesta = frag ? frag.respuesta : (principal.video.resumen || `Encontré ${top3.length} video(s) del catálogo aprobado sobre tu consulta.`);
+        let textoRespuesta = frag ? frag.respuesta : (principal.video.resumen || t('videos.msgEncontrado', { n: top3.length }));
         if (usaGeminiReal && respBackend?.best_match?.youtube_id === principal.video.id && respBackend.best_match.direct_answer) {
           textoRespuesta = respBackend.best_match.direct_answer;
         }
@@ -519,9 +535,9 @@ export function RuletaVideos() {
           {
             id: `a_${Date.now()}`,
             rol: 'asistente',
-            texto: `Todavía no tenemos un video aprobado sobre «${q}» en el catálogo. Puedes probar con alguno de los temas disponibles:`,
+            texto: t('videos.msgSinCoincidencia', { q }),
             sinCoincidencias: true,
-            temasSugeridos: TEMAS_CATALOGO
+            temasSugeridos: temasTraducidos
           }
         ]);
       }
@@ -1203,14 +1219,14 @@ export function RuletaVideos() {
       {/* ---------------- HUD superior ---------------- */}
       <header className="gxw__hud gxw__hud--top">
         <div className="gxw__hud-group">
-          <div className="gxw__switch" role="group" aria-label="Cambiar vista">
+          <div className="gxw__switch" role="group" aria-label={t('videos.cambiarVistaAria')}>
             <button
               type="button"
               className={`gxw__switch-btn ${vista === 'wheel' ? 'is-active' : ''}`}
               aria-pressed={vista === 'wheel'}
               onClick={() => cambiarVista('wheel')}
             >
-              Wheel
+              {t('videos.vistaWheel')}
             </button>
             <span className="gxw__switch-slash" aria-hidden="true">
               /
@@ -1221,7 +1237,7 @@ export function RuletaVideos() {
               aria-pressed={vista === 'list'}
               onClick={() => cambiarVista('list')}
             >
-              List
+              {t('videos.vistaList')}
             </button>
           </div>
           <button
@@ -1229,31 +1245,31 @@ export function RuletaVideos() {
             className="gxw__refresh"
             onClick={() => actualizarVideosEnVivo({ automatico: false })}
             disabled={actualizandoVideos}
-            aria-label="Actualizar videos desde YouTube"
+            aria-label={t('videos.actualizarAria')}
           >
-            {actualizandoVideos ? 'Actualizando…' : '↻ Actualizar videos'}
+            {actualizandoVideos ? t('videos.actualizando') : t('videos.actualizarBtn')}
           </button>
         </div>
         <h2 className="gxw__mark" id="gxw-titulo">
-          Recomendación
+          {t('videos.tituloL1')}
           <br />
-          de videos
+          {t('videos.tituloL2')}
         </h2>
       </header>
 
       {/* ---------------- Chat de búsqueda arriba del carrusel (PetSearch) ---------------- */}
       <div className="gxw-chat-wrap">
-        <div className="gxw-chat" role="search" aria-label="Buscar videos sobre tu mascota">
+        <div className="gxw-chat" role="search" aria-label={t('videos.buscarAria')}>
           <div className="gxw-chat__head">
-            <h3 className="gxw-chat__title">¿Qué quieres aprender sobre tu mascota?</h3>
+            <h3 className="gxw-chat__title">{t('videos.preguntaTitulo')}</h3>
             <div className="gxw-chat__badges">
               {busquedaActiva && (
                 <button type="button" className="gxw-chat__reset" onClick={restablecerCatalogo}>
-                  Ver selección inicial ({catalogoBase.length})
+                  {t('videos.verInicial', { n: catalogoBase.length })}
                 </button>
               )}
               <span className="gxw-chat__badge">
-                {modoDemo ? 'Demostración' : 'Gemini IA'}
+                {modoDemo ? t('videos.modoDemo') : t('videos.modoGemini')}
               </span>
             </div>
           </div>
@@ -1270,29 +1286,29 @@ export function RuletaVideos() {
               className="gxw-chat__input"
               value={consultaGemini}
               onChange={(e) => setConsultaGemini(e.target.value)}
-              placeholder="Escribe tu pregunta…"
-              aria-label="Escribe tu pregunta sobre tu mascota"
+              placeholder={t('videos.placeholder')}
+              aria-label={t('videos.ariaInput')}
             />
             <button type="submit" className="gxw-chat__btn" disabled={buscandoGemini}>
-              {buscandoGemini ? 'Buscando…' : 'Buscar'}
+              {buscandoGemini ? t('videos.buscando') : t('videos.buscar')}
             </button>
           </form>
 
-          <div className="gxw-chat__sugerencias" aria-label="Sugerencias para empezar">
-            <span className="gxw-chat__sug-label">Sugerencias:</span>
+          <div className="gxw-chat__sugerencias" aria-label={t('videos.sugerenciasAria')}>
+            <span className="gxw-chat__sug-label">{t('videos.sugerenciasLabel')}</span>
             <button
               type="button"
               className="gxw-chat__chip"
-              onClick={() => buscarVideoConGemini('Juegos para mi perro en casa')}
+              onClick={() => buscarVideoConGemini(t('videos.sugerencia1'), 'Juegos para mi perro en casa')}
             >
-              Juegos para mi perro en casa
+              {t('videos.sugerencia1')}
             </button>
             <button
               type="button"
               className="gxw-chat__chip"
-              onClick={() => buscarVideoConGemini('Cómo acostumbrar a mi gato a la transportadora')}
+              onClick={() => buscarVideoConGemini(t('videos.sugerencia2'), 'Cómo acostumbrar a mi gato a la transportadora')}
             >
-              Cómo acostumbrar a mi gato a la transportadora
+              {t('videos.sugerencia2')}
             </button>
           </div>
 
@@ -1307,7 +1323,7 @@ export function RuletaVideos() {
 
                   {m.esEmergencia && (
                     <p className="gxw-chat__alerta">
-                      Atención veterinaria recomendada: 9-1-1 &bull; Hospital UNA: 2277-3600
+                      {t('videos.alertaEmergencia')}
                     </p>
                   )}
 
@@ -1326,8 +1342,8 @@ export function RuletaVideos() {
                       >
                         <span aria-hidden="true">▶</span>{' '}
                         {m.fragmento && m.fragmento.inicio > 0
-                          ? `Ver desde ${formatoTiempo(m.fragmento.inicio)}`
-                          : 'Ver video'}
+                          ? t('videos.verDesde', { tiempo: formatoTiempo(m.fragmento.inicio) })
+                          : t('videos.verVideo')}
                       </button>
                       <span className="gxw-chat__vidname">{m.videoPrincipal.titulo}</span>
                     </div>
@@ -1335,16 +1351,20 @@ export function RuletaVideos() {
 
                   {m.sinCoincidencias && m.temasSugeridos && (
                     <div className="gxw-chat__temas">
-                      {m.temasSugeridos.map((tema) => (
-                        <button
-                          key={tema}
-                          type="button"
-                          className="gxw-chat__chip"
-                          onClick={() => buscarVideoConGemini(tema)}
-                        >
-                          {tema}
-                        </button>
-                      ))}
+                      {m.temasSugeridos.map((temaObj) => {
+                        const canonico = typeof temaObj === 'string' ? temaObj : temaObj.canonico;
+                        const label = typeof temaObj === 'string' ? temaObj : temaObj.label;
+                        return (
+                          <button
+                            key={canonico}
+                            type="button"
+                            className="gxw-chat__chip"
+                            onClick={() => buscarVideoConGemini(label, canonico)}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1363,7 +1383,7 @@ export function RuletaVideos() {
             tabIndex={hayReproductor ? -1 : 0}
             role="group"
             aria-hidden={hayReproductor}
-            aria-label="Ruleta infinita de videos. Arrastra, usa la rueda del ratón o las flechas del teclado."
+            aria-label={t('videos.wheelAria')}
           >
             {videosLista.map((video, i) => {
               const caido = Boolean(fallidos[i] || videoCaido[i]);
@@ -1392,7 +1412,7 @@ export function RuletaVideos() {
                     />
                     <div className="gxw-card__fallback">
                       <strong>{video.titulo}</strong>
-                      <em>Video no disponible</em>
+                      <em>{t('videos.noDisponible')}</em>
                     </div>
                     <div className="gxw-card__shade" aria-hidden="true" />
                     {videoActivo === i && !videoCaido[i] && (
@@ -1417,10 +1437,10 @@ export function RuletaVideos() {
                       className="gxw-card__play"
                       tabIndex={central && !hayReproductor ? 0 : -1}
                       aria-hidden={!central}
-                      aria-label={`Reproducir ${video.titulo}`}
+                      aria-label={t('videos.reproducirAria', { titulo: video.titulo })}
                       onClick={(e) => abrirDesdeCarrusel(i, e.currentTarget)}
                     >
-                      <span aria-hidden="true">▶</span> Reproducir
+                      <span aria-hidden="true">▶</span> {t('videos.reproducir')}
                     </button>
                   </div>
                 </article>
@@ -1445,7 +1465,7 @@ export function RuletaVideos() {
                     : undefined
                 }
                 role="region"
-                aria-label={`Reproductor: ${reproductor.video.titulo}`}
+                aria-label={t('videos.reproductorAria', { titulo: reproductor.video.titulo })}
               >
                 <div
                   ref={haloRef}
@@ -1476,13 +1496,13 @@ export function RuletaVideos() {
                   )}
                   {reproductor.fase === 'abierto' && frameEstado === 'error' && (
                     <div className="gxw-player__error" role="alert">
-                      <p>No se pudo reproducir el video aquí.</p>
+                      <p>{t('videos.errorEmbed')}</p>
                       <a
                         href={urlYouTube(reproductor.video.id, reproductor.inicio)}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Ver en YouTube ↗
+                        {t('videos.verYoutube')}
                       </a>
                     </div>
                   )}
@@ -1496,7 +1516,7 @@ export function RuletaVideos() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Abrir en YouTube ↗
+                    {t('videos.abrirYoutube')}
                   </a>
                   <button
                     ref={cerrarBtnRef}
@@ -1504,7 +1524,7 @@ export function RuletaVideos() {
                     className="gxw-player__close"
                     onClick={cerrarReproductor}
                   >
-                    <span aria-hidden="true">✕</span> Cerrar video
+                    <span aria-hidden="true">✕</span> {t('videos.cerrarVideo')}
                   </button>
                 </div>
               )}
@@ -1515,7 +1535,7 @@ export function RuletaVideos() {
         {/* ---------------- Panel de texto (limpio, sin superposición) ---------------- */}
         <aside className={`gxw-info ${hayReproductor ? 'is-playing' : ''}`}>
           <p className="gxw-info__label">
-            <span className="gxw-info__dot" aria-hidden="true" /> Video Seleccionado
+            <span className="gxw-info__dot" aria-hidden="true" /> {t('videos.videoSeleccionado')}
           </p>
           <div className="gxw-info__swap">
             <div className="gxw-info__layer is-on">
@@ -1532,7 +1552,7 @@ export function RuletaVideos() {
               className="gxw-info__ver"
               onClick={(e) => abrirDesdeCarrusel(indiceSeg, e.currentTarget)}
             >
-              <span aria-hidden="true">▶</span> Ver video
+              <span aria-hidden="true">▶</span> {t('videos.verVideo')}
             </button>
           )}
         </aside>
@@ -1547,7 +1567,7 @@ export function RuletaVideos() {
         </div>
         <div className="gxw__scrollhint" aria-hidden="true">
           <span className="gxw__scrollhint-line" />
-          <span>Scroll</span>
+          <span>{t('videos.scroll')}</span>
         </div>
       </footer>
 
@@ -1559,7 +1579,7 @@ export function RuletaVideos() {
               key={video.id}
               type="button"
               className={`gxw-list__item ${fallidos[i] ? 'is-failed' : ''}`}
-              aria-label={`Ver video: ${video.titulo}`}
+              aria-label={t('videos.verVideoAria', { titulo: video.titulo })}
               tabIndex={vista === 'list' ? 0 : -1}
               onClick={(e) => abrirDesdeLista(i, e.currentTarget)}
             >
@@ -1577,7 +1597,7 @@ export function RuletaVideos() {
                   onError={() => marcarFallido(i)}
                 />
                 <div className="gxw-list__fallback">{video.titulo}</div>
-                <span className="gxw-list__ver" aria-hidden="true">▶ Ver video</span>
+                <span className="gxw-list__ver" aria-hidden="true">▶ {t('videos.verVideo')}</span>
               </div>
               <div className="gxw-list__meta">
                 <span className="gxw-list__name">{limpiarTituloVideo(video.titulo)}</span>

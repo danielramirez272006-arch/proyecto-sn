@@ -45,21 +45,27 @@ export function Home() {
   const navigate = useNavigate();
   const { esClaro, esMorado, esOscuro } = useTema();
   const { isLoggedIn } = useSesion();
-  const { idioma, t } = useIdioma();
+  const { idioma, idiomaActual, t } = useIdioma();
 
   // Estados del Buscador Inteligente
   const [consulta, setConsulta] = useState('');
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('todas');
   const [escuchandoVoz, setEscuchandoVoz] = useState(false);
-  const [ubicacionUsuario, setUbicacionUsuario] = useState('San José Este (Escalante / San Pedro)');
+  const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
   const [detectandoGps, setDetectandoGps] = useState(false);
   const [lugarSeleccionado, setLugarSeleccionado] = useState(null);
   const [favoritosVersion, setFavoritosVersion] = useState(0);
 
+  const textoUbicacionVisible = ubicacionUsuario
+    ? ubicacionUsuario.tipo === 'detectada'
+      ? t('homeExt.ubicacionDetectada', { metros: ubicacionUsuario.metros })
+      : t('homeExt.ubicacionFallback')
+    : t('homeExt.ubicacionDefault');
+
   // Reconocimiento de Voz nativo del navegador (Web Speech API)
   const alternarVoz = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Tu navegador no soporta entrada de voz por Speech API. Puedes escribir tu consulta en el buscador.');
+      alert(t('homeExt.alertNoVoz'));
       return;
     }
 
@@ -70,7 +76,7 @@ export function Home() {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognizer = new SpeechRecognition();
-    recognizer.lang = 'es-CR';
+    recognizer.lang = idiomaActual?.ttsLang || 'es-CR';
     recognizer.continuous = false;
     recognizer.interimResults = false;
 
@@ -98,21 +104,21 @@ export function Home() {
   // Geolocalización del navegador
   const detectarUbicacionReal = () => {
     if (!navigator.geolocation) {
-      alert('Tu navegador no permite geolocalización.');
+      alert(t('homeExt.alertNoGps'));
       return;
     }
     if (!geolocalizacionPermitida({ accionExplicita: true })) {
-      alert('Desactivaste la geolocalización en «Preferencias de Cookies». Actívala allí para usar tu ubicación.');
+      alert(t('homeExt.alertGeoDesactivada'));
       return;
     }
     setDetectandoGps(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setUbicacionUsuario(`Ubicación GPS detectada (±${Math.round(pos.coords.accuracy)}m)`);
+        setUbicacionUsuario({ tipo: 'detectada', metros: Math.round(pos.coords.accuracy) });
         setDetectandoGps(false);
       },
       () => {
-        setUbicacionUsuario('San José Centro, Costa Rica');
+        setUbicacionUsuario({ tipo: 'fallback' });
         setDetectandoGps(false);
       },
       { timeout: 7000 }
@@ -151,18 +157,23 @@ export function Home() {
       }
     }
 
-    // Filtro por consulta en lenguaje natural
+    // Filtro por consulta en lenguaje natural (compatible con chips traducidos)
     if (q) {
-      if (q.includes('comer') || q.includes('almuerzo') || q.includes('cena')) {
+      const chipsIdx = [1, 2, 3, 4, 5, 6].findIndex(
+        (n) => t(`homeExt.chipExtra${n}`).toLowerCase().trim() === q
+      );
+      if (chipsIdx === 0 || q.includes('comer') || q.includes('almuerzo') || q.includes('cena') || q.includes('eat') || q.includes('food')) {
         res = res.filter(l => l.tipoActividad === 'gastronomia' || l.categoria.toLowerCase().includes('comida'));
-      } else if (q.includes('econ') || q.includes('barato')) {
+      } else if (chipsIdx === 1 || q.includes('econ') || q.includes('barato') || q.includes('cheap') || q.includes('budget')) {
         res = res.filter(l => l.precioNivel === '$');
-      } else if (q.includes('perro') || q.includes('mascota')) {
+      } else if (chipsIdx === 2 || q.includes('perro') || q.includes('mascota') || q.includes('dog') || q.includes('pet')) {
         res = res.filter(l => l.petFriendly === 'si');
-      } else if (q.includes('techo') || q.includes('lluvia') || q.includes('aguacero')) {
+      } else if (chipsIdx === 3 || q.includes('techo') || q.includes('lluvia') || q.includes('aguacero') || q.includes('indoor') || q.includes('rain')) {
         res = res.filter(l => l.condicionClima === 'bajo-techo' || l.condicionClima === 'terraza-techada');
-      } else if (q.includes('dos horas') || q.includes('2 horas') || q.includes('rapido') || q.includes('tiempo')) {
+      } else if (chipsIdx === 4 || q.includes('dos horas') || q.includes('2 horas') || q.includes('rapido') || q.includes('tiempo') || q.includes('2 hours') || q.includes('two hours')) {
         res = res.filter(l => l.tiempoEstimado.includes('1') || l.tiempoEstimado.includes('Menos'));
+      } else if (chipsIdx === 5 || q.includes('café') || q.includes('cafe') || q.includes('coffee') || q.includes('trabaj') || q.includes('work')) {
+        res = res.filter(l => l.categoria.toLowerCase().includes('caf') || l.descripcion.toLowerCase().includes('trabaj'));
       } else {
         res = res.filter(l =>
           l.nombre.toLowerCase().includes(q) ||
@@ -179,7 +190,7 @@ export function Home() {
       if (bFoto !== aFoto) return bFoto - aFoto;
       return (b.puntuacion || 0) - (a.puntuacion || 0);
     });
-  }, [lugaresCombinados, consulta, categoriaSeleccionada]);
+  }, [lugaresCombinados, consulta, categoriaSeleccionada, t]);
 
   const mapIconoCategoria = (icono) => {
     switch (icono) {
@@ -222,7 +233,7 @@ export function Home() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-current/15 hover:border-[#F27B91] hover:bg-current/5 transition-all"
             >
               <MapPin className={`w-3.5 h-3.5 text-rose-500 ${detectandoGps ? 'animate-bounce' : ''}`} aria-hidden="true" />
-              <span>{detectandoGps ? t('home.gpsCalculando') : ubicacionUsuario}</span>
+              <span>{detectandoGps ? t('home.gpsCalculando') : textoUbicacionVisible}</span>
             </button>
             <span className="text-[11px] opacity-50">&bull; {t('home.gpsClic')}</span>
           </div>
@@ -274,14 +285,14 @@ export function Home() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] uppercase font-bold opacity-60 mr-1">{t('home.pruebaRapida')}</span>
             {CONSULTAS_RAPIDAS_SUGERIDAS.map((sug, i) => {
-              const textoChip = idioma === 'es' ? sug.texto : t(`home.chip${(i % 4) + 1}`, sug.texto);
+              const textoChip = t(`homeExt.chipExtra${i + 1}`, sug.texto);
               return (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setConsulta(sug.texto)}
+                  onClick={() => setConsulta(textoChip)}
                   className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                    consulta === sug.texto
+                    consulta === textoChip
                       ? 'bg-[#501228] text-white border-[#F27B91]/40 font-semibold'
                       : 'bg-current/5 border-current/10 hover:border-current/25 opacity-80 hover:opacity-100'
                   }`}
@@ -400,7 +411,8 @@ export function Home() {
                           alternarFavorito(lugar.id);
                           setFavoritosVersion(v => v + 1);
                         }}
-                        title={fav ? "Quitar de favoritos" : "Guardar en favoritos"}
+                        aria-label={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
+                        title={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
                         className="absolute top-3 right-3 p-2 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md transition-all active:scale-90"
                       >
                         <Heart className={`w-4 h-4 ${fav ? 'fill-rose-500 text-rose-500' : ''}`} />
@@ -434,10 +446,10 @@ export function Home() {
                         {lugar.petFriendly === 'si' ? (
                           <span className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
                             <Dog className="w-3.5 h-3.5" />
-                            <span>Pet-friendly</span>
+                            <span>{t('homeExt.petFriendly')}</span>
                           </span>
                         ) : (
-                          <span className="text-[11px] opacity-60">Solo humanos</span>
+                          <span className="text-[11px] opacity-60">{t('homeExt.soloHumanos')}</span>
                         )}
                       </div>
 
@@ -446,7 +458,7 @@ export function Home() {
                         onClick={() => setLugarSeleccionado(lugar)}
                         className="text-xs font-bold text-[#F27B91] hover:underline"
                       >
-                        Ver detalles &rarr;
+                        {t('homeExt.verDetalles')}
                       </button>
                     </div>
                   </div>
@@ -489,9 +501,9 @@ export function Home() {
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="font-serif font-bold text-lg">Protección Podal Canina</h3>
+                <h3 className="font-serif font-bold text-lg">{t('homeExt.pilar1Titulo')}</h3>
                 <p className="text-xs opacity-75 leading-relaxed">
-                  El asfalto oscuro en San José supera los 50 °C al mediodía. Alertamos cuando excede el umbral seguro de 26 °C.
+                  {t('homeExt.pilar1Desc')}
                 </p>
               </div>
             </div>
@@ -503,9 +515,9 @@ export function Home() {
                 <Navigation className="w-5 h-5" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="font-serif font-bold text-lg">Rutas Acústicamente Limpias</h3>
+                <h3 className="font-serif font-bold text-lg">{t('homeExt.pilar2Titulo')}</h3>
                 <p className="text-xs opacity-75 leading-relaxed">
-                  Cartografía de decibelios para evitar escapes por pánico o estrés auditivo en zonas de alta congestión del GAM.
+                  {t('homeExt.pilar2Desc')}
                 </p>
               </div>
             </div>
@@ -517,9 +529,9 @@ export function Home() {
                 <Award className="w-5 h-5" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="font-serif font-bold text-lg">Certificación en Terrazas</h3>
+                <h3 className="font-serif font-bold text-lg">{t('homeExt.pilar3Titulo')}</h3>
                 <p className="text-xs opacity-75 leading-relaxed">
-                  Cada local auditado garantiza bowls higienizados, agua fría de recambio continuo y anclajes seguros en mesa.
+                  {t('homeExt.pilar3Desc')}
                 </p>
               </div>
             </div>
@@ -542,13 +554,13 @@ export function Home() {
             <div className="max-w-xl space-y-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold tracking-wide uppercase text-[#F27B91] border border-white/15">
                 <Sparkles className="w-3 h-3" />
-                Experiencia Integral Synodos (Σύνοδος)
+                {t('homeExt.ctaBadge')}
               </span>
               <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-white">
-                Caminar juntos: descubre planes y coordina tus salidas en el GAM
+                {t('homeExt.ctaTitulo')}
               </h2>
               <p className="text-slate-300 text-sm leading-relaxed">
-                Tanto si sales en solitario, en encuentro grupal con amigos o con tu compañero de cuatro patas, Synodos y el Copiloto Argos sincronizan mapas, clima y recomendaciones en tiempo real.
+                {t('homeExt.ctaSubtitulo')}
               </p>
             </div>
 
@@ -561,7 +573,7 @@ export function Home() {
                       size="lg"
                       className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
                     >
-                      Explorar Catálogo
+                      {t('homeExt.ctaExplorar')}
                     </Button>
                   </Link>
                   <Link to="/mis-planes" className="w-full sm:w-auto">
@@ -570,7 +582,7 @@ export function Home() {
                       size="lg"
                       className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
                     >
-                      Crear Mi Primer Plan
+                      {t('homeExt.ctaCrearPlan')}
                     </Button>
                   </Link>
                 </>
@@ -582,7 +594,7 @@ export function Home() {
                       size="lg"
                       className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
                     >
-                      Ver Mapa Interactivo
+                      {t('homeExt.ctaVerMapa')}
                     </Button>
                   </Link>
                   <Link to="/acceso" className="w-full sm:w-auto">
@@ -591,7 +603,7 @@ export function Home() {
                       size="lg"
                       className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
                     >
-                      Iniciar Sesión para Planes
+                      {t('homeExt.ctaLoginPlanes')}
                     </Button>
                   </Link>
                 </>

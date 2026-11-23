@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
+import { useIdioma } from '../../context/IdiomaContext';
 
 const FORM_INICIAL = {
   place_id: 'LOC-001',
@@ -17,6 +18,7 @@ const FORM_INICIAL = {
 };
 
 export function ModeracionFotosPanel() {
+  const { t } = useIdioma();
   const [pendientes, setPendientes] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [procesandoId, setProcesandoId] = useState(null);
@@ -34,11 +36,11 @@ export function ModeracionFotosPanel() {
       const data = await api.get('/admin/places/photos/pending?limit=50');
       setPendientes(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
-      setMensaje({ tipo: 'error', texto: err.message || 'No se pudieron cargar las fotografías pendientes.' });
+      setMensaje({ tipo: 'error', texto: err.message || t('modFotos.errCargar') });
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     cargarPendientes();
@@ -58,7 +60,7 @@ export function ModeracionFotosPanel() {
   const handleSubirFoto = async (e) => {
     e.preventDefault();
     if (!formSubida.image_base64) {
-      setMensaje({ tipo: 'error', texto: 'Selecciona una imagen JPEG, PNG o WebP antes de subir.' });
+      setMensaje({ tipo: 'error', texto: t('modFotos.errArchivoReq') });
       return;
     }
     setSubiendo(true);
@@ -67,14 +69,14 @@ export function ModeracionFotosPanel() {
       await api.post('/admin/places/photos/upload', formSubida);
       setMensaje({
         tipo: 'ok',
-        texto: 'Fotografía validada (EXIF limpio) y enviada al bucket privado en estado pending_review.'
+        texto: t('modFotos.okSubida')
       });
       setFormSubida(FORM_INICIAL);
       setNombreArchivo('');
       setMostrarSubida(false);
       await cargarPendientes();
     } catch (err) {
-      setMensaje({ tipo: 'error', texto: err.message || 'Error al subir la fotografía.' });
+      setMensaje({ tipo: 'error', texto: err.message || t('modFotos.errSubida') });
     } finally {
       setSubiendo(false);
     }
@@ -86,9 +88,9 @@ export function ModeracionFotosPanel() {
     try {
       await api.post(`/admin/places/photos/${photoId}/approve`, { is_cover: true });
       setPendientes((prev) => prev.filter((p) => p.id !== photoId));
-      setMensaje({ tipo: 'ok', texto: 'Fotografía aprobada y publicada en el bucket público.' });
+      setMensaje({ tipo: 'ok', texto: t('modFotos.okAprobada') });
     } catch (err) {
-      setMensaje({ tipo: 'error', texto: err.message || 'Error aprobando fotografía.' });
+      setMensaje({ tipo: 'error', texto: err.message || t('modFotos.errAprobada') });
     } finally {
       setProcesandoId(null);
     }
@@ -103,9 +105,9 @@ export function ModeracionFotosPanel() {
         reason: 'Rechazada en revisión administrativa'
       });
       setPendientes((prev) => prev.filter((p) => p.id !== photoId));
-      setMensaje({ tipo: 'ok', texto: 'Fotografía rechazada y mantenida fuera del catálogo público.' });
+      setMensaje({ tipo: 'ok', texto: t('modFotos.okRechazada') });
     } catch (err) {
-      setMensaje({ tipo: 'error', texto: err.message || 'Error rechazando fotografía.' });
+      setMensaje({ tipo: 'error', texto: err.message || t('modFotos.errRechazada') });
     } finally {
       setProcesandoId(null);
     }
@@ -118,7 +120,7 @@ export function ModeracionFotosPanel() {
       const res = await api.post('/admin/places/photos/reconcile', {});
       setReconciliacion(res);
     } catch (err) {
-      setMensaje({ tipo: 'error', texto: err.message || 'No se pudo reconciliar Storage con la base de datos.' });
+      setMensaje({ tipo: 'error', texto: err.message || t('modFotos.errReconcil') });
     } finally {
       setCargando(false);
     }
@@ -130,10 +132,10 @@ export function ModeracionFotosPanel() {
         <div className="space-y-0.5 text-left">
           <h2 className="font-serif font-bold text-base flex items-center gap-2">
             <Camera className="w-4 h-4 text-[#F27B91]" />
-            <span>Cola de Moderación de Fotografías ({pendientes.length})</span>
+            <span>{t('modFotos.titulo', { n: pendientes.length })}</span>
           </h2>
           <p className="text-xs opacity-75">
-            Las imágenes importadas permanecen privadas hasta que un administrador verifique su sucursal, autoría y licencia.
+            {t('modFotos.subtitulo')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -143,13 +145,13 @@ export function ModeracionFotosPanel() {
             icon={Plus}
             onClick={() => setMostrarSubida((v) => !v)}
           >
-            {mostrarSubida ? 'Cerrar formulario' : 'Subir fotografía'}
+            {mostrarSubida ? t('modFotos.btnCerrarForm') : t('modFotos.btnSubirFoto')}
           </Button>
           <Button size="sm" variant="secondary" icon={FileCheck} onClick={handleReconciliar} disabled={cargando}>
-            Reconciliar Storage
+            {t('modFotos.btnReconciliar')}
           </Button>
           <Button size="sm" variant="primary" icon={RefreshCw} onClick={cargarPendientes} disabled={cargando}>
-            {cargando ? 'Cargando...' : 'Actualizar'}
+            {cargando ? t('modFotos.btnCargando') : t('modFotos.btnActualizar')}
           </Button>
         </div>
       </Card>
@@ -158,49 +160,49 @@ export function ModeracionFotosPanel() {
         <Card className="p-4 text-left space-y-3">
           <h3 className="font-serif font-bold text-sm flex items-center gap-2">
             <Upload className="w-4 h-4 text-[#F27B91]" />
-            <span>Subir fotografía verificada al bucket privado</span>
+            <span>{t('modFotos.formTitulo')}</span>
           </h3>
           <form onSubmit={handleSubirFoto} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
             <Input
-              label="ID del Establecimiento (place_id)"
+              label={t('modFotos.lblPlaceId')}
               value={formSubida.place_id}
               onChange={(e) => setFormSubida({ ...formSubida, place_id: e.target.value })}
               required
             />
             <Input
-              label="Sucursal / Etiqueta"
+              label={t('modFotos.lblSucursal')}
               value={formSubida.branch_label}
               onChange={(e) => setFormSubida({ ...formSubida, branch_label: e.target.value })}
             />
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold opacity-80">Tipo de toma</label>
+              <label className="block text-[11px] font-semibold opacity-80">{t('modFotos.lblTipoToma')}</label>
               <select
                 value={formSubida.photo_type}
                 onChange={(e) => setFormSubida({ ...formSubida, photo_type: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent text-xs"
               >
-                <option value="fachada">Fachada</option>
-                <option value="terraza">Terraza Pet-Friendly</option>
-                <option value="interior">Interior</option>
-                <option value="plato">Gastronomía / Plato</option>
-                <option value="otro">Otro</option>
+                <option value="fachada">{t('modFotos.optFachada')}</option>
+                <option value="terraza">{t('modFotos.optTerraza')}</option>
+                <option value="interior">{t('modFotos.optInterior')}</option>
+                <option value="plato">{t('modFotos.optPlato')}</option>
+                <option value="otro">{t('modFotos.optOtro')}</option>
               </select>
             </div>
             <Input
-              label="Autor / Crédito obligatorio"
+              label={t('modFotos.lblAutorForm')}
               value={formSubida.author}
               onChange={(e) => setFormSubida({ ...formSubida, author: e.target.value })}
               required
             />
             <Input
-              label="Licencia / Autorización verificable"
+              label={t('modFotos.lblLicenciaForm')}
               value={formSubida.license}
               onChange={(e) => setFormSubida({ ...formSubida, license: e.target.value })}
               required
             />
             <div className="space-y-1">
               <label className="block text-[11px] font-semibold opacity-80">
-                Archivo (JPEG, PNG, WebP &ge; 400x300 px)
+                {t('modFotos.lblArchivo')}
               </label>
               <input
                 type="file"
@@ -209,7 +211,7 @@ export function ModeracionFotosPanel() {
                 className="w-full text-xs file:mr-2 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-[#501228] file:text-white file:font-semibold"
                 required
               />
-              {nombreArchivo && <span className="block text-[10px] opacity-70">Seleccionado: {nombreArchivo}</span>}
+              {nombreArchivo && <span className="block text-[10px] opacity-70">{t('modFotos.seleccionadoArchivo', { nombre: nombreArchivo })}</span>}
             </div>
             <div className="sm:col-span-2 lg:col-span-3 flex items-center justify-between pt-2 border-t border-current/10">
               <label className="inline-flex items-center gap-2 cursor-pointer text-xs">
@@ -219,10 +221,10 @@ export function ModeracionFotosPanel() {
                   onChange={(e) => setFormSubida({ ...formSubida, is_cover: e.target.checked })}
                   className="accent-[#501228]"
                 />
-                <span>Marcar como portada sugerida al aprobar</span>
+                <span>{t('modFotos.chkPortada')}</span>
               </label>
               <Button type="submit" size="sm" variant="primary" icon={Upload} disabled={subiendo}>
-                {subiendo ? 'Validando y subiendo...' : 'Subir a Revisión Privada'}
+                {subiendo ? t('modFotos.btnValidandoSubiendo') : t('modFotos.btnSubirRevision')}
               </Button>
             </div>
           </form>
@@ -244,11 +246,13 @@ export function ModeracionFotosPanel() {
 
       {reconciliacion && (
         <Card className="p-3.5 text-xs space-y-1 text-left">
-          <p className="font-bold">Resultado de Reconciliación Storage ↔ PostgreSQL</p>
+          <p className="font-bold">{t('modFotos.reconcilTitulo')}</p>
           <p className="opacity-80">
-            Registros revisados: <strong>{reconciliacion.total_checked}</strong> &bull; Saludables:{' '}
-            <strong>{reconciliacion.healthy_count}</strong> &bull; Faltantes en Storage:{' '}
-            <strong>{reconciliacion.missing_in_storage?.length || 0}</strong>
+            {t('modFotos.reconcilResumen', {
+              total: reconciliacion.total_checked,
+              ok: reconciliacion.healthy_count,
+              missing: reconciliacion.missing_in_storage?.length || 0
+            })}
           </p>
         </Card>
       )}
@@ -256,10 +260,9 @@ export function ModeracionFotosPanel() {
       {pendientes.length === 0 ? (
         <Card className="p-8 text-center space-y-2">
           <ShieldAlert className="w-7 h-7 mx-auto opacity-60" />
-          <p className="text-sm font-semibold">No hay fotografías pendientes de revisión.</p>
+          <p className="text-sm font-semibold">{t('modFotos.vacioTitulo')}</p>
           <p className="text-xs opacity-70">
-            Puedes subir una fotografía desde el botón <strong>Subir fotografía</strong> o importar un lote con{' '}
-            <code>npm --prefix backend run photos:import -- --commit</code>.
+            {t('modFotos.vacioSub')}
           </p>
         </Card>
       ) : (
@@ -270,12 +273,12 @@ export function ModeracionFotosPanel() {
                 {foto.signed_review_url ? (
                   <img
                     src={foto.signed_review_url}
-                    alt={foto.alt_text || foto.restaurant_name || 'Vista previa'}
+                    alt={foto.alt_text || foto.restaurant_name || 'Preview'}
                     className="w-full h-full object-cover"
                   />
                 ) : (
                   <span className="text-xs text-slate-400 px-4 text-center">
-                    Vista previa firmada no disponible (verifica SUPABASE_SERVICE_ROLE_KEY)
+                    {t('modFotos.previewNoDisp')}
                   </span>
                 )}
               </div>
@@ -287,17 +290,17 @@ export function ModeracionFotosPanel() {
                       {foto.restaurant_name || foto.place_id}
                     </h3>
                     <p className="text-[11px] opacity-70">
-                      {foto.branch_label || 'Sucursal principal'} &bull; {foto.photo_type || 'otro'}
+                      {foto.branch_label || t('modFotos.sucursalPrincipal')} &bull; {foto.photo_type || t('modFotos.optOtro')}
                     </p>
                   </div>
-                  <Badge variant="warning">Pendiente</Badge>
+                  <Badge variant="warning">{t('modFotos.badgePendiente')}</Badge>
                 </div>
 
                 <div className="space-y-0.5 text-[11px] opacity-80">
-                  <p><strong>Autor:</strong> {foto.author || 'No indicado'}</p>
-                  <p><strong>Licencia:</strong> {foto.license || 'Sin licencia'}</p>
+                  <p><strong>{t('modFotos.lblAutorCard')}</strong> {foto.author || t('modFotos.noIndicado')}</p>
+                  <p><strong>{t('modFotos.lblLicenciaCard')}</strong> {foto.license || t('modFotos.sinLicencia')}</p>
                   {foto.width && foto.height && (
-                    <p><strong>Dimensiones:</strong> {foto.width}x{foto.height} px</p>
+                    <p><strong>{t('modFotos.lblDimensiones')}</strong> {foto.width}x{foto.height} px</p>
                   )}
                 </div>
 
@@ -310,7 +313,7 @@ export function ModeracionFotosPanel() {
                     onClick={() => handleAprobar(foto.id)}
                     className="flex-1 justify-center"
                   >
-                    Aprobar
+                    {t('modFotos.btnAprobar')}
                   </Button>
                   <Button
                     size="sm"
@@ -320,7 +323,7 @@ export function ModeracionFotosPanel() {
                     onClick={() => handleRechazar(foto.id)}
                     className="flex-1 justify-center"
                   >
-                    Rechazar
+                    {t('modFotos.btnRechazar')}
                   </Button>
                 </div>
               </div>

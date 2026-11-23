@@ -54,19 +54,42 @@ export function normalizarEstadoMascota(valor) {
   return 'desconocido';
 }
 
-export function etiquetaEstadoMascota(estado) {
+export function etiquetaEstadoMascota(estado, t = null) {
+  if (t) {
+    if (estado === 'permitido') return t('mapaExt.petPermitido');
+    if (estado === 'no_permitido') return t('mapaExt.petNoPermitido');
+    return t('mapaExt.petDesconocido');
+  }
   if (estado === 'permitido') return 'Mascotas: Permitido';
   if (estado === 'no_permitido') return 'Mascotas: No permitido';
   return 'Mascotas: Desconocido';
 }
 
-export function etiquetaTerraza(estado) {
+export function etiquetaTerraza(estado, t = null) {
+  if (t) {
+    if (estado === 'disponible') return t('mapaExt.terrazaDisponible');
+    if (estado === 'no_disponible') return t('mapaExt.sinTerraza');
+    return t('mapaExt.terrazaDesconocida');
+  }
   if (estado === 'disponible') return 'Terraza disponible';
   if (estado === 'no_disponible') return 'Sin terraza';
   return 'Terraza: Desconocida';
 }
 
-export function etiquetaTranquilidad(estado, decibelios = null) {
+export function etiquetaTranquilidad(estado, decibelios = null, t = null) {
+  if (t) {
+    if (estado === 'silencioso') {
+      return Number.isFinite(decibelios)
+        ? t('mapaExt.tranquiloDb', { db: decibelios })
+        : t('mapaExt.ambienteTranquilo');
+    }
+    if (estado === 'moderado') {
+      return Number.isFinite(decibelios)
+        ? t('mapaExt.ruidoModeradoDb', { db: decibelios })
+        : t('mapaExt.ruidoModerado');
+    }
+    return t('mapaExt.tranquilidadDesconocida');
+  }
   if (estado === 'silencioso') {
     return Number.isFinite(decibelios) ? `Tranquilo (${decibelios} dB demo)` : 'Ambiente tranquilo';
   }

@@ -5,6 +5,7 @@ import { RuletaVideos } from '../components/RuletaVideos';
 import { SelectorFotoMascota } from '../components/SelectorFotoMascota';
 import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 import { LUGARES_GOTOX } from '../data/lugaresGoToX';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import {
@@ -74,6 +75,7 @@ const DIRECTORIO_VETERINARIO_GAM = [
 export function MiMascotaPage() {
   const { mascota, usuario, guardarBovedaBackend } = useSesion();
   const { esClaro, esMorado } = useTema();
+  const { t } = useIdioma();
 
   const tieneMascotaRegistrada = Boolean(
     mascota?.nombre && mascota.nombre !== 'Sin mascota registrada'
@@ -156,7 +158,7 @@ export function MiMascotaPage() {
   const handleGuardarMascota = async (e) => {
     e.preventDefault();
     if (!formMascota.nombre.trim()) {
-      setErrorGuardado('Ingresa al menos el nombre de tu perro.');
+      setErrorGuardado(t('mascotaPage.errNombreReq'));
       return;
     }
 
@@ -170,11 +172,11 @@ export function MiMascotaPage() {
         pet: {
           nombre: formMascota.nombre.trim(),
           especie: 'Canino',
-          raza: formMascota.raza.trim() || 'Mestizo',
+          raza: formMascota.raza.trim() || t('carnet.mestizo'),
           pesoKg: formMascota.pesoKg ? Number(formMascota.pesoKg) : 15,
           edadAnos: formMascota.edadAnos ? Number(formMascota.edadAnos) : 2,
           microchipId: formMascota.microchipId.trim(),
-          colorManto: formMascota.colorManto.trim() || 'Variado',
+          colorManto: formMascota.colorManto.trim() || t('carnet.variado'),
           foto: formMascota.foto || null,
           alergias: formMascota.alergias
             .split(',')
@@ -185,10 +187,10 @@ export function MiMascotaPage() {
 
       setTieneMascota(true);
       setEditandoMascota(false);
-      setMensajeGuardado('¡Datos y foto de tu mascota guardados con éxito!');
+      setMensajeGuardado(t('mascotaPage.msgGuardadoOk'));
       setTimeout(() => setMensajeGuardado(''), 3500);
     } catch (err) {
-      setErrorGuardado(err?.message || 'No se pudo guardar la información de tu mascota.');
+      setErrorGuardado(err?.message || t('mascotaPage.msgGuardadoErr'));
     } finally {
       setGuardando(false);
     }
@@ -199,21 +201,29 @@ export function MiMascotaPage() {
   const mascotaVista = {
     ...mascota,
     id: mascota?.id || 'PET-CR-0001',
-    nombre: formMascota.nombre || (tieneMascotaRegistrada ? mascota.nombre : 'Tu Mascota'),
-    raza: formMascota.raza || mascota?.raza || 'Mestizo',
+    nombre: formMascota.nombre || (tieneMascotaRegistrada ? mascota.nombre : t('comun.tuMascotaDefault')),
+    raza: formMascota.raza || mascota?.raza || t('carnet.mestizo'),
     pesoKg: formMascota.pesoKg ? Number(formMascota.pesoKg) : (mascota?.pesoKg || 15),
     edadAnos: formMascota.edadAnos ? Number(formMascota.edadAnos) : (mascota?.edadAnos || 2),
-    microchipId: formMascota.microchipId || mascota?.microchipId || 'En trámite',
-    colorManto: formMascota.colorManto || mascota?.colorManto || 'Variado',
+    microchipId: formMascota.microchipId || mascota?.microchipId || t('comun.enTramite'),
+    colorManto: formMascota.colorManto || mascota?.colorManto || t('carnet.variado'),
     foto: formMascota.foto ?? mascota?.foto ?? null,
     alergias: formMascota.alergias
       ? formMascota.alergias.split(',').map((s) => s.trim()).filter(Boolean)
       : (Array.isArray(mascota?.alergias) ? mascota.alergias : []),
     tutor: {
       ...(mascota?.tutor || {}),
-      nombre: usuario?.nombre || mascota?.tutor?.nombre || 'Usuario GoToX',
-      telefono: usuario?.telefono || mascota?.tutor?.telefono || 'Sin registrar'
+      nombre: usuario?.nombre || mascota?.tutor?.nombre || t('comun.usuarioDefault'),
+      telefono: usuario?.telefono || mascota?.tutor?.telefono || t('comun.sinRegistrar')
     }
+  };
+
+  const labelCategoriaRec = (cat) => {
+    if (cat === 'Vacunación') return t('mascotaPage.catVacunacion');
+    if (cat === 'Prevención') return t('mascotaPage.catDesparasitacion');
+    if (cat === 'Higiene & Podología') return t('mascotaPage.catPeluqueria');
+    if (cat === 'Control Veterinario') return t('mascotaPage.catCita');
+    return cat;
   };
 
   const fotoMascotaActiva = mascotaVista.foto || null;
@@ -225,13 +235,13 @@ export function MiMascotaPage() {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#501228] text-white border border-[#F27B91]/30 mb-2">
             <Dog className="w-3.5 h-3.5 text-[#F27B91]" />
-            <span>Módulo Opcional &bull; Bienestar Animal GAM</span>
+            <span>{t('mascotaPage.tag')}</span>
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight">
-            Mi Mascota & Bóveda Biométrica
+            {t('mascotaPage.titulo')}
           </h1>
           <p className="text-sm opacity-75 mt-1 font-sans">
-            Información médica digital, foto, carnet verificable, red veterinaria y espacios amigables.
+            {t('mascotaPage.subtitulo')}
           </p>
         </div>
 
@@ -243,7 +253,7 @@ export function MiMascotaPage() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold border border-[#F27B91]/40 bg-[#501228]/20 text-[#F27B91] hover:bg-[#501228] hover:text-white transition-all"
             >
               <Edit3 className="w-3.5 h-3.5" />
-              <span>{editandoMascota ? 'Ocultar Editor' : 'Editar Mascota / Foto'}</span>
+              <span>{editandoMascota ? t('mascotaPage.ocultarEditor') : t('mascotaPage.editarMascotaFoto')}</span>
             </button>
           )}
 
@@ -256,7 +266,7 @@ export function MiMascotaPage() {
                 tieneMascota ? 'bg-[#501228] text-white shadow-xs' : 'opacity-60 hover:opacity-100'
               }`}
             >
-              Tengo Mascota
+              {t('mascotaPage.tengoMascota')}
             </button>
             <button
               type="button"
@@ -265,7 +275,7 @@ export function MiMascotaPage() {
                 !tieneMascota ? 'bg-[#501228] text-white shadow-xs' : 'opacity-60 hover:opacity-100'
               }`}
             >
-              No tengo mascota
+              {t('mascotaPage.noTengoMascota')}
             </button>
           </div>
         </div>
@@ -297,19 +307,19 @@ export function MiMascotaPage() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="font-serif font-bold text-2xl sm:text-3xl">GoToX está pensado para todos</h2>
+            <h2 className="font-serif font-bold text-2xl sm:text-3xl">{t('mascotaPage.sinMascotaTitulo')}</h2>
             <p className="text-sm opacity-80 leading-relaxed font-sans">
-              No necesitas tener mascota para disfrutar de GoToX. Puedes organizar salidas con amigos, descubrir gastronomía de especialidad, museos y actividades culturales en el GAM con nuestro buscador inteligente.
+              {t('mascotaPage.sinMascotaDesc')}
             </p>
           </div>
 
           <div className="p-4 rounded-2xl bg-current/5 border border-current/10 text-xs text-left space-y-2">
             <span className="font-bold flex items-center gap-1.5 text-[#F27B91]">
               <Info className="w-4 h-4" />
-              <span>¿Vas a adoptar o salir con el perro de alguien más?</span>
+              <span>{t('mascotaPage.sinMascotaTipTitulo')}</span>
             </span>
             <p className="opacity-75">
-              Si decides registrar una mascota, este módulo te permite subir la foto de tu perro, generar su carnet 3D y activar recomendaciones pet-friendly.
+              {t('mascotaPage.sinMascotaTipDesc')}
             </p>
           </div>
 
@@ -318,7 +328,7 @@ export function MiMascotaPage() {
               to="/explorar"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/40"
             >
-              <span>Explorar Restaurantes & Ocio</span>
+              <span>{t('mascotaPage.explorarOcioBtn')}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <button
@@ -329,7 +339,7 @@ export function MiMascotaPage() {
               }}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-semibold border border-current/20 hover:bg-current/5"
             >
-              <span>Registrar Mascota Ahora</span>
+              <span>{t('mascotaPage.registrarAhoraBtn')}</span>
             </button>
           </div>
         </div>
@@ -347,7 +357,7 @@ export function MiMascotaPage() {
                 <div className="flex items-center gap-2">
                   <Dog className="w-5 h-5 text-[#F27B91]" />
                   <h2 className="font-serif font-bold text-xl">
-                    {tieneMascotaRegistrada ? 'Actualizar Información y Foto de Tu Perro' : 'Registrar Información de Tu Mascota'}
+                    {tieneMascotaRegistrada ? t('mascotaPage.editorTituloEditar') : t('mascotaPage.editorTituloNuevo')}
                   </h2>
                 </div>
                 {tieneMascotaRegistrada && (
@@ -355,7 +365,7 @@ export function MiMascotaPage() {
                     type="button"
                     onClick={() => setEditandoMascota(false)}
                     className="p-1.5 rounded-xl hover:bg-current/10 transition-colors"
-                    aria-label="Cerrar editor"
+                    aria-label={t('mascotaPage.cerrarEditorAria')}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -366,7 +376,7 @@ export function MiMascotaPage() {
                 <SelectorFotoMascota
                   valor={formMascota.foto}
                   onChange={(foto) => setFormMascota((prev) => ({ ...prev, foto }))}
-                  nombreMascota={formMascota.nombre || 'tu perro'}
+                  nombreMascota={formMascota.nombre || t('accesoExt.tuPerroDefault')}
                   razaActual={formMascota.raza}
                   onSeleccionarPerfilRaza={({ raza, pesoKg, colorManto, foto }) => {
                     setFormMascota((prev) => ({
@@ -381,76 +391,76 @@ export function MiMascotaPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <label className="opacity-70 block mb-1 font-medium">Nombre de tu perro *</label>
+                    <label className="opacity-70 block mb-1 font-medium">{t('mascotaPage.lblNombre')}</label>
                     <input
                       type="text"
                       value={formMascota.nombre}
                       onChange={(e) => setFormMascota({ ...formMascota, nombre: e.target.value })}
-                      placeholder="Ej. Max"
+                      placeholder={t('mascotaPage.phNombre')}
                       className="w-full px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
                       required
                     />
                   </div>
                   <div>
-                    <label className="opacity-70 block mb-1 font-medium">Raza / Especie</label>
+                    <label className="opacity-70 block mb-1 font-medium">{t('mascotaPage.lblRaza')}</label>
                     <input
                       type="text"
                       value={formMascota.raza}
                       onChange={(e) => setFormMascota({ ...formMascota, raza: e.target.value })}
-                      placeholder="Ej. Beagle o Mestizo"
+                      placeholder={t('mascotaPage.phRaza')}
                       className="w-full px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
                     />
                   </div>
                   <div>
-                    <label className="opacity-70 block mb-1 font-medium">Peso (kg)</label>
+                    <label className="opacity-70 block mb-1 font-medium">{t('mascotaPage.lblPeso')}</label>
                     <input
                       type="number"
                       step="0.1"
                       value={formMascota.pesoKg}
                       onChange={(e) => setFormMascota({ ...formMascota, pesoKg: e.target.value })}
-                      placeholder="15"
+                      placeholder={t('mascotaPage.phPeso')}
                       className="w-full px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
                     />
                   </div>
                   <div>
-                    <label className="opacity-70 block mb-1 font-medium">Edad (años)</label>
+                    <label className="opacity-70 block mb-1 font-medium">{t('mascotaPage.lblEdad')}</label>
                     <input
                       type="number"
                       value={formMascota.edadAnos}
                       onChange={(e) => setFormMascota({ ...formMascota, edadAnos: e.target.value })}
-                      placeholder="2"
+                      placeholder={t('mascotaPage.phEdad')}
                       className="w-full px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
                     />
                   </div>
                   <div>
-                    <label className="opacity-70 block mb-1 font-medium">Color de Manto</label>
+                    <label className="opacity-70 block mb-1 font-medium">{t('mascotaPage.lblColor')}</label>
                     <input
                       type="text"
                       value={formMascota.colorManto}
                       onChange={(e) => setFormMascota({ ...formMascota, colorManto: e.target.value })}
-                      placeholder="Ej. Dorado / Tricolor"
+                      placeholder={t('mascotaPage.phColor')}
                       className="w-full px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
                     />
                   </div>
                   <div>
-                    <label className="opacity-70 block mb-1 font-medium">Microchip (Opcional)</label>
+                    <label className="opacity-70 block mb-1 font-medium">{t('mascotaPage.lblChip')}</label>
                     <input
                       type="text"
                       value={formMascota.microchipId}
                       onChange={(e) => setFormMascota({ ...formMascota, microchipId: e.target.value })}
-                      placeholder="CRC-756-..."
+                      placeholder={t('mascotaPage.phChip')}
                       className="w-full px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="opacity-70 block mb-1 font-medium">Alergias o cuidados especiales (Opcional)</label>
+                  <label className="opacity-70 block mb-1 font-medium">{t('mascotaPage.lblAlergias')}</label>
                   <input
                     type="text"
                     value={formMascota.alergias}
                     onChange={(e) => setFormMascota({ ...formMascota, alergias: e.target.value })}
-                    placeholder="Separadas por coma (ej. Pollo, Polen)"
+                    placeholder={t('mascotaPage.phAlergias')}
                     className="w-full px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
                   />
                 </div>
@@ -462,7 +472,7 @@ export function MiMascotaPage() {
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/40 shadow-md transition-all"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>{guardando ? 'Guardando...' : 'Guardar Mascota'}</span>
+                    <span>{guardando ? t('comun.guardando') : t('mascotaPage.guardarBtn')}</span>
                   </button>
                 </div>
               </form>
@@ -473,11 +483,11 @@ export function MiMascotaPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-6 space-y-4">
               <span className="text-xs uppercase font-bold tracking-wider opacity-60 block">
-                Credencial Médica & Biometría Activa
+                {t('mascotaPage.carnetTag')}
               </span>
               <CarnetDigital mascota={mascotaVista} interactivo={true} />
               <p className="text-[11px] opacity-60 text-center">
-                Interactúa con el carnet para inclinarlo en perspectiva 3D.
+                {t('mascotaPage.carnetSub')}
               </p>
             </div>
 
@@ -506,40 +516,40 @@ export function MiMascotaPage() {
                     </div>
                   )}
                   <div className="min-w-0">
-                    <span className="font-serif font-bold text-lg block truncate">Ficha de {mascotaVista.nombre}</span>
-                    <span className="text-[11px] opacity-65">Bóveda Médica GAM</span>
+                    <span className="font-serif font-bold text-lg block truncate">{t('mascotaPage.fichaDe', { nombre: mascotaVista.nombre })}</span>
+                    <span className="text-[11px] opacity-65">{t('mascotaPage.bovedaMedica')}</span>
                   </div>
                 </div>
                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
-                  Activo
+                  {t('comun.activo')}
                 </span>
               </div>
 
               <div className="space-y-3 text-xs">
                 <div className="flex justify-between py-1.5 border-b border-current/5">
-                  <span className="opacity-60">Nombre Oficial:</span>
+                  <span className="opacity-60">{t('mascotaPage.lblNombreOficial')}</span>
                   <strong className="font-bold">{mascotaVista.nombre}</strong>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-current/5">
-                  <span className="opacity-60">Raza & Manto:</span>
+                  <span className="opacity-60">{t('mascotaPage.lblRazaManto')}</span>
                   <strong>{mascotaVista.raza} &bull; {mascotaVista.colorManto}</strong>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-current/5">
-                  <span className="opacity-60">Peso & Edad:</span>
-                  <strong>{mascotaVista.pesoKg} kg &bull; {mascotaVista.edadAnos} años</strong>
+                  <span className="opacity-60">{t('mascotaPage.lblPesoEdad')}</span>
+                  <strong>{mascotaVista.pesoKg} kg &bull; {mascotaVista.edadAnos} {t('mascotaPage.edadUnidad')}</strong>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-current/5">
-                  <span className="opacity-60">Microchip Criptográfico:</span>
+                  <span className="opacity-60">{t('mascotaPage.lblMicrochip')}</span>
                   <strong className="font-mono">{mascotaVista.microchipId}</strong>
                 </div>
                 <div className="flex justify-between py-1.5 border-b border-current/5">
-                  <span className="opacity-60">Cobertura / Registro:</span>
+                  <span className="opacity-60">{t('mascotaPage.lblCobertura')}</span>
                   <strong className="text-emerald-500">
-                    {mascotaVista?.polizaMedica?.aseguradora || 'Bóveda GoToX'}
+                    {mascotaVista?.polizaMedica?.aseguradora || t('carnet.aseguradoraDefault')}
                   </strong>
                 </div>
                 <div className="flex justify-between py-1.5">
-                  <span className="opacity-60">Tutor Responsable:</span>
+                  <span className="opacity-60">{t('mascotaPage.lblTutor')}</span>
                   <strong>{mascotaVista.tutor.nombre} ({mascotaVista.tutor.telefono})</strong>
                 </div>
               </div>
@@ -547,7 +557,7 @@ export function MiMascotaPage() {
               <div className="p-3.5 rounded-2xl bg-current/5 border border-current/10 flex items-start gap-2.5 text-xs">
                 <Info className="w-4 h-4 text-[#F27B91] shrink-0 mt-0.5" />
                 <span className="leading-relaxed opacity-85">
-                  Los datos biométricos y la fotografía de tu mascota permanecen sincronizados con tu cuenta personal en GoToX.
+                  {t('mascotaPage.avisoBiometria')}
                 </span>
               </div>
             </div>
@@ -563,13 +573,13 @@ export function MiMascotaPage() {
               <div>
                 <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#F27B91] uppercase tracking-wider mb-1">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Catálogo de Razas & Galería</span>
+                  <span>{t('mascotaPage.razasTag')}</span>
                 </div>
                 <h2 className="font-serif font-bold text-2xl tracking-tight">
-                  Elige una Raza para Ver sus Fotos y Perfil
+                  {t('mascotaPage.razasTitulo')}
                 </h2>
                 <p className="text-xs opacity-70 mt-0.5">
-                  Selecciona la raza de tu perro y haz clic en cualquiera de sus fotografías para asignarla a su carnet digital.
+                  {t('mascotaPage.razasSub')}
                 </p>
               </div>
             </div>
@@ -602,7 +612,7 @@ export function MiMascotaPage() {
                 {/* Fotos de la raza elegida */}
                 <div className="lg:col-span-7 space-y-2.5">
                   <span className="text-xs font-bold block opacity-80">
-                    Fotografías disponibles de {razaApartadoActiva.nombre} (haz clic en una para usarla):
+                    {t('mascotaPage.fotosDisponibles', { raza: razaApartadoActiva.nombre })}
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     {(razaApartadoActiva.fotos || []).map((fotoUrl, index) => {
@@ -622,7 +632,7 @@ export function MiMascotaPage() {
                             }));
                             setEditandoMascota(true);
                             setMensajeGuardado(
-                              `Foto ${index + 1} y perfil de ${razaApartadoActiva.nombre} seleccionados. Haz clic en "Guardar Mascota" arriba para confirmar.`
+                              t('mascotaPage.msgFotoElegida', { raza: razaApartadoActiva.nombre })
                             );
                           }}
                           className={`group relative rounded-2xl overflow-hidden border-2 text-left transition-all ${
@@ -634,7 +644,7 @@ export function MiMascotaPage() {
                         >
                           <img
                             src={fotoUrl}
-                            alt={`${razaApartadoActiva.nombre} foto ${index + 1}`}
+                            alt={t('selectorFoto.opcionAlt', { raza: razaApartadoActiva.nombre, n: index + 1 })}
                             onError={(e) => {
                               e.currentTarget.onerror = null;
                               e.currentTarget.src = '/imagenes/copiloto-bruno.jpg';
@@ -644,13 +654,13 @@ export function MiMascotaPage() {
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" />
                           <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white text-[11px] font-bold">
-                            <span>Opción {index + 1}</span>
+                            <span>{t('mascotaPage.opcionNum', { n: index + 1 })}</span>
                             <span
                               className={`px-2 py-0.5 rounded-lg text-[10px] ${
                                 esFotoActual ? 'bg-emerald-500 text-white' : 'bg-[#501228]/90 text-[#F27B91]'
                               }`}
                             >
-                              {esFotoActual ? 'En uso' : 'Elegir foto'}
+                              {esFotoActual ? t('mascotaPage.enUso') : t('mascotaPage.elegirFoto')}
                             </span>
                           </div>
                         </button>
@@ -663,7 +673,7 @@ export function MiMascotaPage() {
                 <div className="lg:col-span-5 p-5 rounded-2xl bg-current/5 border border-current/10 space-y-3 text-xs">
                   <div className="flex items-center justify-between border-b border-current/10 pb-2.5">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-[#F27B91] block">Perfil de la Raza</span>
+                      <span className="text-[10px] uppercase font-bold text-[#F27B91] block">{t('mascotaPage.perfilRazaTitulo')}</span>
                       <h3 className="font-serif font-bold text-lg">{razaApartadoActiva.nombre}</h3>
                     </div>
                     <span className="px-2.5 py-1 rounded-xl font-bold bg-[#501228] text-white text-[11px]">
@@ -673,26 +683,26 @@ export function MiMascotaPage() {
 
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="opacity-65">Esperanza de vida:</span>
+                      <span className="opacity-65">{t('mascotaPage.lblEsperanza')}</span>
                       <strong>{razaApartadoActiva.esperanzaVida}</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="opacity-65">Manto habitual:</span>
+                      <span className="opacity-65">{t('mascotaPage.lblMantoHab')}</span>
                       <strong>{razaApartadoActiva.colorMantoSugerido}</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="opacity-65">Nivel de energía:</span>
+                      <span className="opacity-65">{t('mascotaPage.lblEnergia')}</span>
                       <strong className="text-[#F27B91]">{razaApartadoActiva.nivelEnergia}</strong>
                     </div>
                     <div className="pt-1 border-t border-current/10 space-y-1">
                       <span className="opacity-65 flex items-center gap-1">
                         <Thermometer className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Clima & Asfalto GAM:</span>
+                        <span>{t('mascotaPage.lblClimaAsfalto')}</span>
                       </span>
                       <p className="font-semibold leading-snug">{razaApartadoActiva.toleranciaCalor}</p>
                     </div>
                     <div className="pt-1 border-t border-current/10 space-y-1">
-                      <span className="opacity-65 block">Temperamento y cuidados:</span>
+                      <span className="opacity-65 block">{t('mascotaPage.lblTemperamento')}</span>
                       <p className="opacity-90 leading-relaxed">{razaApartadoActiva.cuidadosGam}</p>
                     </div>
                   </div>
@@ -711,13 +721,13 @@ export function MiMascotaPage() {
               <div>
                 <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-400 uppercase tracking-wider mb-1">
                   <Siren className="w-3.5 h-3.5" />
-                  <span>Red Comunitaria de Rescate &bull; Synodos SOS GAM</span>
+                  <span>{t('mascotaPage.sosTag')}</span>
                 </div>
                 <h2 className="font-serif font-bold text-2xl tracking-tight">
-                  Red SOS de Mascotas Extraviadas y Avistamientos
+                  {t('mascotaPage.sosTitulo')}
                 </h2>
                 <p className="text-xs opacity-75 mt-0.5">
-                  Activa una alerta inmediata con los datos biométricos y microchip de {mascotaVista.nombre} o reporta una mascota avistada en el GAM.
+                  {t('mascotaPage.sosDesc')}
                 </p>
               </div>
 
@@ -727,7 +737,7 @@ export function MiMascotaPage() {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md transition-all self-start sm:self-auto"
               >
                 <Siren className="w-4 h-4" />
-                <span>{formSosAbierto ? 'Cerrar Formulario SOS' : `Activar Alerta SOS / Reportar`}</span>
+                <span>{formSosAbierto ? t('mascotaPage.cerrarFormSos') : t('mascotaPage.activarSosBtn')}</span>
               </button>
             </div>
 
@@ -737,57 +747,57 @@ export function MiMascotaPage() {
                   e.preventDefault();
                   const actualizadas = publicarAlertaSos({
                     tipo: tipoReporteSos,
-                    nombreMascota: tipoReporteSos === 'extraviada' ? mascotaVista.nombre : 'Mascota Avistada en GAM',
+                    nombreMascota: tipoReporteSos === 'extraviada' ? mascotaVista.nombre : t('mascotaPage.estadoAvistamiento'),
                     raza: mascotaVista.raza,
                     colorManto: mascotaVista.colorManto,
                     zona: zonaSos,
-                    contacto: mascotaVista.tutor.telefono !== 'Sin registrar' ? mascotaVista.tutor.telefono : '+506 8832-9011',
+                    contacto: mascotaVista.tutor.telefono !== t('comun.sinRegistrar') ? mascotaVista.tutor.telefono : '+506 8832-9011',
                     tutor: mascotaVista.tutor.nombre,
                     microchip: mascotaVista.microchipId,
                     descripcion:
                       descripcionSos.trim() ||
-                      `Alerta emitida desde la bóveda Synodos para ${mascotaVista.nombre} (${mascotaVista.raza}).`,
+                      `SOS: ${mascotaVista.nombre} (${mascotaVista.raza}).`,
                     foto: fotoMascotaActiva || '/imagenes/copiloto-bruno.jpg'
                   });
                   setAlertasSos(actualizadas);
                   setDescripcionSos('');
                   setFormSosAbierto(false);
-                  setMensajeGuardado('¡Alerta SOS publicada en la Red Comunitaria del GAM!');
+                  setMensajeGuardado(t('mascotaPage.msgSosOk'));
                   setTimeout(() => setMensajeGuardado(''), 4000);
                 }}
                 className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-3 text-xs"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="font-bold block mb-1">Tipo de Reporte</label>
+                    <label className="font-bold block mb-1">{t('mascotaPage.lblTipoReporte')}</label>
                     <select
                       value={tipoReporteSos}
                       onChange={(e) => setTipoReporteSos(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent outline-none font-semibold"
                     >
-                      <option value="extraviada">🚨 Mi mascota ({mascotaVista.nombre}) se extravió</option>
-                      <option value="avistada">👀 Encontré / Avisté una mascota en la vía pública</option>
+                      <option value="extraviada">🚨 {t('mascotaPage.optExtravio', { nombre: mascotaVista.nombre })}</option>
+                      <option value="avistada">👀 {t('mascotaPage.optAvistamiento')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="font-bold block mb-1">Última Zona / Punto de Referencia GAM</label>
+                    <label className="font-bold block mb-1">{t('mascotaPage.lblZonaRef')}</label>
                     <input
                       type="text"
                       required
                       value={zonaSos}
                       onChange={(e) => setZonaSos(e.target.value)}
-                      placeholder="Ej. Parque Francia, Barrio Escalante"
+                      placeholder={t('mascotaPage.phZonaRef')}
                       className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent outline-none"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="font-bold block mb-1">Señas particulares, collar o estado</label>
+                  <label className="font-bold block mb-1">{t('mascotaPage.lblSenas')}</label>
                   <input
                     type="text"
                     value={descripcionSos}
                     onChange={(e) => setDescripcionSos(e.target.value)}
-                    placeholder="Ej. Lleva collar burdeos con placa QR Synodos, responde a su nombre..."
+                    placeholder={t('mascotaPage.phSenas')}
                     className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent outline-none"
                   />
                 </div>
@@ -796,7 +806,7 @@ export function MiMascotaPage() {
                     type="submit"
                     className="px-5 py-2 rounded-xl font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
                   >
-                    Emitir Alerta en Red GAM
+                    {t('mascotaPage.emitirSosBtn')}
                   </button>
                 </div>
               </form>
@@ -836,10 +846,10 @@ export function MiMascotaPage() {
                           }`}
                         >
                           {alerta.estado === 'Resuelta'
-                            ? '✓ En Casa (Resuelta)'
+                            ? t('mascotaPage.estadoCasa')
                             : alerta.tipo === 'extraviada'
-                            ? 'SOS Extraviada'
-                            : 'Avistamiento'}
+                            ? t('mascotaPage.estadoExtraviada')
+                            : t('mascotaPage.estadoAvistamiento')}
                         </span>
                         <span className="text-[10px] opacity-60">{alerta.fechaHora}</span>
                       </div>
@@ -857,14 +867,14 @@ export function MiMascotaPage() {
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#501228] text-white text-[11px] font-bold"
                         >
                           <PhoneCall className="w-3 h-3" />
-                          <span>Contactar ({alerta.contacto})</span>
+                          <span>{t('mascotaPage.contactarTel', { tel: alerta.contacto })}</span>
                         </a>
                         <button
                           type="button"
                           onClick={() => setAlertasSos(marcarAlertaSosResuelta(alerta.id))}
                           className="text-[11px] font-semibold opacity-75 hover:opacity-100 underline"
                         >
-                          {alerta.estado === 'Resuelta' ? 'Reabrir alerta' : 'Marcar como encontrada'}
+                          {alerta.estado === 'Resuelta' ? t('mascotaPage.reabrirAlerta') : t('mascotaPage.marcarEnCasa')}
                         </button>
                       </div>
                     </div>
@@ -884,17 +894,20 @@ export function MiMascotaPage() {
               <div>
                 <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#F27B91] uppercase tracking-wider mb-1">
                   <Bell className="w-3.5 h-3.5" />
-                  <span>Agenda Preventiva &bull; Salud al Día</span>
+                  <span>{t('mascotaPage.agendaTag')}</span>
                 </div>
                 <h2 className="font-serif font-bold text-2xl tracking-tight">
-                  Recordatorios de Vacunación, Desparasitación y Citas
+                  {t('mascotaPage.agendaTitulo')}
                 </h2>
                 <p className="text-xs opacity-70 mt-0.5">
-                  Programa los controles de {mascotaVista.nombre}, márcalos como completados o descárgalos a tu calendario (.ics).
+                  {t('mascotaPage.agendaDesc')}
                 </p>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 self-start sm:self-auto">
-                {recordatorios.filter((r) => r.completado).length} / {recordatorios.length} completados
+                {t('mascotaPage.completadosBadge', {
+                  done: recordatorios.filter((r) => r.completado).length,
+                  total: recordatorios.length
+                })}
               </span>
             </div>
 
@@ -918,7 +931,7 @@ export function MiMascotaPage() {
                 type="text"
                 value={nuevoRecTitulo}
                 onChange={(e) => setNuevoRecTitulo(e.target.value)}
-                placeholder="Nuevo recordatorio (ej. Vacuna Antirrábica, Corte de uñas...)"
+                placeholder={t('mascotaPage.phRecordatorio')}
                 className="sm:col-span-4 px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
               />
               <select
@@ -926,10 +939,10 @@ export function MiMascotaPage() {
                 onChange={(e) => setNuevoRecCategoria(e.target.value)}
                 className="sm:col-span-2 px-2.5 py-2 rounded-xl border border-current/15 bg-transparent outline-none font-semibold"
               >
-                <option value="Vacunación">Vacunación</option>
-                <option value="Prevención">Desparasitación</option>
-                <option value="Higiene & Podología">Peluquería / Podal</option>
-                <option value="Control Veterinario">Cita Médica</option>
+                <option value="Vacunación">{t('mascotaPage.catVacunacion')}</option>
+                <option value="Prevención">{t('mascotaPage.catDesparasitacion')}</option>
+                <option value="Higiene & Podología">{t('mascotaPage.catPeluqueria')}</option>
+                <option value="Control Veterinario">{t('mascotaPage.catCita')}</option>
               </select>
               <input
                 type="date"
@@ -941,7 +954,7 @@ export function MiMascotaPage() {
                 type="text"
                 value={nuevoRecLugar}
                 onChange={(e) => setNuevoRecLugar(e.target.value)}
-                placeholder="Clínica o lugar"
+                placeholder={t('mascotaPage.phLugarRec')}
                 className="sm:col-span-2 px-3 py-2 rounded-xl border border-current/15 bg-transparent outline-none"
               />
               <button
@@ -949,7 +962,7 @@ export function MiMascotaPage() {
                 className="sm:col-span-2 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/40"
               >
                 <Plus className="w-3.5 h-3.5 text-[#F27B91]" />
-                <span>Agendar</span>
+                <span>{t('mascotaPage.agendarBtn')}</span>
               </button>
             </form>
 
@@ -968,7 +981,7 @@ export function MiMascotaPage() {
                     <button
                       type="button"
                       onClick={() => setRecordatorios(alternarRecordatorioCompletado(rec.id))}
-                      title={rec.completado ? 'Marcar como pendiente' : 'Marcar como completado'}
+                      title={rec.completado ? t('mascotaPage.reabrirAlerta') : t('mascotaPage.completadoLabel')}
                       className={`mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${
                         rec.completado
                           ? 'bg-emerald-500 border-emerald-500 text-white'
@@ -980,7 +993,7 @@ export function MiMascotaPage() {
                     <div className="space-y-0.5 text-xs">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#501228] text-[#F27B91]">
-                          {rec.categoria}
+                          {labelCategoriaRec(rec.categoria)}
                         </span>
                         <span className="font-mono text-[11px] opacity-75">
                           📅 {rec.fecha} &bull; {rec.hora}
@@ -1002,19 +1015,20 @@ export function MiMascotaPage() {
                           fecha: rec.fecha,
                           hora: rec.hora,
                           ubicacion: rec.lugar,
-                          descripcion: `Recordatorio médico de ${mascotaVista.nombre} en Synodos.`
+                          descripcion: rec.titulo
                         })
                       }
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border border-current/15 hover:border-[#F27B91] transition-colors"
                     >
                       <CalendarPlus className="w-3.5 h-3.5 text-[#F27B91]" />
-                      <span>Descargar .ics</span>
+                      <span>{t('mascotaPage.descargarIcs')}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setRecordatorios(eliminarRecordatorio(rec.id))}
                       className="p-1.5 rounded-xl text-rose-400 hover:bg-rose-500/10 transition-colors"
-                      title="Eliminar recordatorio"
+                      title={t('mascotaPage.eliminarRecAria')}
+                      aria-label={t('mascotaPage.eliminarRecAria')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1028,12 +1042,12 @@ export function MiMascotaPage() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h2 className="font-serif font-bold text-2xl tracking-tight">Directorio Veterinario GAM</h2>
-                <p className="text-xs opacity-60">Centros hospitalarios con atención de emergencias continuas.</p>
+                <h2 className="font-serif font-bold text-2xl tracking-tight">{t('mascotaPage.vetTag')}</h2>
+                <p className="text-xs opacity-60">{t('mascotaPage.vetTitulo')} {t('mascotaPage.vetDesc')}</p>
               </div>
               <div className="inline-flex items-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-xl">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                <span>No reemplaza el diagnóstico presencial</span>
+                <span>{t('mascotaPage.vetAviso')}</span>
               </div>
             </div>
 
@@ -1064,7 +1078,7 @@ export function MiMascotaPage() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/40 shadow-xs"
                     >
                       <PhoneCall className="w-3 h-3" />
-                      <span>Llamar</span>
+                      <span>{t('comun.llamar')}</span>
                     </a>
                   </div>
                 </div>
@@ -1077,12 +1091,12 @@ export function MiMascotaPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-serif font-bold text-2xl tracking-tight">
-                  Espacios Recomendados para Salir con {mascotaVista.nombre}
+                  {t('mascotaPage.espaciosTitulo', { nombre: mascotaVista.nombre })}
                 </h2>
-                <p className="text-xs opacity-60">Locales con agua filtrada, piso fresco y certificación acústica.</p>
+                <p className="text-xs opacity-60">{t('mascotaPage.espaciosSub')}</p>
               </div>
               <Link to="/explorar" className="text-xs font-bold text-[#F27B91] hover:underline flex items-center gap-1">
-                <span>Ver todas las terrazas</span>
+                <span>{t('mascotaPage.verTerrazasBtn')}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>

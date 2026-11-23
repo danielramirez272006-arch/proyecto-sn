@@ -55,7 +55,7 @@ export function Nosotros() {
               {t('nosotros.pilar1Titulo')}
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Nuestras mascotas no llevan suelas protectoras. Desarrollamos algoritmos que analizan la retención térmica de la mezcla asfáltica bajo el sol tropical de San José Este y Oeste.
+              {t('nosotrosExt.pilar1Desc')}
             </p>
           </Card>
 
@@ -67,7 +67,7 @@ export function Nosotros() {
               {t('nosotros.pilar2Titulo')}
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              El oído canino percibe frecuencias de hasta 45,000 Hz. Auditamos terrazas y bulevares para garantizar que no excedan umbrales detonantes de taquicardia o pánico.
+              {t('nosotrosExt.pilar2Desc')}
             </p>
           </Card>
 
@@ -79,7 +79,7 @@ export function Nosotros() {
               {t('nosotros.pilar3Titulo')}
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Un estándar abierto de identificación donde el historial de vacunación, pólizas y contactos de emergencia se resuelven en milisegundos mediante chips universales y códigos QR locales.
+              {t('nosotrosExt.pilar3Desc')}
             </p>
           </Card>
         </div>
@@ -92,7 +92,7 @@ export function Nosotros() {
               {t('nosotros.equipoTitulo')}
             </h2>
             <p className="text-sm text-slate-600">
-              Ilustraciones exclusivas tipo avatar felino en homenaje al espíritu guardián del ecosistema urbano.
+              {t('nosotrosExt.equipoSub')}
             </p>
           </div>
 
@@ -125,7 +125,7 @@ export function Nosotros() {
 
                 <div className="pt-3 border-t border-slate-100 dark:border-white/10 w-full text-left">
                   <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-400 uppercase block mb-1">
-                    Enfoque Operativo
+                    {t('nosotrosExt.enfoqueOperativo')}
                   </span>
                   <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">
                     {miembro.enfoque}
@@ -143,7 +143,7 @@ export function Nosotros() {
               {t('nosotros.ctaTitulo')}
             </h3>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-[#94A3B8]">
-              Solicita la inspección acústica y térmica oficial de Synodos Pet OS para obtener la certificación física e integrarte a nuestro radar satelital.
+              {t('nosotrosExt.ctaDesc')}
             </p>
           </div>
           <Link to="/terrazas">

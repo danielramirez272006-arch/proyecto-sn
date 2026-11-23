@@ -5,6 +5,7 @@ import { PageWrapper } from './PageWrapper';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { useSesion } from '../hooks/useSesion';
+import { useIdioma } from '../context/IdiomaContext';
 import { api } from '../shared/services/api-client';
 
 /**
@@ -13,6 +14,7 @@ import { api } from '../shared/services/api-client';
  */
 export function RutaAdmin({ children }) {
   const { isLoggedIn, usuario } = useSesion();
+  const { t } = useIdioma();
   const [estado, setEstado] = useState(() =>
     isLoggedIn && usuario?.role === 'admin' ? 'permitido' : 'verificando'
   );
@@ -57,7 +59,7 @@ export function RutaAdmin({ children }) {
       <PageWrapper className="min-h-[60vh] flex items-center justify-center">
         <div role="status" className="flex items-center gap-3 text-sm opacity-80">
           <Loader2 className="w-5 h-5 animate-spin text-[#F27B91]" aria-hidden="true" />
-          <span>Verificando permisos de administrador…</span>
+          <span>{t('rutaAdmin.verificando')}</span>
         </div>
       </PageWrapper>
     );
@@ -78,27 +80,27 @@ export function RutaAdmin({ children }) {
 
         <div className="space-y-2">
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#F27B91]">
-            Zona restringida
+            {t('rutaAdmin.zonaRestringida')}
           </span>
           <h1 className="font-serif font-bold text-2xl">
-            {sinSesion ? 'Inicia sesión como administrador' : 'No tienes permisos de administrador'}
+            {sinSesion ? t('rutaAdmin.tituloSinSesion') : t('rutaAdmin.tituloDenegado')}
           </h1>
           <p className="text-sm opacity-75 leading-relaxed">
             {sinSesion
-              ? 'El Centro de Mando solo está disponible para cuentas administradoras verificadas por el servidor.'
-              : `Tu cuenta tiene el rol «${rolDetectado || 'usuario'}». Solo las cuentas con rol administrador pueden entrar al Centro de Mando.`}
+              ? t('rutaAdmin.descSinSesion')
+              : t('rutaAdmin.descDenegado', { rol: rolDetectado || t('rutaAdmin.rolUsuario') })}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-1">
           <Link to="/acceso">
             <Button variant="primary" icon={LogIn} className="w-full sm:w-auto justify-center">
-              {sinSesion ? 'Iniciar sesión' : 'Cambiar de cuenta'}
+              {sinSesion ? t('rutaAdmin.iniciarSesion') : t('rutaAdmin.cambiarCuenta')}
             </Button>
           </Link>
           <Link to="/">
             <Button variant="secondary" icon={Home} className="w-full sm:w-auto justify-center">
-              Volver al inicio
+              {t('rutaAdmin.volverInicio')}
             </Button>
           </Link>
         </div>

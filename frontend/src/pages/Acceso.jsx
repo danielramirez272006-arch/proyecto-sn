@@ -33,11 +33,12 @@ export function Acceso() {
   const navigate = useNavigate();
   const location = useLocation();
   const rutaDestino = location.state?.from || null;
-  const moduloSolicitado = location.state?.modulo || null;
+  const moduloSolicitadoRaw = location.state?.modulo || null;
   const { loginConBackend, registrarConBackend, mascota } = useSesion();
   const telemetria = useTelemetria();
   const { esClaro, esMorado } = useTema();
   const { t } = useIdioma();
+  const moduloSolicitado = moduloSolicitadoRaw ? t(moduloSolicitadoRaw, moduloSolicitadoRaw) : null;
 
   const [modo, setModo] = useState('login'); // 'login' | 'registro' | 'recuperar'
 
@@ -57,7 +58,7 @@ export function Acceso() {
   const [correoRegistro, setCorreoRegistro] = useState('');
   const [claveRegistro, setClaveRegistro] = useState('');
   const [telefonoRegistro, setTelefonoRegistro] = useState('');
-  const [ubicacionRegistro, setUbicacionRegistro] = useState('San José, Costa Rica');
+  const [ubicacionRegistro, setUbicacionRegistro] = useState(() => t('accesoExt.zonaDefault'));
   const [aceptaTerminosPrivacidad, setAceptaTerminosPrivacidad] = useState(false);
 
   // Estado de Información de Mascota (abajo de usuario)
@@ -90,10 +91,10 @@ export function Acceso() {
   const validarLogin = () => {
     const err = {};
     if (!correoLogin.includes('@') || !correoLogin.includes('.')) {
-      err.correoLogin = 'Por favor ingresa un correo electrónico válido.';
+      err.correoLogin = t('accesoExt.errCorreoValido');
     }
     if (!claveLogin || claveLogin.length < 4) {
-      err.claveLogin = 'Ingresa tu contraseña.';
+      err.claveLogin = t('accesoExt.errIngresaClave');
     }
     setErrores(err);
     return Object.keys(err).length === 0;
@@ -102,22 +103,21 @@ export function Acceso() {
   const validarRegistro = () => {
     const err = {};
     if (!nombreUsuario.trim()) {
-      err.nombreUsuario = 'Tu nombre completo es requerido.';
+      err.nombreUsuario = t('accesoExt.errNombreReq');
     }
     if (!correoRegistro.includes('@') || !correoRegistro.includes('.')) {
-      err.correoRegistro = 'Por favor ingresa un correo electrónico válido.';
+      err.correoRegistro = t('accesoExt.errCorreoValido');
     }
     if (!claveRegistro || claveRegistro.length < 6) {
-      err.claveRegistro = 'La contraseña debe tener al menos 6 caracteres.';
+      err.claveRegistro = t('accesoExt.errClave6');
     }
     if (incluirMascota) {
-      if (!nombrePerro.trim()) err.nombrePerro = 'El nombre de tu mascota es requerido (o desmarca la opción).';
-      if (!razaPerro.trim()) err.razaPerro = 'La raza o especie es requerida.';
-      if (pesoPerro && Number(pesoPerro) <= 0) err.pesoPerro = 'Ingresa un peso válido en kilogramos.';
+      if (!nombrePerro.trim()) err.nombrePerro = t('accesoExt.errNombreMascota');
+      if (!razaPerro.trim()) err.razaPerro = t('accesoExt.errRazaReq');
+      if (pesoPerro && Number(pesoPerro) <= 0) err.pesoPerro = t('accesoExt.errPesoValido');
     }
     if (!aceptaTerminosPrivacidad) {
-      err.aceptaTerminosPrivacidad =
-        'Debes aceptar explícitamente los Términos y Condiciones y la Política de Privacidad (Ley N.º 8968 CR).';
+      err.aceptaTerminosPrivacidad = t('accesoExt.errAceptarTerminos');
     }
     setErrores(err);
     return Object.keys(err).length === 0;
@@ -131,7 +131,7 @@ export function Acceso() {
     if (modo === 'recuperar') {
       if (pasoRecuperacion === 1) {
         if (!correoRecuperar.includes('@') || !correoRecuperar.includes('.')) {
-          setErrores({ correoRecuperar: 'Ingresa el correo electrónico de tu cuenta.' });
+          setErrores({ correoRecuperar: t('accesoExt.errCorreoRec') });
           return;
         }
         setErrores({});
@@ -144,7 +144,7 @@ export function Acceso() {
           }
           setPasoRecuperacion(2);
         } catch (err) {
-          setErrorBackend(err?.message || 'No se pudo procesar la solicitud de recuperación.');
+          setErrorBackend(err?.message || t('accesoExt.errNoPudoRec'));
         } finally {
           setCargando(false);
         }
@@ -153,12 +153,12 @@ export function Acceso() {
 
       // Paso 2: validar código y nueva contraseña
       const errRec = {};
-      if (!codigoRecuperar.trim()) errRec.codigoRecuperar = 'Ingresa el código de verificación recibido.';
+      if (!codigoRecuperar.trim()) errRec.codigoRecuperar = t('accesoExt.errCodigoRec');
       if (!nuevaClaveRecuperar || nuevaClaveRecuperar.length < 6) {
-        errRec.nuevaClaveRecuperar = 'La nueva contraseña debe tener al menos 6 caracteres.';
+        errRec.nuevaClaveRecuperar = t('accesoExt.errClave6');
       }
       if (nuevaClaveRecuperar !== confirmarClaveRecuperar) {
-        errRec.confirmarClaveRecuperar = 'Las contraseñas no coinciden.';
+        errRec.confirmarClaveRecuperar = t('accesoExt.errClavesNoCoinciden');
       }
       if (Object.keys(errRec).length > 0) {
         setErrores(errRec);
@@ -181,7 +181,7 @@ export function Acceso() {
           setConfirmarClaveRecuperar('');
         }, 1100);
       } catch (err) {
-        setErrorBackend(err?.message || 'No se pudo restablecer la contraseña.');
+        setErrorBackend(err?.message || t('accesoExt.errNoPudoRest'));
       } finally {
         setCargando(false);
       }
@@ -198,8 +198,8 @@ export function Acceso() {
         const rol = data?.user?.role || 'client';
         setExitoMensaje(
           rol === 'admin'
-            ? 'Acceso de Administrador Exclusivo verificado. Abriendo Panel...'
-            : '¡Sesión de usuario iniciada! Cargando tu página personal...'
+            ? t('accesoExt.okAdmin')
+            : t('accesoExt.okUser')
         );
         setTimeout(() => {
           setCargando(false);
@@ -208,7 +208,7 @@ export function Acceso() {
       } catch (err) {
         setCargando(false);
         setErrorBackend(
-          err?.message || 'No se pudo iniciar sesión. Verifica tus credenciales y que el backend esté activo.'
+          err?.message || t('accesoExt.errLoginFallback')
         );
       }
       return;
@@ -221,8 +221,8 @@ export function Acceso() {
       const petPayload = incluirMascota
         ? {
             nombre: nombrePerro.trim(),
-            especie: 'Canino',
-            raza: razaPerro.trim() || 'Mestizo',
+            especie: t('accesoExt.especieCanino'),
+            raza: razaPerro.trim() || t('carnet.mestizo'),
             pesoKg: pesoPerro ? Number(pesoPerro) : 15,
             microchipId: microchipPerro.trim() || '',
             foto: fotoPerro
@@ -234,7 +234,7 @@ export function Acceso() {
         email: correoRegistro.trim(),
         password: claveRegistro,
         phone: telefonoRegistro.trim() || null,
-        zone: ubicacionRegistro.trim() || 'San José, Costa Rica',
+        zone: ubicacionRegistro.trim() || t('accesoExt.zonaDefault'),
         hasPet: incluirMascota,
         pet: petPayload,
         acceptTerms: true,
@@ -242,7 +242,7 @@ export function Acceso() {
         termsVersion: '2026.11-CR-8968'
       });
 
-      setExitoMensaje('¡Cuenta de usuario creada exitosamente! Redirigiendo a tu espacio...');
+      setExitoMensaje(t('accesoExt.okRegistro'));
       setTimeout(() => {
         setCargando(false);
         redirigirSegunRol(data?.user?.role || 'client');
@@ -250,7 +250,7 @@ export function Acceso() {
     } catch (err) {
       setCargando(false);
       setErrorBackend(
-        err?.message || 'No se pudo crear la cuenta. Verifica que el correo no esté registrado y el backend esté conectado.'
+        err?.message || t('accesoExt.errRegistroFallback')
       );
     }
   };
@@ -261,7 +261,7 @@ export function Acceso() {
     setCargando(true);
     try {
       const data = await loginConBackend({ email: emailDemo, password: passwordDemo });
-      setExitoMensaje('Sesión demo de usuario conectada al backend.');
+      setExitoMensaje(t('accesoExt.okDemo'));
       setTimeout(() => {
         setCargando(false);
         redirigirSegunRol(data?.user?.role || 'client');
@@ -269,7 +269,7 @@ export function Acceso() {
     } catch (err) {
       setCargando(false);
       setErrorBackend(
-        err?.message || 'No se pudo conectar con el servidor backend para la cuenta demo.'
+        err?.message || t('accesoExt.errDemoFallback')
       );
     }
   };
@@ -278,14 +278,14 @@ export function Acceso() {
     modo === 'registro'
       ? {
           ...mascota,
-          nombre: incluirMascota ? nombrePerro || 'Tu Mascota' : 'Explorador Sin Mascota',
-          raza: incluirMascota ? razaPerro || 'Raza / Especie' : 'Perfil Personal',
+          nombre: incluirMascota ? nombrePerro || t('accesoExt.tuMascota') : t('accesoExt.exploradorSinMascota'),
+          raza: incluirMascota ? razaPerro || t('accesoExt.razaOespecie') : t('accesoExt.perfilPersonal'),
           pesoKg: incluirMascota && pesoPerro ? Number(pesoPerro) : 15,
           microchipId: microchipPerro || 'CRC-PENDIENTE',
           foto: incluirMascota ? fotoPerro : null,
           tutor: {
             ...mascota.tutor,
-            nombre: nombreUsuario || 'Nuevo Usuario Synodos',
+            nombre: nombreUsuario || t('accesoExt.nuevoUsuario'),
             correo: correoRegistro || 'usuario@synodos.cr',
             telefono: telefonoRegistro || '+506 0000-0000'
           }
@@ -318,8 +318,8 @@ export function Acceso() {
               </h1>
               <p className="text-sm sm:text-base text-slate-600 dark:text-[#94A3B8] font-sans leading-relaxed">
                 {modo === 'login'
-                  ? 'Inicia sesión para entrar a tu página personal de usuario o accede con una cuenta administrativa exclusiva.'
-                  : 'Crea tu cuenta de usuario en Synodos (Σύνοδος) y, si tienes mascota, agrega su información debajo.'}
+                  ? t('accesoExt.subtituloLogin')
+                  : t('accesoExt.subtituloRegistro')}
               </p>
               {moduloSolicitado && (
                 <div
@@ -331,7 +331,7 @@ export function Acceso() {
                 >
                   <Lock className="w-3.5 h-3.5 shrink-0" />
                   <span>
-                    Inicia sesión para acceder a <strong>{moduloSolicitado}</strong>.
+                    {t('accesoExt.iniciaParaAcceder', { modulo: moduloSolicitado })}
                   </span>
                 </div>
               )}
@@ -410,9 +410,9 @@ export function Acceso() {
               >
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                    Prueba Rápida de Usuario Normal
+                    {t('accesoExt.pruebaRapida')}
                   </span>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500">Conectado a Express API</span>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">{t('accesoExt.conectadoExpress')}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button
@@ -429,7 +429,7 @@ export function Acceso() {
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 gotox-radar-dot" />
-                      <span>Usuario Demo (Mariana)</span>
+                      <span>{t('accesoExt.demoMariana')}</span>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 transition-transform group-hover:translate-x-0.5" />
                   </button>
@@ -447,13 +447,13 @@ export function Acceso() {
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-[#501228] dark:bg-[#F27B91]" />
-                      <span>Usuario Demo (Carlos)</span>
+                      <span>{t('accesoExt.demoCarlos')}</span>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 transition-transform group-hover:translate-x-0.5" />
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Las cuentas exclusivas de administrador se autentican directamente abajo con sus credenciales autorizadas.
+                  {t('accesoExt.notaAdmins')}
                 </p>
               </div>
             )}
@@ -467,7 +467,7 @@ export function Acceso() {
                     esClaro ? 'bg-[#FBF8FF]' : esMorado ? 'bg-[#0E070C]' : 'bg-[#090D14]'
                   }`}
                 >
-                  o ingresa tus credenciales
+                  {t('accesoExt.separador')}
                 </span>
               </div>
             )}
@@ -489,8 +489,8 @@ export function Acceso() {
                       <KeyRound className="w-4 h-4" />
                       <span>
                         {pasoRecuperacion === 1
-                          ? 'Recuperación de Contraseña (Paso 1 de 2)'
-                          : 'Restablecer Contraseña (Paso 2 de 2)'}
+                          ? t('accesoExt.recuperarPaso1')
+                          : t('accesoExt.recuperarPaso2')}
                       </span>
                     </div>
                     <button
@@ -505,43 +505,43 @@ export function Acceso() {
                       className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-[#501228] dark:hover:text-white"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>Volver al login</span>
+                      <span>{t('accesoExt.volverLogin')}</span>
                     </button>
                   </div>
 
                   {pasoRecuperacion === 1 ? (
                     <>
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Ingresa el correo electrónico asociado a tu cuenta de Synodos. Te enviaremos un código temporal de verificación para que definas una nueva contraseña.
+                        {t('accesoExt.recuperarDesc1')}
                       </p>
                       <Input
-                        label="Correo Electrónico Registrado"
+                        label={t('accesoExt.correoRegistrado')}
                         type="email"
                         icon={Mail}
                         value={correoRecuperar}
                         onChange={(e) => setCorreoRecuperar(e.target.value)}
                         error={errores.correoRecuperar}
-                        placeholder="tu@correo.cr"
+                        placeholder={t('accesoExt.correoPlaceholder')}
                         required
                       />
                     </>
                   ) : (
                     <>
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Ingresa el código de verificación enviado a <strong>{correoRecuperar}</strong> y define tu nueva contraseña de seguridad.
+                        {t('accesoExt.recuperarDesc2', { correo: correoRecuperar })}
                       </p>
                       <Input
-                        label="Código de Verificación"
+                        label={t('accesoExt.codigoVerif')}
                         icon={KeyRound}
                         value={codigoRecuperar}
                         onChange={(e) => setCodigoRecuperar(e.target.value)}
                         error={errores.codigoRecuperar}
-                        placeholder="Ej. SYN-8968-2026"
+                        placeholder={t('accesoExt.codigoPlaceholder')}
                         required
                       />
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <Input
-                          label="Nueva Contraseña (mín. 6 caracteres)"
+                          label={t('accesoExt.nuevaClave')}
                           type="password"
                           icon={Lock}
                           value={nuevaClaveRecuperar}
@@ -551,7 +551,7 @@ export function Acceso() {
                           required
                         />
                         <Input
-                          label="Confirmar Nueva Contraseña"
+                          label={t('accesoExt.confirmarClave')}
                           type="password"
                           icon={Lock}
                           value={confirmarClaveRecuperar}
@@ -567,19 +567,19 @@ export function Acceso() {
               ) : modo === 'login' ? (
                 <>
                   <Input
-                    label="Correo Electrónico"
+                    label={t('accesoExt.correoLabel')}
                     type="email"
                     icon={Mail}
                     value={correoLogin}
                     onChange={(e) => setCorreoLogin(e.target.value)}
                     error={errores.correoLogin}
-                    placeholder="ejemplo@gotox.cr"
+                    placeholder={t('accesoExt.loginCorreoPh')}
                     required
                   />
 
                   <div className="space-y-1.5">
                     <Input
-                      label="Contraseña de Seguridad"
+                      label={t('accesoExt.claveLabel')}
                       type="password"
                       icon={Lock}
                       value={claveLogin}
@@ -601,7 +601,7 @@ export function Acceso() {
                         }}
                         className="text-xs font-semibold text-[#501228] dark:text-[#F27B91] hover:underline"
                       >
-                        ¿Olvidaste tu contraseña?
+                        {t('accesoExt.olvidoClave')}
                       </button>
                     </div>
                   </div>
@@ -620,32 +620,32 @@ export function Acceso() {
                   >
                     <div className="flex items-center gap-2 text-xs font-bold text-[#501228] dark:text-[#F27B91] pb-2 border-b border-slate-100 dark:border-white/10">
                       <User className="w-4 h-4" />
-                      <span>1. Datos del Usuario</span>
+                      <span>{t('accesoExt.seccion1Titulo')}</span>
                     </div>
 
                     <Input
-                      label="Nombre Completo"
+                      label={t('accesoExt.nombreCompleto')}
                       icon={User}
                       value={nombreUsuario}
                       onChange={(e) => setNombreUsuario(e.target.value)}
                       error={errores.nombreUsuario}
-                      placeholder="Ej. Laura Jiménez"
+                      placeholder={t('accesoExt.nombrePlaceholder')}
                       required
                     />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input
-                        label="Correo Electrónico"
+                        label={t('accesoExt.correoLabel')}
                         type="email"
                         icon={Mail}
                         value={correoRegistro}
                         onChange={(e) => setCorreoRegistro(e.target.value)}
                         error={errores.correoRegistro}
-                        placeholder="tu@correo.cr"
+                        placeholder={t('accesoExt.correoPlaceholder')}
                         required
                       />
                       <Input
-                        label="Contraseña (mín. 6 caracteres)"
+                        label={t('accesoExt.claveMin6')}
                         type="password"
                         icon={Lock}
                         value={claveRegistro}
@@ -658,18 +658,18 @@ export function Acceso() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input
-                        label="Teléfono (Opcional)"
+                        label={t('accesoExt.telefonoOpc')}
                         icon={Phone}
                         value={telefonoRegistro}
                         onChange={(e) => setTelefonoRegistro(e.target.value)}
-                        placeholder="+506 8800-0000"
+                        placeholder={t('accesoExt.telefonoPlaceholder')}
                       />
                       <Input
-                        label="Zona / Cantón GAM (Opcional)"
+                        label={t('accesoExt.zonaOpc')}
                         icon={MapPin}
                         value={ubicacionRegistro}
                         onChange={(e) => setUbicacionRegistro(e.target.value)}
-                        placeholder="Barrio Escalante, San José"
+                        placeholder={t('accesoExt.zonaPlaceholder')}
                       />
                     </div>
                   </div>
@@ -687,7 +687,7 @@ export function Acceso() {
                     <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
                       <div className="flex items-center gap-2 text-xs font-bold text-[#501228] dark:text-[#F27B91]">
                         <Dog className="w-4 h-4" />
-                        <span>2. Información de la Mascota (Opcional)</span>
+                        <span>{t('accesoExt.seccion2Titulo')}</span>
                       </div>
 
                       <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
@@ -697,7 +697,7 @@ export function Acceso() {
                           onChange={(e) => setIncluirMascota(e.target.checked)}
                           className="w-4 h-4 rounded accent-[#501228]"
                         />
-                        <span>Tengo mascota</span>
+                        <span>{t('accesoExt.tengoMascota')}</span>
                       </label>
                     </div>
 
@@ -705,24 +705,24 @@ export function Acceso() {
                       <div className="space-y-3 animate-in fade-in duration-200">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <Input
-                            label="Nombre de la Mascota"
+                            label={t('accesoExt.nombreMascota')}
                             value={nombrePerro}
                             onChange={(e) => setNombrePerro(e.target.value)}
                             error={errores.nombrePerro}
-                            placeholder="Ej. Max"
+                            placeholder={t('accesoExt.nombreMascotaPh')}
                           />
                           <Input
-                            label="Raza / Especie"
+                            label={t('accesoExt.razaEspecie')}
                             value={razaPerro}
                             onChange={(e) => setRazaPerro(e.target.value)}
                             error={errores.razaPerro}
-                            placeholder="Ej. Beagle o Mestizo"
+                            placeholder={t('accesoExt.razaPh')}
                           />
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <Input
-                            label="Peso (kg)"
+                            label={t('accesoExt.pesoKg')}
                             type="number"
                             step="0.1"
                             value={pesoPerro}
@@ -731,7 +731,7 @@ export function Acceso() {
                             placeholder="14.5"
                           />
                           <Input
-                            label="N° Microchip (Opcional)"
+                            label={t('accesoExt.microchipOpc')}
                             value={microchipPerro}
                             onChange={(e) => setMicrochipPerro(e.target.value)}
                             placeholder="CRC-756-000-001"
@@ -741,7 +741,7 @@ export function Acceso() {
                         <SelectorFotoMascota
                           valor={fotoPerro}
                           onChange={setFotoPerro}
-                          nombreMascota={nombrePerro || 'tu perro'}
+                          nombreMascota={nombrePerro || t('accesoExt.tuPerroDefault')}
                           razaActual={razaPerro}
                           onSeleccionarPerfilRaza={({ raza, pesoKg, foto }) => {
                             if (raza) setRazaPerro(raza);
@@ -752,7 +752,7 @@ export function Acceso() {
                       </div>
                     ) : (
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Puedes crear tu cuenta sin mascota para explorar lugares, guardar favoritos y armar planes. Si más adelante adoptas o decides registrarla, podrás hacerlo desde tu página de usuario.
+                        {t('accesoExt.sinMascotaNota')}
                       </p>
                     )}
                   </div>
@@ -782,7 +782,7 @@ export function Acceso() {
                         className="mt-0.5 w-4 h-4 rounded accent-[#501228] shrink-0"
                       />
                       <span className="leading-relaxed text-slate-700 dark:text-slate-200">
-                        He leído y acepto explícitamente los{' '}
+                        {t('accesoExt.aceptoPrefix')}
                         <a
                           href="/terminos"
                           onClick={(e) => {
@@ -791,9 +791,9 @@ export function Acceso() {
                           }}
                           className="font-bold underline text-[#501228] dark:text-[#F27B91]"
                         >
-                          Términos y Condiciones de Uso y la Política de Privacidad (Ley N.º 8968 de Protección de la Persona frente al Tratamiento de sus Datos Personales)
+                          {t('accesoExt.aceptoLink')}
                         </a>
-                        , incluyendo el tratamiento de datos para funciones del sistema y agentes de IA.
+                        {t('accesoExt.aceptoSuffix')}
                       </span>
                     </label>
                     {errores.aceptaTerminosPrivacidad && (
@@ -821,7 +821,7 @@ export function Acceso() {
 
               {modo !== 'registro' && (
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Al continuar, confirmas que conoces nuestros{' '}
+                  {t('accesoExt.alContinuarPrefix')}
                   <a
                     href="/terminos"
                     onClick={(e) => {
@@ -830,7 +830,7 @@ export function Acceso() {
                     }}
                     className="font-semibold underline text-[#501228] dark:text-[#F27B91]"
                   >
-                    Términos, Condiciones y Política de Privacidad (Ley N° 8968 CR)
+                    {t('accesoExt.alContinuarLink')}
                   </a>
                   .
                 </p>
@@ -846,11 +846,11 @@ export function Acceso() {
                 className="w-full justify-center shadow-md text-sm sm:text-base font-semibold py-3"
               >
                 {cargando
-                  ? 'Procesando solicitud en Synodos...'
+                  ? t('accesoExt.procesando')
                   : modo === 'recuperar'
                   ? pasoRecuperacion === 1
-                    ? 'Enviar Código de Recuperación'
-                    : 'Restablecer Contraseña'
+                    ? t('accesoExt.enviarCodigo')
+                    : t('accesoExt.restablecerBtn')
                   : modo === 'login'
                   ? t('acceso.btnLogin')
                   : t('acceso.btnRegistro')}
@@ -877,7 +877,7 @@ export function Acceso() {
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 gotox-radar-dot" />
                   <span className={`text-xs font-semibold ${esClaro ? 'text-slate-700' : 'text-white'}`}>
-                    Telemetría San José Este
+                    {t('accesoExt.telemetriaEste')}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
@@ -891,14 +891,14 @@ export function Acceso() {
                   </span>
                   <span className="opacity-40">&bull;</span>
                   <span className={`tabular-nums ${esClaro ? 'text-slate-600' : 'text-slate-300'}`}>
-                    {telemetria.ventanaSecaMinutos} min secos
+                    {t('accesoExt.minSecos', { min: telemetria.ventanaSecaMinutos })}
                   </span>
                 </div>
               </div>
 
               <div>
                 <span className="text-[11px] opacity-60 block mb-2 uppercase tracking-wider font-semibold text-center">
-                  Previsualización de cuenta y bóveda &bull; Carnet interactivo
+                  {t('accesoExt.previewLabel')}
                 </span>
                 <CarnetDigital mascota={mascotaPreview} interactivo={true} />
               </div>
@@ -914,7 +914,7 @@ export function Acceso() {
               >
                 <ShieldCheck className={`w-4 h-4 shrink-0 ${esClaro ? 'text-[#501228]' : 'text-[#F27B91]'}`} />
                 <span className="leading-snug">
-                  Tus credenciales y permisos se verifican contra el servidor mediante JWT con separación estricta entre cuentas de usuario y administradores exclusivos.
+                  {t('accesoExt.notaJwt')}
                 </span>
               </div>
             </div>

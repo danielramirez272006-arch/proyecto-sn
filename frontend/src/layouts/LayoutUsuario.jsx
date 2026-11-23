@@ -193,7 +193,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
           SIDEBAR DESKTOP EXCLUSIVO DE USUARIO (CONTRAÍBLE Y FLUIDO)
           ============================================================ */}
       <aside
-        aria-label="Barra lateral de usuario"
+        aria-label={t('navExt.barraUsuarioAria')}
         className={`hidden md:flex fixed inset-y-0 left-0 z-40 flex-col justify-between shrink-0 border-r backdrop-blur-md shadow-xl will-change-[width] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           compacta ? 'w-20' : 'md:w-64 lg:w-72'
         } ${clasesTema.sidebar}`}
@@ -203,8 +203,8 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
           type="button"
           onClick={toggleCompacta}
           aria-expanded={!compacta}
-          aria-label={compacta ? 'Expandir barra lateral' : 'Contraer barra lateral'}
-          title={compacta ? 'Expandir barra lateral' : 'Contraer barra lateral'}
+          aria-label={compacta ? t('nav.expandirSidebar') : t('nav.contraerSidebar')}
+          title={compacta ? t('nav.expandirSidebar') : t('nav.contraerSidebar')}
           className={`absolute top-5 z-50 w-7 h-7 shrink-0 flex items-center justify-center rounded-lg border shadow-md transition-[right,background-color,border-color,color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
             compacta ? '-right-3.5' : 'right-3'
           } ${clasesTema.focusRing} ${
@@ -227,7 +227,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
           <div className={`px-3 py-3.5 border-b flex flex-col gap-2.5 shrink-0 ${clasesTema.cabeceraBorde}`}>
             <Link
               to="/"
-              title="Ir a la página principal de Synodos"
+              title={t('navExt.irPaginaPrincipalSynodos')}
               className={`flex items-center justify-start pl-1.5 shrink-0 group cursor-pointer rounded-xl ${clasesTema.focusRing}`}
             >
               <LogoSynodos size="md" alt="Synodos" />
@@ -318,7 +318,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
               <div className={`p-3 rounded-2xl border space-y-1 whitespace-nowrap overflow-hidden ${clasesTema.tarjetaInfo}`}>
                 <div className="flex items-center gap-1.5 text-xs font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Cuenta Verificada</span>
+                  <span>{t('navExt.cuentaVerificada')}</span>
                 </div>
                 <p className="text-[10px] opacity-75 leading-tight truncate">
                   {t('nav.sincronizadoSub')}
@@ -438,7 +438,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
           BARRA SUPERIOR MÓVIL (Logo lleva a Página Principal /)
           ============================================================ */}
       <header className={`md:hidden sticky top-0 z-40 border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${clasesTema.sidebar}`}>
-        <Link to="/" title="Ir a la página principal" className="flex items-center gap-2">
+        <Link to="/" title={t('navExt.irPaginaPrincipal')} className="flex items-center gap-2">
           <LogoSynodos size="sm" alt="Synodos" />
           <span className={`font-serif font-bold text-sm ${clasesTema.textoMarca}`}>Synodos</span>
         </Link>
@@ -459,7 +459,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
             type="button"
             onClick={() => setSidebarMovilAbierto(!sidebarMovilAbierto)}
             className="p-2 rounded-xl text-slate-400 hover:text-white border border-current/20"
-            aria-label="Menú de Usuario"
+            aria-label={t('navExt.menuUsuario')}
           >
             {sidebarMovilAbierto ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -531,7 +531,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
                   className="flex items-center gap-2 px-3 py-2 text-xs opacity-75 hover:opacity-100 rounded-xl"
                 >
                   <Home className="w-4 h-4" />
-                  <span>Ir a Página Principal</span>
+                  <span>{t('navExt.irAPaginaPrincipal')}</span>
                 </Link>
                 <button
                   type="button"
@@ -539,14 +539,14 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
                   className={`btn-cerrar-sesion w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold border rounded-xl transition-colors ${clasesTema.botonCerrarSesion}`}
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>Cerrar Sesión</span>
+                  <span>{t('nav.cerrarSesion')}</span>
                 </button>
               </div>
             </div>
 
             <div className={`pt-3 border-t ${clasesTema.cabeceraBorde}`}>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                Tono de Pantalla
+                {t('nav.tonoPantalla')}
               </span>
               <div className="grid grid-cols-3 gap-1">
                 <button
@@ -556,7 +556,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
                     tema === 'claro' ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-400'
                   }`}
                 >
-                  Claro
+                  {t('nav.claro')}
                 </button>
                 <button
                   type="button"
@@ -565,7 +565,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
                     tema === 'oscuro' ? 'bg-slate-800 text-white font-bold border border-white/20' : 'text-slate-400'
                   }`}
                 >
-                  Oscuro
+                  {t('nav.oscuro')}
                 </button>
                 <button
                   type="button"
@@ -574,7 +574,7 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
                     tema === 'morado' ? 'bg-[#501228] text-white font-bold border border-[#F27B91]/30' : 'text-slate-400'
                   }`}
                 >
-                  Vino
+                  {t('nav.vino')}
                 </button>
               </div>
             </div>

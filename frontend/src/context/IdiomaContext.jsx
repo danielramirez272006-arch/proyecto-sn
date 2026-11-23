@@ -121,20 +121,36 @@ export function IdiomaProvider({ children }) {
   );
 
   const t = useCallback(
-    (clave, fallback = '') => {
+    (clave, fallbackOVars = '', varsOpcionales = null) => {
+      const esObjetoVars =
+        fallbackOVars && typeof fallbackOVars === 'object' && !Array.isArray(fallbackOVars);
+      const fallback = esObjetoVars ? '' : fallbackOVars;
+      const vars = esObjetoVars ? fallbackOVars : varsOpcionales;
+
+      let texto;
       if (String(clave).startsWith('backend.')) {
         const rutaBackend = String(clave).slice(8);
-        const deBackend =
+        texto =
           obtenerPorRuta(diccionariosBackend[idioma], rutaBackend) ??
           obtenerPorRuta(diccionariosBackend.es, rutaBackend);
-        if (deBackend !== undefined) return deBackend;
       }
 
-      const enIdioma = obtenerPorRuta(TRADUCCIONES[idioma], clave);
-      if (enIdioma !== undefined) return enIdioma;
-      const enEspanol = obtenerPorRuta(TRADUCCIONES.es, clave);
-      if (enEspanol !== undefined) return enEspanol;
-      return fallback || clave;
+      if (texto === undefined) {
+        const enIdioma = obtenerPorRuta(TRADUCCIONES[idioma], clave);
+        if (enIdioma !== undefined) {
+          texto = enIdioma;
+        } else {
+          const enEspanol = obtenerPorRuta(TRADUCCIONES.es, clave);
+          texto = enEspanol !== undefined ? enEspanol : fallback || clave;
+        }
+      }
+
+      if (typeof texto === 'string' && vars && typeof vars === 'object') {
+        return texto.replace(/\{(\w+)\}/g, (_, k) =>
+          vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : `{${k}}`
+        );
+      }
+      return texto;
     },
     [idioma, diccionariosBackend]
   );

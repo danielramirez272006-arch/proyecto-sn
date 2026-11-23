@@ -1,3 +1,11 @@
+import { LOCALES_SHELL } from './locales/shell.js';
+import { LOCALES_ACCESO_CARNET } from './locales/accesoCarnet.js';
+import { LOCALES_HOME_TERRAZAS } from './locales/homeTerrazas.js';
+import { LOCALES_MAPA_COPILOTO } from './locales/mapaCopiloto.js';
+import { LOCALES_USUARIO } from './locales/usuario.js';
+import { LOCALES_PANEL_ADMIN } from './locales/panelAdmin.js';
+import { LOCALES_TERMINOS } from './locales/terminos.js';
+
 export const IDIOMAS_SOPORTADOS = [
   { codigo: 'es', corto: 'ES', nombreNativo: 'Español', region: 'Costa Rica / LATAM', ttsLang: 'es-CR' },
   { codigo: 'en', corto: 'EN', nombreNativo: 'English', region: 'US / Global', ttsLang: 'en-US' },
@@ -11,7 +19,7 @@ export const IDIOMAS_SOPORTADOS = [
   { codigo: 'ru', corto: 'RU', nombreNativo: 'Русский', region: 'Global / RU', ttsLang: 'ru-RU' }
 ];
 
-export const TRADUCCIONES = {
+const TRADUCCIONES_BASE = {
   es: {
     nav: {
       inicio: 'Inicio',
@@ -2073,3 +2081,24 @@ export const TRADUCCIONES = {
     }
   }
 };
+
+const FUENTES_LOCALES = [
+  LOCALES_SHELL,
+  LOCALES_ACCESO_CARNET,
+  LOCALES_HOME_TERRAZAS,
+  LOCALES_MAPA_COPILOTO,
+  LOCALES_USUARIO,
+  LOCALES_PANEL_ADMIN,
+  LOCALES_TERMINOS,
+];
+
+export const TRADUCCIONES = Object.fromEntries(
+  IDIOMAS_SOPORTADOS.map(({ codigo }) => [
+    codigo,
+    Object.assign(
+      {},
+      TRADUCCIONES_BASE[codigo] || {},
+      ...FUENTES_LOCALES.map((fuente) => fuente[codigo] || {})
+    ),
+  ])
+);

@@ -14,6 +14,7 @@ import {
   Lock
 } from 'lucide-react';
 import { api } from '../shared/services/api-client';
+import { useIdioma } from '../context/IdiomaContext';
 
 const SUGERENCIAS_RAPIDAS = [
   'Consultar aforo en Barrio Escalante',
@@ -149,45 +150,57 @@ const BASE_CONOCIMIENTO = {
 };
 
 export function ConsolaIA() {
+  const { t, idiomaActual } = useIdioma();
+  const localeTiempo = idiomaActual?.ttsLang || 'es-CR';
+  const sugerenciasRapidas = [
+    t('consolaIA.sug1'),
+    t('consolaIA.sug2'),
+    t('consolaIA.sug3'),
+    t('consolaIA.sug4')
+  ];
+
   const [consulta, setConsulta] = useState('');
   const [cargando, setCargando] = useState(false);
   const [agenteEjecutando, setAgenteEjecutando] = useState(null);
   const [bitacoraEjecuciones, setBitacoraEjecuciones] = useState([
     {
       id: 'LOG-IA-901',
+      agentId: 'argos-concierge',
       agente: '1. Copiloto Argos (Concierge & Rutas GAM)',
       modelo: 'Google Gemini 3.8 Flash',
       rol: 'Administrador',
-      estado: 'Registrado en BD',
-      hora: new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
+      estadoKey: 'consolaIA.estadoRegistrado',
+      hora: new Date().toLocaleTimeString(localeTiempo, { hour: '2-digit', minute: '2-digit' })
     },
     {
       id: 'LOG-IA-900',
+      agentId: 'compliance-privacy-auditor',
       agente: '8. Asistente de Cumplimiento & Privacidad (Ley N.º 8968)',
       modelo: 'DeepSeek Chat',
       rol: 'Sistema / Admin',
-      estado: 'Registrado en BD',
-      hora: new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })
+      estadoKey: 'consolaIA.estadoRegistrado',
+      hora: new Date().toLocaleTimeString(localeTiempo, { hour: '2-digit', minute: '2-digit' })
     }
   ]);
 
-  const [respuesta, setRespuesta] = useState({
-    titulo: 'Consola Sintética Synodos & Copiloto Argos',
+  const [respuestaPersonalizada, setRespuestaPersonalizada] = useState(null);
+  const respuesta = respuestaPersonalizada || {
+    titulo: t('consolaIA.respInicialTitulo'),
     tipo: 'info',
-    contenido:
-      'Centro de inferencia urbana en tiempo real. Escribe una consulta o ejecuta cualquiera de los 8 Agentes de IA especializados del sistema.',
-    kpi: '8 Agentes IA Operativos',
-    accionSugerida: 'Selecciona un agente del catálogo inferior o escribe una consulta libre.'
-  });
+    contenido: t('consolaIA.respInicialContenido'),
+    kpi: t('consolaIA.respInicialKpi'),
+    accionSugerida: t('consolaIA.respInicialAccion')
+  };
 
-  const registrarEnBitacora = (nombreAgente, modelo) => {
+  const registrarEnBitacora = (nombreAgente, modelo, agentId = null) => {
     const nuevoRegistro = {
       id: `LOG-IA-${Math.floor(100 + Math.random() * 900)}`,
+      agentId,
       agente: nombreAgente,
       modelo,
-      rol: 'Autorizado (JWT)',
-      estado: 'Registrado en BD',
-      hora: new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      rol: 'JWT',
+      estadoKey: 'consolaIA.estadoRegistrado',
+      hora: new Date().toLocaleTimeString(localeTiempo, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     };
     setBitacoraEjecuciones((prev) => [nuevoRegistro, ...prev.slice(0, 7)]);
   };
@@ -206,12 +219,11 @@ export function ConsolaIA() {
       return BASE_CONOCIMIENTO.decibelios;
     }
     return {
-      titulo: `Análisis completado: "${textoOriginal}"`,
+      titulo: t('consolaIA.analisisCompletado', { query: textoOriginal }),
       tipo: 'info',
-      contenido:
-        'Inferencia procesada con telemetría de San José: Asfalto a 23.2 °C, radiación UV moderada y 0 incidentes acústicos en los últimos 45 minutos. Ejecución sellada en la bitácora de auditoría IA.',
-      kpi: 'Bitácora IA Actualizada',
-      accionSugerida: 'La salida del agente ha quedado almacenada sin exponer datos personales (Ley N.º 8968).'
+      contenido: t('consolaIA.fallbackContenido'),
+      kpi: t('consolaIA.fallbackKpi'),
+      accionSugerida: t('consolaIA.fallbackAccion')
     };
   };
 
@@ -219,6 +231,10 @@ export function ConsolaIA() {
     const textoOriginal = texto || consulta;
     const query = textoOriginal.toLowerCase();
     if (!query.trim()) return;
+
+    const nombreAgenteResuelto = agenteMeta
+      ? t(`consolaIA.agentes.${agenteMeta.id}.nombre`)
+      : t('consolaIA.agentes.argos-concierge.nombre');
 
     setCargando(true);
     if (agenteMeta) setAgenteEjecutando(agenteMeta.id);
@@ -232,17 +248,17 @@ export function ConsolaIA() {
       });
       const textoBackend = data?.reply || data?.response || data?.message || data?.text || data?.answer;
       if (textoBackend) {
-        setRespuesta({
-          titulo: agenteMeta ? `${agenteMeta.nombre}` : `Copiloto Argos: "${textoOriginal}"`,
+        setRespuestaPersonalizada({
+          titulo: agenteMeta ? nombreAgenteResuelto : `${t('nav.copiloto')}: "${textoOriginal}"`,
           tipo: 'exito',
           contenido: typeof textoBackend === 'string' ? textoBackend : JSON.stringify(textoBackend),
-          kpi: data?.provider ? `Conectado (${data.provider})` : 'Registrado en Bitácora BD',
-          accionSugerida:
-            data?.suggested_action || 'Ejecución registrada en ai_interaction_logs del servidor.'
+          kpi: data?.provider ? t('consolaIA.conectadoKpi', { provider: data.provider }) : t('consolaIA.registradoKpi'),
+          accionSugerida: data?.suggested_action || t('consolaIA.ejecucionReg')
         });
         registrarEnBitacora(
-          agenteMeta?.nombre || '1. Copiloto Argos (Concierge & Rutas GAM)',
-          agenteMeta?.modelo || 'Google Gemini 3.8 Flash'
+          nombreAgenteResuelto,
+          agenteMeta?.modelo || 'Google Gemini 3.8 Flash',
+          agenteMeta?.id || 'argos-concierge'
         );
         setCargando(false);
         setAgenteEjecutando(null);
@@ -253,16 +269,17 @@ export function ConsolaIA() {
     }
 
     const resLocal = resolverFallbackLocal(textoOriginal, query);
-    setRespuesta({
+    setRespuestaPersonalizada({
       ...resLocal,
-      titulo: agenteMeta ? `${agenteMeta.nombre}` : resLocal.titulo,
+      titulo: agenteMeta ? nombreAgenteResuelto : resLocal.titulo,
       contenido: agenteMeta
         ? `[${agenteMeta.modelo}] ${agenteMeta.salida} — ${resLocal.contenido}`
         : resLocal.contenido
     });
     registrarEnBitacora(
-      agenteMeta?.nombre || '1. Copiloto Argos (Concierge & Rutas GAM)',
-      agenteMeta?.modelo || 'Google Gemini 3.8 Flash'
+      nombreAgenteResuelto,
+      agenteMeta?.modelo || 'Google Gemini 3.8 Flash',
+      agenteMeta?.id || 'argos-concierge'
     );
     setCargando(false);
     setAgenteEjecutando(null);
@@ -282,19 +299,19 @@ export function ConsolaIA() {
           </div>
           <div>
             <h3 className="font-serif font-bold text-base sm:text-lg text-[#111827] dark:text-white">
-              Consola de Mando & Orquestador de 8 Agentes de IA
+              {t('consolaIA.titulo')}
             </h3>
             <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              Google Gemini 3.8 Flash + DeepSeek &bull; Bitácora Auditable y Protección PII (Ley N.º 8968)
+              {t('consolaIA.subtitulo')}
             </span>
           </div>
         </div>
-        <Badge variant="success">8 Agentes Activos</Badge>
+        <Badge variant="success">{t('consolaIA.badgeAgentes')}</Badge>
       </div>
 
       {/* Sugerencias Rápidas */}
       <div className="flex flex-wrap gap-2">
-        {SUGERENCIAS_RAPIDAS.map((sug, i) => (
+        {sugerenciasRapidas.map((sug, i) => (
           <button
             key={i}
             type="button"
@@ -312,13 +329,13 @@ export function ConsolaIA() {
           type="text"
           value={consulta}
           onChange={(e) => setConsulta(e.target.value)}
-          placeholder="Escribe tu instrucción para los agentes de IA (ej. Auditar terrazas en Escalante)..."
+          placeholder={t('consolaIA.placeholder')}
           className="w-full bg-white dark:bg-[#162032] text-sm text-[#111827] dark:text-white rounded-xl border border-slate-200 dark:border-white/10 pl-4 pr-12 py-3 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#501228]/20 dark:focus:ring-white/20 focus:border-[#501228] dark:focus:border-white/30 transition-all"
         />
         <button
           type="submit"
           disabled={cargando || !consulta.trim()}
-          aria-label="Enviar consulta a la consola de inteligencia artificial"
+          aria-label={t('consolaIA.enviarAria')}
           className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-[#501228] text-white hover:bg-[#6E1E3A] disabled:opacity-40 transition-colors"
         >
           <Send className="w-4 h-4" />
@@ -331,7 +348,7 @@ export function ConsolaIA() {
           <div className="flex items-center gap-2">
             <Bot className="w-4 h-4 text-[#501228] dark:text-[#F27B91]" />
             <span className="font-semibold text-xs text-[#111827] dark:text-white">
-              {cargando ? 'Ejecutando agente y registrando en bitácora...' : respuesta.titulo}
+              {cargando ? t('consolaIA.ejecutandoAgente') : respuesta.titulo}
             </span>
           </div>
           <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
@@ -340,14 +357,14 @@ export function ConsolaIA() {
         </div>
 
         <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-          {cargando ? 'Procesando entrada, aplicando filtro de privacidad Ley 8968 y consultando modelo...' : respuesta.contenido}
+          {cargando ? t('consolaIA.procesandoEntrada') : respuesta.contenido}
         </p>
 
         {respuesta.accionSugerida && !cargando && (
           <div className="pt-2 flex items-center gap-2 text-xs text-[#501228] dark:text-[#F27B91] bg-[#FDF2F4] dark:bg-[#55152D]/25 p-2.5 rounded-lg border border-[#F9E2E8] dark:border-[#55152D]/50">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>
-              <strong>Resultado / Acción:</strong> {respuesta.accionSugerida}
+              <strong>{t('consolaIA.resultadoAccion')}</strong> {respuesta.accionSugerida}
             </span>
           </div>
         )}
@@ -359,10 +376,10 @@ export function ConsolaIA() {
           <div>
             <h4 className="font-serif font-bold text-sm sm:text-base text-[#111827] dark:text-white flex items-center gap-2">
               <Activity className="w-4 h-4 text-[#F27B91]" />
-              <span>Catálogo de los 8 Agentes de Inteligencia Artificial</span>
+              <span>{t('consolaIA.catalogoTitulo')}</span>
             </h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Cada agente cuenta con propósito de negocio, rol autorizado, entradas/salidas definidas, protección de datos y registro en bitácora.
+              {t('consolaIA.catalogoSub')}
             </p>
           </div>
         </div>
@@ -376,19 +393,19 @@ export function ConsolaIA() {
               <div className="space-y-1.5">
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-bold text-xs text-[#111827] dark:text-white">
-                    {ag.nombre}
+                    {t(`consolaIA.agentes.${ag.id}.nombre`)}
                   </span>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#FDF2F4] dark:bg-[#55152D]/50 text-[#501228] dark:text-[#F27B91] shrink-0">
                     {ag.modelo}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
-                  {ag.objetivo}
+                  {t(`consolaIA.agentes.${ag.id}.obj`)}
                 </p>
                 <div className="text-[10px] text-slate-500 dark:text-slate-400 space-y-0.5 pt-1">
-                  <p><strong>Rol autorizado:</strong> {ag.rolAutorizado}</p>
-                  <p><strong>Entrada:</strong> {ag.entrada}</p>
-                  <p><strong>Salida:</strong> {ag.salida}</p>
+                  <p><strong>{t('consolaIA.lblRol')}</strong> {t(`consolaIA.agentes.${ag.id}.rol`)}</p>
+                  <p><strong>{t('consolaIA.lblEntrada')}</strong> {ag.entrada}</p>
+                  <p><strong>{t('consolaIA.lblSalida')}</strong> {ag.salida}</p>
                   <p className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1 pt-0.5">
                     <Lock className="w-3 h-3 shrink-0" />
                     <span>{ag.proteccionDatos}</span>
@@ -406,7 +423,7 @@ export function ConsolaIA() {
                   onClick={() => procesarConsulta(ag.promptDemo, ag)}
                   className="text-[11px] py-1 px-2.5"
                 >
-                  {agenteEjecutando === ag.id ? 'Ejecutando...' : 'Ejecutar Agente'}
+                  {agenteEjecutando === ag.id ? t('consolaIA.btnEjecutando') : t('consolaIA.btnEjecutar')}
                 </Button>
               </div>
             </div>
@@ -419,10 +436,10 @@ export function ConsolaIA() {
         <div className="flex items-center justify-between text-xs font-bold text-[#111827] dark:text-white">
           <span className="flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-[#F27B91]" />
-            <span>Bitácora de Ejecuciones de Agentes IA (ai_interaction_logs)</span>
+            <span>{t('consolaIA.bitacoraTitulo')}</span>
           </span>
           <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-            Últimas {bitacoraEjecuciones.length} ejecuciones registradas
+            {t('consolaIA.bitacoraSub', { n: bitacoraEjecuciones.length })}
           </span>
         </div>
         <div className="space-y-1.5 max-h-40 overflow-y-auto gotox-scrollbar">
@@ -435,14 +452,16 @@ export function ConsolaIA() {
                 <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300">
                   {log.id}
                 </span>
-                <span className="font-semibold truncate">{log.agente}</span>
+                <span className="font-semibold truncate">
+                  {log.agentId ? t(`consolaIA.agentes.${log.agentId}.nombre`) : log.agente}
+                </span>
               </div>
               <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
                 <span>{log.modelo}</span>
                 <span>&bull;</span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
-                  {log.estado}
+                  {log.estadoKey ? t(log.estadoKey) : log.estado}
                 </span>
                 <span>&bull;</span>
                 <span>{log.hora}</span>

@@ -191,7 +191,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
           SIDEBAR DESKTOP & TABLET ADMINISTRATIVO (CONTRAÍBLE Y FLUIDO)
           ============================================================ */}
       <aside
-        aria-label="Barra lateral de administración"
+        aria-label={t('navExt.barraAdminAria')}
         className={`hidden md:flex fixed inset-y-0 left-0 z-40 flex-col justify-between shrink-0 border-r backdrop-blur-md shadow-xl will-change-[width] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           compacta ? 'w-20' : 'md:w-64 lg:w-72'
         } ${clasesTema.sidebar}`}
@@ -201,8 +201,8 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
           type="button"
           onClick={toggleCompacta}
           aria-expanded={!compacta}
-          aria-label={compacta ? 'Expandir barra lateral' : 'Contraer barra lateral'}
-          title={compacta ? 'Expandir barra lateral' : 'Contraer barra lateral'}
+          aria-label={compacta ? t('nav.expandirSidebar') : t('nav.contraerSidebar')}
+          title={compacta ? t('nav.expandirSidebar') : t('nav.contraerSidebar')}
           className={`absolute top-5 z-50 w-7 h-7 shrink-0 flex items-center justify-center rounded-lg border shadow-md transition-[right,background-color,border-color,color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
             compacta ? '-right-3.5' : 'right-3'
           } ${clasesTema.focusRing} ${
@@ -225,7 +225,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
           <div className={`px-3 py-3.5 border-b flex flex-col gap-2.5 shrink-0 ${clasesTema.cabeceraBorde}`}>
             <Link
               to="/"
-              title="Ir a la página principal de Synodos"
+              title={t('navExt.irPaginaPrincipalSynodos')}
               className={`flex items-center justify-start pl-1.5 shrink-0 group rounded-xl ${clasesTema.focusRing}`}
             >
               <LogoSynodos size="md" alt="Synodos Panel" />
@@ -465,7 +465,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
             type="button"
             onClick={() => setSidebarMovilAbierto(!sidebarMovilAbierto)}
             className="p-2 rounded-xl text-slate-400 hover:text-white border border-current/20"
-            aria-label="Menú de Navegación del Panel"
+            aria-label={t('navExt.menuPanel')}
           >
             {sidebarMovilAbierto ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -478,7 +478,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
           <div className={`w-72 h-full p-4 flex flex-col justify-between shadow-2xl animate-in slide-in-from-left duration-200 border-r ${clasesTema.sidebar}`}>
             <div className="space-y-4">
               <div className={`flex items-center justify-between pb-3 border-b ${clasesTema.cabeceraBorde}`}>
-                <span className={`font-serif font-bold text-sm ${clasesTema.textoMarca}`}>Centro de Mando</span>
+                <span className={`font-serif font-bold text-sm ${clasesTema.textoMarca}`}>{t('navExt.centroMando')}</span>
                 <button
                   type="button"
                   onClick={() => setSidebarMovilAbierto(false)}
@@ -531,7 +531,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                   className="flex items-center gap-2 px-3 py-2 text-xs opacity-75 hover:opacity-100 rounded-xl"
                 >
                   <Globe className="w-4 h-4" />
-                  <span>Volver a Web Pública</span>
+                  <span>{t('navExt.volverWebPublica')}</span>
                 </Link>
                 <Link
                   to="/usuario?tab=cuenta"
@@ -539,7 +539,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                   className="flex items-center gap-2 px-3 py-2 text-xs opacity-75 hover:opacity-100 rounded-xl"
                 >
                   <User className="w-4 h-4" />
-                  <span>Bóveda Pet</span>
+                  <span>{t('nav.boveda')}</span>
                 </Link>
                 <button
                   type="button"
@@ -547,14 +547,14 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                   className={`btn-cerrar-sesion w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold border rounded-xl transition-colors ${clasesTema.botonCerrarSesion}`}
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>Cerrar Sesión</span>
+                  <span>{t('nav.cerrarSesion')}</span>
                 </button>
               </div>
             </div>
 
             <div className={`pt-3 border-t ${clasesTema.cabeceraBorde}`}>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                Tema de Interfaz
+                {t('navExt.temaInterfaz')}
               </span>
               <div className="grid grid-cols-3 gap-1">
                 <button
@@ -564,7 +564,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                     tema === 'claro' ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-400'
                   }`}
                 >
-                  Claro
+                  {t('nav.claro')}
                 </button>
                 <button
                   type="button"
@@ -573,7 +573,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                     tema === 'oscuro' ? 'bg-slate-800 text-white font-bold border border-white/20' : 'text-slate-400'
                   }`}
                 >
-                  Oscuro
+                  {t('nav.oscuro')}
                 </button>
                 <button
                   type="button"
@@ -582,7 +582,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                     tema === 'morado' ? 'bg-[#501228] text-white font-bold border border-[#F27B91]/30' : 'text-slate-400'
                   }`}
                 >
-                  Vino
+                  {t('nav.vino')}
                 </button>
               </div>
             </div>

@@ -170,15 +170,37 @@ export function Panel() {
   };
 
   const tabsConfig = [
-    { id: 'vitals', label: t('panel.vitals'), icon: Activity, badge: 'En vivo' },
+    { id: 'vitals', label: t('panel.vitals'), icon: Activity, badge: t('panelExt.enVivo') },
     { id: 'locales', label: t('panel.locales'), icon: Building2, badge: `${locales.length}` },
-    { id: 'fotos', label: t('panel.fotos'), icon: Camera, badge: 'Moderación' },
+    { id: 'fotos', label: t('panel.fotos'), icon: Camera, badge: t('panelExt.moderacionBadge') },
     { id: 'usuarios', label: t('panel.usuarios'), icon: Users, badge: `${usuarios.length}` },
     { id: 'incidencias', label: t('panel.incidencias'), icon: AlertTriangle, badge: `${incidencias.filter(i => i.estado !== 'Resuelta').length}` },
-    { id: 'auditoria', label: t('panel.auditoria'), icon: ShieldCheck, badge: 'Inmutable' },
-    { id: 'flota', label: t('panel.flota'), icon: Ambulance, badge: '3 Unidades' },
+    { id: 'auditoria', label: t('panel.auditoria'), icon: ShieldCheck, badge: t('panelExt.inmutableBadge') },
+    { id: 'flota', label: t('panel.flota'), icon: Ambulance, badge: t('panelExt.unidadesBadge') },
     { id: 'ajustes', label: t('panel.ajustes'), icon: Sliders }
   ];
+
+  const registrarAuditoria = (accion, entidad) => {
+    const entrada = {
+      id: `AUD-${Math.floor(Math.random() * 9000 + 1000)}`,
+      fecha: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      operador: usuario?.nombre || 'Mariana Rojas',
+      accion,
+      entidad,
+      hash: Math.random().toString(16).substring(2, 34)
+    };
+    setAuditoria((a) => [entrada, ...a]);
+  };
+
+  const traducirEstadoLocal = (estado) => t(`panelExt.estadoNombres.${estado}`) || estado;
+  const traducirRolUsuario = (rol) => {
+    if (rol === 'Administrador General') return t('panelExt.rolesLista.admin');
+    if (rol === 'Usuario GoToX') return t('panelExt.rolesLista.usuario');
+    if (rol === 'Inspector Ambiental') return t('panelExt.rolesLista.inspector');
+    if (rol === 'Coordinadora Veterinaria') return t('panelExt.rolesLista.vet');
+    if (rol === 'Tutor Certificado') return t('panelExt.rolesLista.tutor');
+    return rol;
+  };
 
   // Cálculo de KPIs globales
   const totalPerrosEnRed = useMemo(() => locales.reduce((acc, l) => acc + l.aforoActual, 0), [locales]);
@@ -216,15 +238,10 @@ export function Panel() {
   // Acciones Administrativas Interactivas
   const cambiarEstadoLocal = (id, nuevoEstado) => {
     setLocales(prev => prev.map(l => l.id === id ? { ...l, estado: nuevoEstado } : l));
-    const entrada = {
-      id: `AUD-${Math.floor(Math.random() * 9000 + 1000)}`,
-      fecha: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      operador: usuario?.nombre || "Mariana Rojas",
-      accion: `Cambio de Estado: ${nuevoEstado}`,
-      entidad: `Local ${id}`,
-      hash: Math.random().toString(16).substring(2, 34)
-    };
-    setAuditoria(a => [entrada, ...a]);
+    registrarAuditoria(
+      t('panelExt.auditEstadoAccion', { estado: traducirEstadoLocal(nuevoEstado) }),
+      t('panelExt.auditLocalEntidad', { id })
+    );
   };
 
   const cambiarRolUsuario = (userId, nuevoRol) => {
@@ -267,22 +284,22 @@ export function Panel() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200/60 dark:border-white/10">
             <div>
               <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#111827] dark:text-white tracking-tight">
-                {tabActiva === 'vitals' && 'Resumen Ejecutivo & Signos Vitales GAM'}
-                {tabActiva === 'locales' && 'Gestión de Establecimientos & Auditoría'}
-                {tabActiva === 'fotos' && 'Moderación de Fotografías en Supabase Storage'}
-                {tabActiva === 'usuarios' && 'Gestión de Usuarios, Operadores y Roles'}
-                {tabActiva === 'incidencias' && 'Bandeja de Incidencias & Triage Urbano'}
-                {tabActiva === 'auditoria' && 'Pista Criptográfica Inmutable (Ledger)'}
-                {tabActiva === 'flota' && 'Flota de Ambulancias SOS GAM'}
-                {tabActiva === 'ajustes' && 'Ajustes de Umbrales & Sistema'}
+                {tabActiva === 'vitals' && t('panelExt.tabTitulos.vitals')}
+                {tabActiva === 'locales' && t('panelExt.tabTitulos.locales')}
+                {tabActiva === 'fotos' && t('panelExt.tabTitulos.fotos')}
+                {tabActiva === 'usuarios' && t('panelExt.tabTitulos.usuarios')}
+                {tabActiva === 'incidencias' && t('panelExt.tabTitulos.incidencias')}
+                {tabActiva === 'auditoria' && t('panelExt.tabTitulos.auditoria')}
+                {tabActiva === 'flota' && t('panelExt.tabTitulos.flota')}
+                {tabActiva === 'ajustes' && t('panelExt.tabTitulos.ajustes')}
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-sans mt-0.5">
-                Centro de Mando GoToX &bull; Red de Monitoreo Ambiental y Bienestar Animal en Tiempo Real.
+                {t('panelExt.centroMandoTag')}
               </p>
             </div>
             <div className="inline-flex items-center gap-2 self-start sm:self-auto px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/40 text-xs font-semibold">
               <span className="w-2 h-2 rounded-full bg-emerald-500 gotox-radar-dot" />
-              <span>Sensores GAM En Línea</span>
+              <span>{t('panelExt.sensoresLinea')}</span>
             </div>
           </div>
 
@@ -295,7 +312,7 @@ export function Panel() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="p-4 border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#111827] shadow-sm space-y-1">
                   <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span className="uppercase font-semibold tracking-wider">Aforo Global Canino</span>
+                    <span className="uppercase font-semibold tracking-wider">{t('panelExt.kpiAforo')}</span>
                     <Users className="w-4 h-4 text-[#501228] dark:text-[#F27B91]" />
                   </div>
                   <div className="flex items-baseline gap-2">
@@ -303,7 +320,10 @@ export function Panel() {
                       {totalPerrosEnRed}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
-                      de {capacidadMaximaRed} plazas ({Math.round((totalPerrosEnRed / capacidadMaximaRed) * 100)}%)
+                      {t('panelExt.kpiAforoSub', {
+                        max: capacidadMaximaRed,
+                        pct: Math.round((totalPerrosEnRed / capacidadMaximaRed) * 100)
+                      })}
                     </span>
                   </div>
                   <div className="w-full bg-slate-100 dark:bg-white/10 rounded-full h-1.5 overflow-hidden mt-2">
@@ -316,23 +336,23 @@ export function Panel() {
 
                 <Card className="p-4 border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#111827] shadow-sm space-y-1">
                   <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span className="uppercase font-semibold tracking-wider">Temperatura Asfalto</span>
+                    <span className="uppercase font-semibold tracking-wider">{t('panelExt.kpiAsfalto')}</span>
                     <Thermometer className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="font-serif font-black text-3xl text-[#111827] dark:text-white tabular-nums">
                       {telemetria.temperaturaAsfalto} °C
                     </span>
-                    <Badge variant="success" className="text-[10px]">Almohadillas Seguras</Badge>
+                    <Badge variant="success" className="text-[10px]">{t('panelExt.kpiAlmohadillasSeguras')}</Badge>
                   </div>
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
-                    Sensor Escalante Este &bull; {telemetria.temperaturaAmbiente} °C aire
+                    {t('panelExt.kpiSensorSub', { temp: telemetria.temperaturaAmbiente })}
                   </span>
                 </Card>
 
                 <Card className="p-4 border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#111827] shadow-sm space-y-1">
                   <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span className="uppercase font-semibold tracking-wider">Ruido Urbano Promedio</span>
+                    <span className="uppercase font-semibold tracking-wider">{t('panelExt.kpiRuido')}</span>
                     <Volume2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                   </div>
                   <div className="flex items-baseline gap-2">
@@ -340,27 +360,27 @@ export function Panel() {
                       {promedioDecibelios} dB
                     </span>
                     <span className="text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded font-medium">
-                      Confort A+
+                      {t('panelExt.kpiConfort')}
                     </span>
                   </div>
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
-                    Cero detonaciones en radio de 4 km
+                    {t('panelExt.kpiCeroDet')}
                   </span>
                 </Card>
 
                 <Card className="p-4 border-slate-200/80 dark:border-white/10 bg-white dark:bg-[#111827] shadow-sm space-y-1">
                   <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span className="uppercase font-semibold tracking-wider">Flota SOS Activa</span>
+                    <span className="uppercase font-semibold tracking-wider">{t('panelExt.kpiFlota')}</span>
                     <Ambulance className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className="font-serif font-black text-3xl text-[#111827] dark:text-white tabular-nums">
                       3 / 3
                     </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Unidades en GAM</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{t('panelExt.kpiUnidadesGam')}</span>
                   </div>
                   <span className="text-[11px] text-emerald-600 dark:text-emerald-400 block font-semibold">
-                    Tiempo medio de triage: 4.8 min
+                    {t('panelExt.kpiTriageSub')}
                   </span>
                 </Card>
               </div>
@@ -375,9 +395,9 @@ export function Panel() {
                 <div className="flex items-center justify-between pb-3 border-b border-current/10">
                   <span className="font-serif font-bold text-base flex items-center gap-2">
                     <Clock className="w-4 h-4 text-[#F27B91]" />
-                    <span>Actividad Administrativa Reciente</span>
+                    <span>{t('panelExt.actividadTitulo')}</span>
                   </span>
-                  <span className="text-xs opacity-60">Últimos eventos registrados en el Centro de Mando</span>
+                  <span className="text-xs opacity-60">{t('panelExt.actividadSub')}</span>
                 </div>
 
                 <div className="space-y-2.5 text-xs">
@@ -385,7 +405,7 @@ export function Panel() {
                     <div key={a.id} className="p-3 rounded-xl bg-current/5 border border-current/10 flex items-center justify-between">
                       <div className="space-y-0.5">
                         <span className="font-bold">{a.accion} &bull; <span className="opacity-70">{a.entidad}</span></span>
-                        <p className="text-[11px] opacity-60">Operador: {a.operador} &bull; {a.fecha}</p>
+                        <p className="text-[11px] opacity-60">{t('panelExt.operadorLabel')} {a.operador} &bull; {a.fecha}</p>
                       </div>
                       <span className="font-mono text-[10px] opacity-50 bg-current/5 px-2 py-0.5 rounded">
                         {a.id}
@@ -404,7 +424,7 @@ export function Panel() {
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold opacity-60 mr-1">Filtrar por estado:</span>
+                  <span className="text-xs font-semibold opacity-60 mr-1">{t('panelExt.filtrarPorEstado')}</span>
                   {['todos', 'Óptimo', 'Moderado', 'Alerta Aforo', 'Ruido Elevado'].map(st => (
                     <button
                       key={st}
@@ -416,7 +436,7 @@ export function Panel() {
                           : 'opacity-70 hover:opacity-100 border-current/15'
                       }`}
                     >
-                      {st === 'todos' ? 'Todos' : st}
+                      {st === 'todos' ? t('panelExt.filtroTodos') : traducirEstadoLocal(st)}
                     </button>
                   ))}
                 </div>
@@ -424,7 +444,7 @@ export function Panel() {
                 <div className="w-full sm:w-72">
                   <Input
                     icon={Search}
-                    placeholder="Buscar local o zona..."
+                    placeholder={t('panelExt.buscarLocalPh')}
                     value={busquedaLocal}
                     onChange={(e) => setBusquedaLocal(e.target.value)}
                   />
@@ -434,12 +454,12 @@ export function Panel() {
               {/* Tabla de Locales con Acciones Administrativas */}
               <Tabla
                 headers={[
-                  'Local & Categoría',
-                  'Zona GAM',
-                  'Aforo Canino Actual',
-                  'Acústica',
-                  'Estado Operativo',
-                  'Acciones Rápidas'
+                  t('panelExt.thLocalCat'),
+                  t('panelExt.thZonaGam'),
+                  t('panelExt.thAforoActual'),
+                  t('panelExt.thAcustica'),
+                  t('panelExt.thEstadoOp'),
+                  t('panelExt.thAccionesRapidas')
                 ]}
               >
                 {localesProcesados.map((local) => {
@@ -458,7 +478,7 @@ export function Panel() {
                       <Td>
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-xs font-medium">
-                            <span>{local.aforoActual} / {local.aforoMax} plazas</span>
+                            <span>{t('panelExt.plazasTxt', { actual: local.aforoActual, max: local.aforoMax })}</span>
                             <span className="text-[10px] opacity-60">{porcentaje}%</span>
                           </div>
                           <div className="w-24 bg-slate-100 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
@@ -481,7 +501,7 @@ export function Panel() {
                             local.estado === 'Óptimo' ? 'success' : local.estado === 'Alerta Aforo' ? 'warning' : 'danger'
                           }
                         >
-                          {local.estado}
+                          {traducirEstadoLocal(local.estado)}
                         </Badge>
                       </Td>
                       <Td>
@@ -489,7 +509,7 @@ export function Panel() {
                           <button
                             type="button"
                             onClick={() => cambiarEstadoLocal(local.id, 'Óptimo')}
-                            title="Aprobar / Marcar como Óptimo"
+                            title={t('panelExt.titleOptimo')}
                             className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
                           >
                             <Check className="w-3.5 h-3.5" />
@@ -497,7 +517,7 @@ export function Panel() {
                           <button
                             type="button"
                             onClick={() => cambiarEstadoLocal(local.id, 'Alerta Aforo')}
-                            title="Declarar Alerta de Aforo"
+                            title={t('panelExt.titleAlertaAforo')}
                             className="p-1.5 rounded-lg bg-amber-500/15 text-amber-400 hover:bg-amber-500/30 transition-colors"
                           >
                             <AlertTriangle className="w-3.5 h-3.5" />
@@ -505,7 +525,7 @@ export function Panel() {
                           <button
                             type="button"
                             onClick={() => cambiarEstadoLocal(local.id, 'Ruido Elevado')}
-                            title="Reportar Ruido Elevado"
+                            title={t('panelExt.titleRuido')}
                             className="p-1.5 rounded-lg bg-rose-500/15 text-rose-400 hover:bg-rose-500/30 transition-colors"
                           >
                             <XCircle className="w-3.5 h-3.5" />
@@ -513,11 +533,11 @@ export function Panel() {
                           <button
                             type="button"
                             onClick={() => setLocalEditandoPolitica(local)}
-                            title="Editar Evidencia y Política Pet-Friendly"
+                            title={t('panelExt.titlePolitica')}
                             className="px-2 py-1 rounded-lg bg-[#501228]/20 text-[#F27B91] hover:bg-[#501228]/40 text-[11px] font-bold transition-colors flex items-center gap-1"
                           >
                             <ShieldCheck className="w-3.5 h-3.5" />
-                            <span>Política Pet</span>
+                            <span>{t('panelExt.btnPoliticaPet')}</span>
                           </button>
                         </div>
                       </Td>
@@ -531,7 +551,7 @@ export function Panel() {
                   local={localEditandoPolitica}
                   onCerrar={() => setLocalEditandoPolitica(null)}
                   onActualizado={(placeId) => {
-                    registrarAuditoria('Política Pet-Friendly Actualizada', `${localEditandoPolitica.nombre} (${placeId})`);
+                    registrarAuditoria(t('panelExt.auditPoliticaAccion'), `${localEditandoPolitica.nombre} (${placeId})`);
                   }}
                 />
               )}
@@ -544,11 +564,22 @@ export function Panel() {
           {tabActiva === 'usuarios' && (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-current/5 border border-current/10 text-xs flex items-center justify-between">
-                <span>Total de operadores registrados en el Centro de Mando: <strong>{usuarios.length} cuentas autorizadas</strong>.</span>
-                <span className="text-emerald-500 font-semibold">&bull; Cuentas protegidas por PBKDF2</span>
+                <span>
+                  {t('panelExt.operadoresTotalTxt')} <strong>{t('panelExt.cuentasAutorizadas', { n: usuarios.length })}</strong>.
+                </span>
+                <span className="text-emerald-500 font-semibold">{t('panelExt.cuentasPbkdf2')}</span>
               </div>
 
-              <Tabla headers={['Usuario', 'Correo Electrónico', 'Rol Asignado', 'Estado', 'Sesión Activa', 'Gestión']}>
+              <Tabla
+                headers={[
+                  t('panelExt.thUsuario'),
+                  t('panelExt.thCorreo'),
+                  t('panelExt.thRol'),
+                  t('panelExt.thEstadoUser'),
+                  t('panelExt.thSesionActiva'),
+                  t('panelExt.thGestion')
+                ]}
+              >
                 {usuarios.map(u => (
                   <Tr key={u.id}>
                     <Td>
@@ -561,23 +592,30 @@ export function Panel() {
                     <Td>
                       <select
                         value={u.rol}
+                        aria-label={t('panelExt.thRol')}
                         onChange={(e) => cambiarRolUsuario(u.id, e.target.value)}
                         className="text-xs p-1.5 rounded-lg border border-current/20 bg-transparent outline-none font-semibold"
                       >
-                        <option value="Administrador General">Administrador General</option>
-                        <option value="Usuario GoToX">Usuario GoToX</option>
-                        <option value="Inspector Ambiental">Inspector Ambiental</option>
-                        <option value="Coordinadora Veterinaria">Coordinadora Veterinaria</option>
-                        <option value="Tutor Certificado">Tutor Certificado</option>
+                        <option value="Administrador General">{t('panelExt.rolesLista.admin')}</option>
+                        <option value="Usuario GoToX">{t('panelExt.rolesLista.usuario')}</option>
+                        <option value="Inspector Ambiental">{t('panelExt.rolesLista.inspector')}</option>
+                        <option value="Coordinadora Veterinaria">{t('panelExt.rolesLista.vet')}</option>
+                        <option value="Tutor Certificado">{t('panelExt.rolesLista.tutor')}</option>
                       </select>
                     </Td>
                     <Td>
                       <Badge variant={u.estado === 'Activo' ? 'success' : 'danger'}>
-                        {u.estado}
+                        {u.estado === 'Activo' ? t('panelExt.estadoActivo') : t('panelExt.estadoSuspendido')}
                       </Badge>
                     </Td>
                     <Td>
-                      <span className="text-xs opacity-80">{u.sesion}</span>
+                      <span className="text-xs opacity-80">
+                        {u.sesion === 'En línea'
+                          ? t('panelExt.sesionEnLinea')
+                          : u.sesion === 'Registrado'
+                          ? t('panelExt.sesionRegistrado')
+                          : traducirRolUsuario(u.sesion)}
+                      </span>
                     </Td>
                     <Td>
                       <button
@@ -589,7 +627,7 @@ export function Panel() {
                             : 'text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10'
                         }`}
                       >
-                        {u.estado === 'Activo' ? 'Suspender' : 'Reactivar'}
+                        {u.estado === 'Activo' ? t('panelExt.btnSuspender') : t('panelExt.btnReactivar')}
                       </button>
                     </Td>
                   </Tr>
@@ -604,8 +642,8 @@ export function Panel() {
           {tabActiva === 'incidencias' && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <h2 className="font-serif font-bold text-xl">Bandeja de Triage & Incidencias Urbanas</h2>
-                <p className="text-xs opacity-60">Supervisión en tiempo real de sobrecupo, estrés acústico y alertas térmicas.</p>
+                <h2 className="font-serif font-bold text-xl">{t('panelExt.incidenciasTitulo')}</h2>
+                <p className="text-xs opacity-60">{t('panelExt.incidenciasSub')}</p>
               </div>
 
               <div className="space-y-3">
@@ -631,6 +669,7 @@ export function Panel() {
                     <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                       <select
                         value={inc.estado}
+                        aria-label={inc.id}
                         onChange={(e) => cambiarEstadoIncidencia(inc.id, e.target.value)}
                         className={`text-xs p-2 rounded-xl font-bold border outline-none ${
                           inc.estado === 'Resuelta'
@@ -640,9 +679,9 @@ export function Panel() {
                             : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
                         }`}
                       >
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="En investigación">En investigación</option>
-                        <option value="Resuelta">Resuelta</option>
+                        <option value="Pendiente">{t('panelExt.incPendiente')}</option>
+                        <option value="En investigación">{t('panelExt.incInvestigacion')}</option>
+                        <option value="Resuelta">{t('panelExt.incResuelta')}</option>
                       </select>
                     </div>
                   </div>
@@ -659,12 +698,21 @@ export function Panel() {
               <div className="p-4 rounded-2xl bg-current/5 border border-current/10 text-xs flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-emerald-500" />
-                  <span>Cadena de bloques inmutable (Hash Chain Ledger) verificada localmente.</span>
+                  <span>{t('panelExt.auditoriaBanner')}</span>
                 </div>
                 <span className="font-mono text-[11px] opacity-60">SHA-256 Enabled</span>
               </div>
 
-              <Tabla headers={['ID Evento', 'Fecha & Hora', 'Operador Responsable', 'Acción Ejecutada', 'Entidad Afectada', 'Hash Criptográfico']}>
+              <Tabla
+                headers={[
+                  t('panelExt.thIdEvento'),
+                  t('panelExt.thFechaHora'),
+                  t('panelExt.thOpResp'),
+                  t('panelExt.thAccionEjec'),
+                  t('panelExt.thEntidadAfec'),
+                  t('panelExt.thHash')
+                ]}
+              >
                 {auditoria.map(a => (
                   <Tr key={a.id}>
                     <Td><span className="font-mono text-xs font-bold text-[#F27B91]">{a.id}</span></Td>
@@ -686,10 +734,10 @@ export function Panel() {
             <div className="space-y-6">
               <div className="space-y-1">
                 <h2 className="font-serif font-bold text-2xl text-[#111827] dark:text-white">
-                  Unidades Móviles de Rescate y Triage Canino
+                  {t('panelExt.flotaTitulo')}
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Cobertura de urgencias podales, golpe de calor y estabilización en el Gran Área Metropolitana.
+                  {t('panelExt.flotaSub')}
                 </p>
               </div>
 
@@ -713,15 +761,15 @@ export function Panel() {
 
                       <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-white/10 text-xs text-slate-600 dark:text-slate-400">
                         <div className="flex justify-between">
-                          <span>Base de guardia:</span>
+                          <span>{t('panelExt.flotaBase')}</span>
                           <strong className="text-slate-800 dark:text-white">{u.base}</strong>
                         </div>
                         <div className="flex justify-between">
-                          <span>Tiempo respuesta estimado:</span>
+                          <span>{t('panelExt.flotaRespuesta')}</span>
                           <strong className="text-[#501228] dark:text-[#F27B91]">{u.tiempoRespuestaEst}</strong>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span>Batería vehículo:</span>
+                          <span>{t('panelExt.flotaBateria')}</span>
                           <div className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
                             <Battery className="w-3.5 h-3.5" />
                             <span>{u.bateria}%</span>
@@ -730,7 +778,7 @@ export function Panel() {
                       </div>
 
                       <div className="space-y-1 pt-2">
-                        <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block">Equipamiento Activo</span>
+                        <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500 block">{t('panelExt.flotaEquip')}</span>
                         <div className="flex flex-wrap gap-1">
                           {u.equipamiento.map((eq, i) => (
                             <span key={i} className="text-[10px] bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded">
@@ -742,9 +790,9 @@ export function Panel() {
                     </div>
 
                     <div className="pt-4 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Médico: {u.veterinario}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t('panelExt.flotaMedico')} {u.veterinario}</span>
                       <Button size="sm" variant="secondary" icon={PhoneCall}>
-                        Despachar
+                        {t('panelExt.flotaDespachar')}
                       </Button>
                     </div>
                   </Card>
@@ -760,10 +808,10 @@ export function Panel() {
             <div className="max-w-2xl mx-auto space-y-6">
               <div className="space-y-1">
                 <h2 className="font-serif font-bold text-2xl text-[#111827] dark:text-white">
-                  Ajustes de Alertas y Sensores Urbanos
+                  {t('panelExt.ajustesTitulo')}
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Configura los umbrales de seguridad para las notificaciones del Copiloto Bruno y el carnet digital.
+                  {t('panelExt.ajustesSub')}
                 </p>
               </div>
 
@@ -772,14 +820,15 @@ export function Panel() {
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
                     <div className="space-y-0.5">
                       <span className="text-sm font-semibold text-slate-800 dark:text-white block">
-                        Alerta Sonora de Asfalto Caliente
+                        {t('panelExt.alertaAsfaltoTitulo')}
                       </span>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                        Notificar cuando el sensor de calzada supere el límite seguro para almohadillas.
+                        {t('panelExt.alertaAsfaltoDesc')}
                       </span>
                     </div>
                     <input
                       type="checkbox"
+                      aria-label={t('panelExt.alertaAsfaltoTitulo')}
                       checked={ajustesLocales.alertasAsfaltoCaliente}
                       onChange={(e) => setAjustesLocales({ ...ajustesLocales, alertasAsfaltoCaliente: e.target.checked })}
                       className="w-4 h-4 accent-[#501228] cursor-pointer"
@@ -788,11 +837,12 @@ export function Panel() {
 
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">Umbral máximo de temperatura de calzada:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">{t('panelExt.umbralMaxLabel')}</span>
                       <span className="font-bold text-[#501228] dark:text-[#F27B91]">{ajustesLocales.umbralTemperaturaAsfalto} °C</span>
                     </div>
                     <input
                       type="range"
+                      aria-label={t('panelExt.umbralMaxLabel')}
                       min="24"
                       max="35"
                       step="1"
@@ -805,14 +855,15 @@ export function Panel() {
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
                     <div className="space-y-0.5">
                       <span className="text-sm font-semibold text-slate-800 dark:text-white block">
-                        Aviso de Aforo en Terrazas de Escalante
+                        {t('panelExt.avisoAforoTitulo')}
                       </span>
                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                        Recibir advertencia cuando un local supere el 85% de capacidad canina.
+                        {t('panelExt.avisoAforoDesc')}
                       </span>
                     </div>
                     <input
                       type="checkbox"
+                      aria-label={t('panelExt.avisoAforoTitulo')}
                       checked={ajustesLocales.notificarAforoTerrazas}
                       onChange={(e) => setAjustesLocales({ ...ajustesLocales, notificarAforoTerrazas: e.target.checked })}
                       className="w-4 h-4 accent-[#501228] cursor-pointer"
@@ -822,12 +873,12 @@ export function Panel() {
                   {guardadoAjustes && (
                     <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs flex items-center gap-2 border border-emerald-200 dark:border-emerald-800/40">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>Ajustes guardados con éxito en la memoria local.</span>
+                      <span>{t('panelExt.msgAjustesOk')}</span>
                     </div>
                   )}
 
                   <Button type="submit" variant="primary" icon={Save}>
-                    Guardar Preferencias
+                    {t('panelExt.btnGuardarPrefs')}
                   </Button>
                 </form>
               </Card>
@@ -837,18 +888,21 @@ export function Panel() {
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
                   <div className="space-y-0.5">
                     <span className="text-sm font-semibold text-slate-800 dark:text-white block">
-                      Sesión del Operador
+                      {t('panelExt.sesionOpTitulo')}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
-                      Autenticado como <strong>{usuario?.nombre || 'Operador'}</strong> ({usuario?.correo || 'mariana.rojas@gotox.cr'}).
+                      {t('panelExt.autenticadoComo', {
+                        nombre: usuario?.nombre || t('panelExt.rolesLista.admin'),
+                        email: usuario?.correo || 'mariana.rojas@gotox.cr'
+                      })}
                     </span>
                   </div>
-                  <Badge variant="success">Activo</Badge>
+                  <Badge variant="success">{t('panelExt.estadoActivo')}</Badge>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Cierra tu sesión si estás en una terminal compartida del centro de monitoreo o si deseas cambiar de cuenta.
+                    {t('panelExt.sesionNotaTerminal')}
                   </p>
                   <Button
                     variant="danger"
@@ -857,7 +911,7 @@ export function Panel() {
                     onClick={handleSolicitarCierre}
                     className="shrink-0"
                   >
-                    Cerrar Sesión Activa
+                    {t('panelExt.btnCerrarSesion')}
                   </Button>
                 </div>
               </Card>

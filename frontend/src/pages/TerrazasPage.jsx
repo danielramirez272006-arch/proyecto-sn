@@ -263,6 +263,7 @@ export function TerrazasPage() {
               </button>
               <button
                 type="button"
+                aria-pressed={filtroRuido === 'moderado'}
                 onClick={() => setFiltroRuido('moderado')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   filtroRuido === 'moderado'
@@ -270,7 +271,7 @@ export function TerrazasPage() {
                     : 'text-[#94A3B8] hover:text-[#E8EDF5]'
                 }`}
               >
-                Moderado
+                {t('terrazasExt.moderado')}
               </button>
             </div>
           </div>
@@ -280,7 +281,7 @@ export function TerrazasPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[#94A3B8] text-[11px] font-semibold flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-[#F27B91]" />
-                Zona:
+                {t('terrazasExt.zonaLabel')}
               </span>
               <button
                 type="button"
@@ -291,7 +292,7 @@ export function TerrazasPage() {
                     : 'text-[#94A3B8] hover:text-[#E8EDF5]'
                 }`}
               >
-                Todas las zonas
+                {t('terrazasExt.todasZonas')}
               </button>
               {zonasDisponibles.map((z) => (
                 <button
@@ -317,7 +318,7 @@ export function TerrazasPage() {
                   onChange={(e) => setSoloEspacioDisponible(e.target.checked)}
                   className="rounded bg-[#162032] border-white/20 text-[#55152D] focus:ring-0 focus:ring-offset-0"
                 />
-                <span>Solo con cupos libres</span>
+                <span>{t('terrazasExt.soloCuposLibres')}</span>
               </label>
 
               {(busqueda || filtroRuido !== 'todos' || filtroZona !== 'todas' || soloEspacioDisponible) && (
@@ -327,7 +328,7 @@ export function TerrazasPage() {
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#F27B91] hover:underline"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  Restablecer
+                  {t('terrazasExt.restablecer')}
                 </button>
               )}
             </div>
@@ -341,11 +342,11 @@ export function TerrazasPage() {
       <section className="max-w-[1240px] mx-auto px-4 sm:px-6 space-y-6">
         <div className="flex items-center justify-between text-xs text-[#94A3B8]">
           <span>
-            Mostrando <strong>{terrazasFiltradas.length}</strong> de {TERRAZAS.length} terrazas auditadas
+            {t('terrazasExt.mostrando', { n: terrazasFiltradas.length, total: TERRAZAS.length })}
           </span>
           <span className="flex items-center gap-1 text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Sensores actualizados
+            {t('terrazasExt.sensoresActualizados')}
           </span>
         </div>
 
@@ -367,13 +368,13 @@ export function TerrazasPage() {
               <Compass className="w-7 h-7" />
             </div>
             <h3 className="font-serif text-xl font-bold text-[#E8EDF5]">
-              No se encontraron terrazas
+              {t('terrazasExt.sinTerrazas')}
             </h3>
             <p className="text-xs text-[#94A3B8] leading-relaxed">
-              No hay establecimientos verificados que coincidan con los filtros aplicados. Intenta ampliar los decibelios o seleccionar todas las zonas.
+              {t('terrazasExt.sinTerrazasSub')}
             </p>
             <Button variant="secondary" size="sm" onClick={limpiarFiltros} icon={RotateCcw}>
-              Restablecer Filtros
+              {t('radar.restablecerFiltros')}
             </Button>
           </motion.div>
         ) : (
@@ -446,7 +447,7 @@ export function TerrazasPage() {
                       <div className="p-2.5 rounded-xl bg-[#162032] border border-white/5 space-y-0.5 text-left">
                         <span className="text-[10px] uppercase font-semibold text-[#94A3B8] flex items-center gap-1">
                           <Volume2 className="w-3 h-3 text-blue-400" />
-                          Acústica
+                          {t('terrazasExt.acustica')}
                         </span>
                         <p className="font-bold text-xs sm:text-sm text-[#E8EDF5] tabular-nums">
                           {terraza.decibelios} dB
@@ -460,13 +461,13 @@ export function TerrazasPage() {
                       <div className="p-2.5 rounded-xl bg-[#162032] border border-white/5 space-y-0.5 text-left">
                         <span className="text-[10px] uppercase font-semibold text-[#94A3B8] flex items-center gap-1">
                           <Thermometer className="w-3 h-3 text-[#F27B91]" />
-                          Piso
+                          {t('terrazasExt.piso')}
                         </span>
                         <p className="font-bold text-xs sm:text-sm text-[#E8EDF5] tabular-nums">
                           {terraza.temperaturaPiso}
                         </p>
                         <span className="text-[9px] text-[#94A3B8] block font-medium">
-                          {terraza.sombraPorcentaje}% sombra
+                          {t('terrazasExt.sombraTexto', { pct: terraza.sombraPorcentaje })}
                         </span>
                       </div>
 
@@ -474,13 +475,13 @@ export function TerrazasPage() {
                       <div className="p-2.5 rounded-xl bg-[#162032] border border-white/5 space-y-0.5 text-left">
                         <span className="text-[10px] uppercase font-semibold text-[#94A3B8] flex items-center gap-1">
                           <Users className="w-3 h-3 text-amber-400" />
-                          Aforo Canino
+                          {t('terrazasExt.aforoCanino')}
                         </span>
                         <p className="font-bold text-xs sm:text-sm text-[#E8EDF5] tabular-nums">
                           {terraza.aforoCaninoActual}/{terraza.aforoCaninoMax}
                         </p>
                         <span className={`text-[9px] block font-medium ${cuposLibres > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {cuposLibres > 0 ? `${cuposLibres} libres` : 'Lleno'}
+                          {cuposLibres > 0 ? t('comun.libresCount', { n: cuposLibres }) : t('comun.lleno')}
                         </span>
                       </div>
                     </div>
@@ -497,7 +498,7 @@ export function TerrazasPage() {
                       ))}
                       {terraza.servicios.length > 3 && (
                         <span className="px-1.5 py-0.5 rounded-md text-[10px] text-[#94A3B8]">
-                          +{terraza.servicios.length - 3} más
+                          {t('comun.masCount', { n: terraza.servicios.length - 3 })}
                         </span>
                       )}
                     </div>
@@ -515,7 +516,7 @@ export function TerrazasPage() {
                           icon={ArrowRight}
                           className="bg-[#162032] text-[#E8EDF5] hover:text-[#F27B91] border-white/10 hover:border-[#F27B91]/30 text-xs font-semibold"
                         >
-                          Ver Auditoría
+                          {t('terrazasExt.verAuditoria')}
                         </Button>
                       </motion.div>
                     </div>
@@ -534,13 +535,13 @@ export function TerrazasPage() {
         <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-[#111827] via-[#162032] to-[#111827] border border-white/10 space-y-8 text-left">
           <div className="max-w-2xl space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-[#F27B91] block">
-              Protocolo de Certificación Urbana
+              {t('terrazasExt.protoBadge')}
             </span>
             <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#E8EDF5] tracking-tight">
-              ¿Cómo audita GoToX los espacios gastronómicos?
+              {t('terrazasExt.protoTitulo')}
             </h2>
             <p className="text-xs sm:text-sm text-[#94A3B8] leading-relaxed">
-              No otorgamos insignias simbólicas. Nuestro equipo técnico evalúa rigurosamente 3 factores fisiológicos y ambientales para garantizar bienestar canino absoluto.
+              {t('terrazasExt.protoSub')}
             </p>
           </div>
 
@@ -550,10 +551,10 @@ export function TerrazasPage() {
                 <Volume2 className="w-5 h-5" />
               </div>
               <h3 className="font-serif font-bold text-base text-[#E8EDF5]">
-                1. Mapeo de Decibelios
+                {t('terrazasExt.p1Titulo')}
               </h3>
               <p className="text-xs text-[#94A3B8] leading-relaxed">
-                Medición continua de presión acústica. Las terrazas deben mantenerse bajo 60 dB en horas pico para evitar pánico y sobreestimulación auditiva.
+                {t('terrazasExt.p1Desc')}
               </p>
             </div>
 
@@ -562,10 +563,10 @@ export function TerrazasPage() {
                 <Thermometer className="w-5 h-5" />
               </div>
               <h3 className="font-serif font-bold text-base text-[#E8EDF5]">
-                2. Termografía Podal
+                {t('terrazasExt.p2Titulo')}
               </h3>
               <p className="text-xs text-[#94A3B8] leading-relaxed">
-                Inspección térmica del pavimento con sensores infrarrojos. Se exige al menos 75% de cobertura sombreada para evitar quemaduras en almohadillas.
+                {t('terrazasExt.p2Desc')}
               </p>
             </div>
 
@@ -574,10 +575,10 @@ export function TerrazasPage() {
                 <Droplets className="w-5 h-5" />
               </div>
               <h3 className="font-serif font-bold text-base text-[#E8EDF5]">
-                3. Hidratación & Anclajes
+                {t('terrazasExt.p3Titulo')}
               </h3>
               <p className="text-xs text-[#94A3B8] leading-relaxed">
-                Protocolos estrictos de tazones de acero inoxidable o cerámica con recambio periódico de agua filtrada y puntos de sujeción ergonómicos.
+                {t('terrazasExt.p3Desc')}
               </p>
             </div>
           </div>
@@ -631,29 +632,29 @@ export function TerrazasPage() {
                   </div>
                 </div>
                 <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Auditado Vigente
+                  {t('radar.auditadoVigente')}
                 </span>
               </div>
 
               {/* Métricas Acústicas y Térmicas Detalladas */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3.5 bg-[#162032] rounded-2xl border border-white/5 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-[#94A3B8] block">Nivel Acústico</span>
+                  <span className="text-[10px] uppercase font-bold text-[#94A3B8] block">{t('radar.nivelAcustico')}</span>
                   <p className="font-bold text-base text-[#E8EDF5]">
                     {terrazaSeleccionada.decibelios} dB ({terrazaSeleccionada.nivelRuido})
                   </p>
                   <p className="text-[11px] text-[#94A3B8]">
-                    Aislamiento acústico apto para caninos reactivos a sobrecargas sonoras urbanas.
+                    {t('terrazasExt.aislamientoDesc')}
                   </p>
                 </div>
 
                 <div className="p-3.5 bg-[#162032] rounded-2xl border border-white/5 space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-[#94A3B8] block">Temperatura de Calzada</span>
+                  <span className="text-[10px] uppercase font-bold text-[#94A3B8] block">{t('radar.tempCalzada')}</span>
                   <p className="font-bold text-base text-[#E8EDF5]">
                     {terrazaSeleccionada.temperaturaPiso}
                   </p>
                   <p className="text-[11px] text-[#94A3B8]">
-                    {terrazaSeleccionada.sombraPorcentaje}% de sombra natural o techo térmico continuo.
+                    {t('terrazasExt.sombraTechoDesc', { pct: terrazaSeleccionada.sombraPorcentaje })}
                   </p>
                 </div>
               </div>
@@ -661,7 +662,7 @@ export function TerrazasPage() {
               {/* Condiciones y Protocolos para Mascotas */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">
-                  Condiciones Pet-Friendly Certificadas
+                  {t('terrazasExt.condCertificadas')}
                 </h4>
                 <div className="p-3.5 bg-[#162032] rounded-2xl border border-white/5 text-xs text-slate-300 leading-relaxed">
                   {terrazaSeleccionada.condicionesMascotas}
@@ -671,7 +672,7 @@ export function TerrazasPage() {
               {/* Lista de Servicios */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">
-                  Equipamiento en Local
+                  {t('terrazasExt.equipamientoLocal')}
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   {terrazaSeleccionada.servicios.map((srv, idx) => (
@@ -688,7 +689,7 @@ export function TerrazasPage() {
                 <div className="flex items-center gap-2 text-[#94A3B8]">
                   <Clock className="w-4 h-4 text-[#F27B91]" />
                   <span>
-                    Horario sugerido: <strong className="text-[#E8EDF5]">{terrazaSeleccionada.horarioRecomendado}</strong>
+                    {t('terrazasExt.horarioSugerido')} <strong className="text-[#E8EDF5]">{terrazaSeleccionada.horarioRecomendado}</strong>
                   </span>
                 </div>
                 <Button
@@ -697,7 +698,7 @@ export function TerrazasPage() {
                   onClick={() => setTerrazaSeleccionada(null)}
                   className="bg-[#55152D] hover:bg-[#6E1E3A] text-white"
                 >
-                  Cerrar Auditoría
+                  {t('terrazasExt.cerrarAuditoria')}
                 </Button>
               </div>
             </div>

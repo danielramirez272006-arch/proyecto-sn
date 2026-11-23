@@ -35,7 +35,7 @@ export function AnimatedRoutes() {
         <Route
           path="/explorar"
           element={
-            <RutaPrivada modulo="Explorar Catálogo">
+            <RutaPrivada modulo="usuario.explorar">
               <Navigate to="/usuario?tab=explorar" replace />
             </RutaPrivada>
           }
@@ -43,7 +43,7 @@ export function AnimatedRoutes() {
         <Route
           path="/mis-planes"
           element={
-            <RutaPrivada modulo="Mis Planes">
+            <RutaPrivada modulo="usuario.planes">
               <Navigate to="/usuario?tab=planes" replace />
             </RutaPrivada>
           }
@@ -51,7 +51,7 @@ export function AnimatedRoutes() {
         <Route
           path="/favoritos"
           element={
-            <RutaPrivada modulo="Mis Favoritos">
+            <RutaPrivada modulo="usuario.favoritos">
               <Navigate to="/usuario?tab=favoritos" replace />
             </RutaPrivada>
           }
@@ -59,7 +59,7 @@ export function AnimatedRoutes() {
         <Route
           path="/mi-mascota"
           element={
-            <RutaPrivada modulo="Mi Mascota">
+            <RutaPrivada modulo="usuario.mascota">
               <Navigate to="/usuario?tab=mascota" replace />
             </RutaPrivada>
           }
@@ -67,7 +67,7 @@ export function AnimatedRoutes() {
         <Route
           path="/perfil"
           element={
-            <RutaPrivada modulo="Mi Cuenta & Bóveda">
+            <RutaPrivada modulo="usuario.cuenta">
               <Navigate to="/usuario?tab=cuenta" replace />
             </RutaPrivada>
           }
@@ -82,7 +82,7 @@ export function AnimatedRoutes() {
       <Route
         path="/usuario"
         element={
-          <RutaPrivada modulo="Mi Espacio de Usuario">
+          <RutaPrivada modulo="nav.miEspacioCorto">
             <UsuarioPanel />
           </RutaPrivada>
         }

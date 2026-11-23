@@ -1,21 +1,21 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../shared/services/api-client';
 import { IDIOMAS_SOPORTADOS, TRADUCCIONES } from '../data/traducciones';
 import { useA11yAnnouncer } from '../shared/hooks/use-a11y-announcer';
 
 const CLAVE_IDIOMA = 'sn_language';
-const CODIGOS_VALIDOS = IDIOMAS_SOPORTADOS.map((i) => i.codigo);
 const IdiomaContext = createContext(null);
 
 function leerIdiomaInicial() {
   if (typeof window === 'undefined') return 'es';
+  const codigos = IDIOMAS_SOPORTADOS.map((i) => i.codigo);
   try {
     const guardado = window.localStorage.getItem(CLAVE_IDIOMA);
-    if (guardado && CODIGOS_VALIDOS.includes(guardado)) {
+    if (guardado && codigos.includes(guardado)) {
       return guardado;
     }
     const navLang = (window.navigator?.language || 'es').slice(0, 2).toLowerCase();
-    if (CODIGOS_VALIDOS.includes(navLang)) {
+    if (codigos.includes(navLang)) {
       return navLang;
     }
   } catch {
@@ -33,8 +33,42 @@ function obtenerPorRuta(obj, ruta) {
 
 export function IdiomaProvider({ children }) {
   const [idioma, setIdiomaState] = useState(leerIdiomaInicial);
+  const [idiomas, setIdiomas] = useState(IDIOMAS_SOPORTADOS);
+  const [diccionariosBackend, setDiccionariosBackend] = useState({});
+  const [backendConectado, setBackendConectado] = useState(false);
+  const solicitandoRef = useRef(new Set());
   const { anunciar } = useA11yAnnouncer();
 
+  // Sincronizar catálogo de los 10 idiomas desde /api/i18n/languages del backend
+  useEffect(() => {
+    let activo = true;
+    api
+      .get('/i18n/languages')
+      .then((res) => {
+        if (!activo || !Array.isArray(res?.languages)) return;
+        const fusion = res.languages.map((beLang) => {
+          const localMeta = IDIOMAS_SOPORTADOS.find((i) => i.codigo === beLang.code);
+          return {
+            codigo: beLang.code,
+            corto: localMeta?.corto || beLang.code.toUpperCase(),
+            nombreNativo: localMeta?.nombreNativo || beLang.nativeName || beLang.name,
+            region: beLang.nativeName || localMeta?.region || beLang.name,
+            ttsLang: localMeta?.ttsLang || beLang.code,
+            flag: beLang.flag || ''
+          };
+        });
+        if (fusion.length >= 1) {
+          setIdiomas(fusion);
+          setBackendConectado(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  // Sincronizar diccionario del idioma activo desde /api/i18n/translations/:lang
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.lang = idioma;
@@ -46,44 +80,81 @@ export function IdiomaProvider({ children }) {
     } catch {
       /* sin persistencia */
     }
-  }, [idioma]);
+
+    if (diccionariosBackend[idioma] || solicitandoRef.current.has(idioma)) {
+      return;
+    }
+
+    solicitandoRef.current.add(idioma);
+    let activo = true;
+    api
+      .get(`/i18n/translations/${idioma}`)
+      .then((res) => {
+        if (!activo || !res?.dictionary) return;
+        setDiccionariosBackend((prev) => ({
+          ...prev,
+          [idioma]: res.dictionary
+        }));
+        setBackendConectado(true);
+      })
+      .catch(() => {})
+      .finally(() => {
+        solicitandoRef.current.delete(idioma);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [idioma, diccionariosBackend]);
+
+  const codigosValidos = useMemo(() => idiomas.map((i) => i.codigo), [idiomas]);
 
   const cambiarIdioma = useCallback(
     (nuevoCodigo) => {
-      if (!CODIGOS_VALIDOS.includes(nuevoCodigo) || nuevoCodigo === idioma) return;
+      if (!codigosValidos.includes(nuevoCodigo) || nuevoCodigo === idioma) return;
       setIdiomaState(nuevoCodigo);
       const aviso =
-        TRADUCCIONES[nuevoCodigo]?.a11y?.anuncioCambioIdioma || `Idioma: ${nuevoCodigo}`;
+        TRADUCCIONES[nuevoCodigo]?.a11y?.anuncioCambioIdioma || `Language: ${nuevoCodigo}`;
       anunciar(aviso, 'polite');
     },
-    [idioma, anunciar]
+    [codigosValidos, idioma, anunciar]
   );
 
   const t = useCallback(
     (clave, fallback = '') => {
+      if (String(clave).startsWith('backend.')) {
+        const rutaBackend = String(clave).slice(8);
+        const deBackend =
+          obtenerPorRuta(diccionariosBackend[idioma], rutaBackend) ??
+          obtenerPorRuta(diccionariosBackend.es, rutaBackend);
+        if (deBackend !== undefined) return deBackend;
+      }
+
       const enIdioma = obtenerPorRuta(TRADUCCIONES[idioma], clave);
       if (enIdioma !== undefined) return enIdioma;
       const enEspanol = obtenerPorRuta(TRADUCCIONES.es, clave);
       if (enEspanol !== undefined) return enEspanol;
       return fallback || clave;
     },
-    [idioma]
+    [idioma, diccionariosBackend]
   );
 
   const idiomaActual = useMemo(
-    () => IDIOMAS_SOPORTADOS.find((i) => i.codigo === idioma) || IDIOMAS_SOPORTADOS[0],
-    [idioma]
+    () => idiomas.find((i) => i.codigo === idioma) || idiomas[0] || IDIOMAS_SOPORTADOS[0],
+    [idiomas, idioma]
   );
 
   const valor = useMemo(
     () => ({
       idioma,
       idiomaActual,
-      idiomas: IDIOMAS_SOPORTADOS,
+      idiomas,
+      backendConectado,
+      diccionarioBackend: diccionariosBackend[idioma] || {},
       setIdioma: cambiarIdioma,
       t
     }),
-    [idioma, idiomaActual, cambiarIdioma, t]
+    [idioma, idiomaActual, idiomas, backendConectado, diccionariosBackend, cambiarIdioma, t]
   );
 
   return <IdiomaContext.Provider value={valor}>{children}</IdiomaContext.Provider>;

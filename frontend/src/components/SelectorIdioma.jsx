@@ -133,7 +133,7 @@ export function SelectorIdioma({
           <div
             role="listbox"
             aria-label={t('a11y.idiomaSeccion')}
-            className={`absolute right-0 mt-2 w-48 rounded-2xl border p-1.5 z-[1400] ${cajaMenu}`}
+            className={`absolute right-0 mt-2 w-56 max-h-72 overflow-y-auto gotox-scrollbar rounded-2xl border p-1.5 z-[1400] ${cajaMenu}`}
           >
             {idiomas.map((item) => {
               const activo = item.codigo === idioma;
@@ -152,11 +152,11 @@ export function SelectorIdioma({
                       : 'hover:bg-white/10'
                   }`}
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="text-[10px] font-black w-6 text-left opacity-80">{item.corto}</span>
-                    <span>{item.nombreNativo}</span>
+                  <span className="flex items-center gap-2 truncate">
+                    <span className="text-[10px] font-black w-8 text-left opacity-80 shrink-0">{item.corto}</span>
+                    <span className="truncate">{item.nombreNativo}</span>
                   </span>
-                  {activo && <Check className="w-3.5 h-3.5 text-[#F27B91]" aria-hidden="true" />}
+                  {activo && <Check className="w-3.5 h-3.5 text-[#F27B91] shrink-0" aria-hidden="true" />}
                 </button>
               );
             })}
@@ -214,8 +214,8 @@ export function SelectorIdioma({
           role="listbox"
           aria-label={t('a11y.idiomaSeccion')}
           className={`absolute ${
-            compacto ? 'left-full bottom-0 ml-2 w-52' : 'left-0 right-0 bottom-full mb-1.5'
-          } rounded-2xl border p-1.5 z-[1400] grid grid-cols-1 gap-0.5 ${cajaMenu}`}
+            compacto ? 'left-full bottom-0 ml-2 w-56' : 'left-0 right-0 bottom-full mb-1.5'
+          } max-h-72 overflow-y-auto gotox-scrollbar rounded-2xl border p-1.5 z-[1400] grid grid-cols-1 gap-0.5 ${cajaMenu}`}
         >
           {idiomas.map((item) => {
             const activo = item.codigo === idioma;
@@ -235,7 +235,7 @@ export function SelectorIdioma({
                 }`}
               >
                 <span className="flex items-center gap-2 truncate">
-                  <span className="text-[10px] font-black uppercase w-6 text-left opacity-80">
+                  <span className="text-[10px] font-black uppercase w-8 text-left opacity-80 shrink-0">
                     {item.corto}
                   </span>
                   <span className="truncate">{item.nombreNativo}</span>

@@ -8,6 +8,7 @@ import { PageWrapper } from '../components/PageWrapper';
 import { useSesion } from '../hooks/useSesion';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 import { authService } from '../shared/services/auth-service';
 import {
   Dog,
@@ -36,6 +37,7 @@ export function Acceso() {
   const { loginConBackend, registrarConBackend, mascota } = useSesion();
   const telemetria = useTelemetria();
   const { esClaro, esMorado } = useTema();
+  const { t } = useIdioma();
 
   const [modo, setModo] = useState('login'); // 'login' | 'registro' | 'recuperar'
 
@@ -308,11 +310,11 @@ export function Acceso() {
           <div className="lg:col-span-6 space-y-6">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FDF2F4] dark:bg-[#55152D]/30 text-[#501228] dark:text-[#F27B91] border border-[#F9E2E8] dark:border-[#55152D]/50 text-xs font-semibold">
-                <Shield className="w-3.5 h-3.5" />
-                <span>Autenticación Conectada al Backend</span>
+                <Shield className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{t('acceso.badge')}</span>
               </div>
               <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#111827] dark:text-[#E8EDF5] tracking-tight leading-tight">
-                {modo === 'login' ? 'Bienvenido a Synodos' : 'Registrar Usuario en Synodos'}
+                {modo === 'login' ? t('acceso.tituloLogin') : t('acceso.tituloRegistro')}
               </h1>
               <p className="text-sm sm:text-base text-slate-600 dark:text-[#94A3B8] font-sans leading-relaxed">
                 {modo === 'login'
@@ -366,8 +368,8 @@ export function Acceso() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Iniciar Sesión</span>
+                <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{t('acceso.tabLogin')}</span>
               </button>
               <button
                 type="button"
@@ -390,8 +392,8 @@ export function Acceso() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Registrar Usuario</span>
+                <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{t('acceso.tabRegistro')}</span>
               </button>
             </div>
 
@@ -850,8 +852,8 @@ export function Acceso() {
                     ? 'Enviar Código de Recuperación'
                     : 'Restablecer Contraseña'
                   : modo === 'login'
-                  ? 'Iniciar Sesión en Synodos'
-                  : 'Crear Cuenta de Usuario'}
+                  ? t('acceso.btnLogin')
+                  : t('acceso.btnRegistro')}
               </Button>
             </form>
           </div>

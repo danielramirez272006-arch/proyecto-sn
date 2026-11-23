@@ -15,7 +15,8 @@ import {
   ChevronRight,
   LogOut,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Accessibility
 } from 'lucide-react';
 import { BotonTema } from '../components/BotonTema';
 import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
@@ -23,10 +24,15 @@ import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { LogoSynodos } from '../components/LogoSynodos';
 import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
+import { SelectorIdioma } from '../components/SelectorIdioma';
+import { EnlaceSaltarContenido } from '../components/EnlaceSaltarContenido';
+import { abrirPanelAccesibilidad } from '../shared/components/layout/a11y-floating-dock';
 
 export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
   const { usuario, cerrarSesion } = useSesion();
   const { tema, setTema, esClaro, esMorado } = useTema();
+  const { t } = useIdioma();
   const navigate = useNavigate();
 
   const [compacta, setCompacta] = useState(() => {
@@ -167,6 +173,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
 
   return (
     <div className={`panel-admin min-h-screen flex flex-col md:flex-row transition-colors duration-200 ${clasesTema.contenedor}`}>
+      <EnlaceSaltarContenido targetId="contenido-principal" />
       <ModalConfirmarCierre
         isOpen={modalConfirmacionAbierto}
         onClose={() => setModalConfirmacionAbierto(false)}
@@ -230,35 +237,35 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                 <span className={`font-serif font-bold text-base leading-tight flex items-center gap-1.5 whitespace-nowrap ${clasesTema.textoMarca}`}>
                   Synodos
                   <span className={`text-[10px] uppercase font-sans font-semibold tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap ${clasesTema.badgePanel}`}>
-                    Panel
+                    {t('nav.panelTag')}
                   </span>
                 </span>
-                <span className="text-[11px] text-slate-400 font-sans whitespace-nowrap">Centro de Mando GAM</span>
+                <span className="text-[11px] text-slate-400 font-sans whitespace-nowrap">{t('nav.centroMandoGam')}</span>
               </div>
             </Link>
 
             {/* Enlace rápido a la Web Pública */}
             <Link
               to="/"
-              title={compacta ? 'Ver Web Pública' : undefined}
+              title={compacta ? t('nav.verWebPublica') : undefined}
               className={`w-full flex items-center justify-start pl-1.5 pr-2.5 py-0.5 rounded-xl text-xs font-medium border whitespace-nowrap overflow-hidden transition-colors group ${clasesTema.botonWebPublica} ${clasesTema.focusRing}`}
             >
               <span className="w-10 h-9 shrink-0 flex items-center justify-center">
-                <Globe className="w-4 h-4 shrink-0 opacity-75 group-hover:opacity-100" />
+                <Globe className="w-4 h-4 shrink-0 opacity-75 group-hover:opacity-100" aria-hidden="true" />
               </span>
               <div className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(compacta, 'max-w-[180px]')}`}>
-                <span className="whitespace-nowrap">Ver Web Pública</span>
-                <ArrowLeft className="w-3.5 h-3.5 shrink-0 rotate-180 opacity-70 group-hover:opacity-100" />
+                <span className="whitespace-nowrap">{t('nav.verWebPublica')}</span>
+                <ArrowLeft className="w-3.5 h-3.5 shrink-0 rotate-180 opacity-70 group-hover:opacity-100" aria-hidden="true" />
               </div>
             </Link>
           </div>
 
           {/* Navegación Principal con Iconos Anclados y Badges */}
-          <div className="flex-1 min-h-0 px-3 py-3 space-y-3 overflow-y-auto overflow-x-hidden gotox-scrollbar">
+          <nav aria-label={t('nav.navSistema')} className="flex-1 min-h-0 px-3 py-3 space-y-3 overflow-y-auto overflow-x-hidden gotox-scrollbar">
             <div className="space-y-1">
               <div className={clasesColapsoSeccion(compacta, 'max-h-7')}>
                 <span className="pl-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 whitespace-nowrap overflow-hidden">
-                  Módulos de Gestión
+                  {t('nav.navSistema')}
                 </span>
               </div>
 
@@ -270,6 +277,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                     <button
                       key={tab.id}
                       type="button"
+                      aria-current={activa ? 'page' : undefined}
                       title={compacta ? tab.label : undefined}
                       onClick={() => onTabChange && onTabChange(tab.id)}
                       className={`w-full flex items-center justify-start pl-1.5 pr-2.5 py-1 rounded-xl text-xs font-medium whitespace-nowrap overflow-hidden transition-colors duration-150 group ${
@@ -306,65 +314,78 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
               <div className={`p-2.5 rounded-2xl border space-y-1 whitespace-nowrap overflow-hidden ${clasesTema.tarjetaRedGam}`}>
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold flex items-center gap-1.5 text-[11px] whitespace-nowrap">
-                    <Radio className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>Red GAM Activa</span>
+                    <Radio className="w-3.5 h-3.5 text-emerald-500 shrink-0" aria-hidden="true" />
+                    <span>{t('nav.redGam')}</span>
                   </span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
                 </div>
                 <p className="text-[10px] opacity-75 leading-tight truncate">
-                  Sensores de pavimento y clima en San José.
+                  {t('nav.redGamAdminSub')}
                 </p>
               </div>
             </div>
-          </div>
+          </nav>
 
-          {/* Sección Inferior del Sidebar: Selector de 3 Temas y Perfil */}
+          {/* Sección Inferior del Sidebar: Idioma, Selector de 3 Temas y Perfil */}
           <div className={`panel-sidebar-pie shrink-0 px-3 py-3 border-t space-y-2 bg-transparent ${clasesTema.cabeceraBorde}`}>
+            <SelectorIdioma
+              variant="sidebar"
+              compacto={compacta}
+              clasesColapsoTexto={clasesColapsoTexto}
+            />
+
             <div className="space-y-1">
               <div className={clasesColapsoSeccion(compacta, 'max-h-6')}>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block pl-1.5 whitespace-nowrap overflow-hidden">
-                  Tono de Pantalla
+                  {t('nav.tonoPantalla')}
                 </span>
               </div>
-              <div className={`grid grid-cols-3 gap-1 p-1 border rounded-xl overflow-hidden ${clasesTema.selectorTonoCaja}`}>
+              <div
+                className={`grid grid-cols-3 gap-1 p-1 border rounded-xl overflow-hidden ${clasesTema.selectorTonoCaja}`}
+                role="group"
+                aria-label={t('nav.tonoPantalla')}
+              >
                 <button
                   type="button"
                   onClick={() => setTema('claro')}
-                  title="Modo Claro"
+                  aria-pressed={tema === 'claro'}
+                  title={t('nav.claro')}
                   className={`flex items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-medium whitespace-nowrap overflow-hidden transition-colors ${
                     tema === 'claro'
                       ? 'bg-amber-100 text-amber-900 border border-amber-300 font-semibold'
                       : 'text-slate-400 hover:text-slate-600'
                   }`}
                 >
-                  <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span className={clasesColapsoTexto(compacta, 'max-w-[60px] pl-1')}>Claro</span>
+                  <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden="true" />
+                  <span className={clasesColapsoTexto(compacta, 'max-w-[60px] pl-1')}>{t('nav.claro')}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setTema('oscuro')}
-                  title="Modo Oscuro"
+                  aria-pressed={tema === 'oscuro'}
+                  title={t('nav.oscuro')}
                   className={`flex items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-medium whitespace-nowrap overflow-hidden transition-colors ${
                     tema === 'oscuro'
                       ? 'bg-slate-800 text-white font-semibold border border-white/20'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <Moon className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                  <span className={clasesColapsoTexto(compacta, 'max-w-[60px] pl-1')}>Oscuro</span>
+                  <Moon className="w-3.5 h-3.5 text-blue-400 shrink-0" aria-hidden="true" />
+                  <span className={clasesColapsoTexto(compacta, 'max-w-[60px] pl-1')}>{t('nav.oscuro')}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setTema('morado')}
-                  title="Modo Vino"
+                  aria-pressed={tema === 'morado'}
+                  title={t('nav.vino')}
                   className={`flex items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-medium whitespace-nowrap overflow-hidden transition-colors ${
                     tema === 'morado'
                       ? 'bg-[#501228] text-white font-semibold border border-[#F27B91]/40'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-[#f0a6be] shrink-0" />
-                  <span className={clasesColapsoTexto(compacta, 'max-w-[60px] pl-1')}>Vino</span>
+                  <Sparkles className="w-3.5 h-3.5 text-[#f0a6be] shrink-0" aria-hidden="true" />
+                  <span className={clasesColapsoTexto(compacta, 'max-w-[60px] pl-1')}>{t('nav.vino')}</span>
                 </button>
               </div>
             </div>
@@ -390,26 +411,26 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                       {nombreUsuarioMostrar}
                     </p>
                     <p className="text-[10px] text-slate-400 truncate flex items-center gap-1 whitespace-nowrap">
-                      <Shield className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
-                      <span>Administrador Exclusivo</span>
+                      <Shield className="w-2.5 h-2.5 text-emerald-500 shrink-0" aria-hidden="true" />
+                      <span>{t('nav.adminExclusivo')}</span>
                     </p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
                 </div>
               </Link>
 
               <button
                 type="button"
                 onClick={handleSolicitarCierre}
-                title={compacta ? 'Cerrar Sesión' : 'Cerrar sesión activa y volver al acceso'}
+                title={compacta ? t('nav.cerrarSesion') : t('nav.cerrarSesion')}
                 className={`btn-cerrar-sesion w-full flex items-center justify-start pl-1.5 pr-2.5 py-0.5 rounded-xl text-xs font-semibold border whitespace-nowrap overflow-hidden transition-colors active:scale-[0.98] ${clasesTema.botonCerrarSesion} ${clasesTema.focusRing}`}
               >
                 <span className="w-10 h-9 shrink-0 flex items-center justify-center">
-                  <LogOut className="w-3.5 h-3.5 shrink-0" />
+                  <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                 </span>
                 <div className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(compacta, 'max-w-[185px]')}`}>
-                  <span className="whitespace-nowrap">Cerrar Sesión</span>
-                  <span className="text-[10px] opacity-75 font-medium whitespace-nowrap">Salir</span>
+                  <span className="whitespace-nowrap">{t('nav.cerrarSesion')}</span>
+                  <span className="text-[10px] opacity-75 font-medium whitespace-nowrap">{t('nav.salir')}</span>
                 </div>
               </button>
             </div>
@@ -429,6 +450,16 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
         </Link>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={abrirPanelAccesibilidad}
+            aria-label={t('nav.accesibilidad')}
+            title={t('nav.accesibilidad')}
+            className="p-1.5 rounded-xl border border-current/20 text-[#F27B91] hover:bg-current/5 transition-colors"
+          >
+            <Accessibility className="w-4 h-4" aria-hidden="true" />
+          </button>
+          <SelectorIdioma variant="header" />
           <BotonTema conMenu={true} className="w-8 h-8" />
           <button
             type="button"
@@ -564,7 +595,9 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
           ÁREA PRINCIPAL DE CONTENIDO (SINCRONIZADA CON EL ANCHO DEL ASIDE)
           ============================================================ */}
       <main
-        className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden min-h-screen transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[padding] ${
+        id="contenido-principal"
+        tabIndex={-1}
+        className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden min-h-screen outline-none transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[padding] ${
           compacta ? 'md:pl-24' : 'md:pl-72 lg:pl-80'
         }`}
       >

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useSesion } from '../hooks/useSesion';
+import { useIdioma } from '../context/IdiomaContext';
 import { api } from '../shared/services/api-client';
 import {
   hablarComoBruno,
@@ -62,6 +63,7 @@ const PREGUNTAS_SUGERIDAS = [
 export function CopilotoPage() {
   const telemetria = useTelemetria();
   const { mascota } = useSesion();
+  const { t } = useIdioma();
   const finHistorialRef = useRef(null);
   const recognitionRef = useRef(null);
 
@@ -273,14 +275,14 @@ export function CopilotoPage() {
 
               <div className="space-y-1.5">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#55152D]/35 text-[#F27B91] border border-[#F27B91]/30 text-xs font-semibold">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Lealtad & Monitoreo Inteligente &bull; Synodos</span>
+                  <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>{t('copiloto.badge')}</span>
                 </div>
                 <h1 className="font-serif text-3xl sm:text-4xl font-bold text-[#E8EDF5] tracking-tight">
-                  Copiloto Argos
+                  {t('copiloto.titulo')}
                 </h1>
                 <p className="text-xs sm:text-sm text-[#94A3B8] max-w-xl">
-                  Inteligencia ambiental en honor a Argos (el fiel compañero de Odiseo), entrenada para la seguridad de tu perro en San José. Asfalto en vivo, predicción pluvial y sugerencias de terrazas.
+                  {t('copiloto.subtitulo')}
                 </p>
               </div>
             </div>
@@ -289,6 +291,7 @@ export function CopilotoPage() {
             <div className="flex items-center gap-1 p-1 bg-[#111827] rounded-2xl border border-white/10 shrink-0 shadow-sm">
               <button
                 type="button"
+                aria-pressed={modoVista === 'chat'}
                 onClick={() => setModoVista('chat')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                   modoVista === 'chat'
@@ -296,11 +299,12 @@ export function CopilotoPage() {
                     : 'text-[#94A3B8] hover:text-[#E8EDF5]'
                 }`}
               >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Conversación</span>
+                <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{t('copiloto.chat')}</span>
               </button>
               <button
                 type="button"
+                aria-pressed={modoVista === 'calculador'}
                 onClick={() => setModoVista('calculador')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
                   modoVista === 'calculador'
@@ -308,8 +312,8 @@ export function CopilotoPage() {
                     : 'text-[#94A3B8] hover:text-[#E8EDF5]'
                 }`}
               >
-                <Sliders className="w-3.5 h-3.5" />
-                <span>Calculador por Raza</span>
+                <Sliders className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{t('copiloto.calculador')}</span>
               </button>
             </div>
           </div>

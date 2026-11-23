@@ -17,6 +17,7 @@ import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 import { api } from '../shared/services/api-client';
 import {
   Activity,
@@ -99,6 +100,7 @@ const AUDITORIA_INICIAL = [
 export function Panel() {
   const navigate = useNavigate();
   const { esClaro, esMorado, esOscuro } = useTema();
+  const { t } = useIdioma();
   const [tabActiva, setTabActiva] = useState('vitals');
   const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
   const [animandoSalida, setAnimandoSalida] = useState(false);
@@ -168,14 +170,14 @@ export function Panel() {
   };
 
   const tabsConfig = [
-    { id: 'vitals', label: 'Resumen & Vitals', icon: Activity, badge: 'En vivo' },
-    { id: 'locales', label: 'Establecimientos', icon: Building2, badge: `${locales.length}` },
-    { id: 'fotos', label: 'Fotos & Storage', icon: Camera, badge: 'Moderación' },
-    { id: 'usuarios', label: 'Usuarios & Roles', icon: Users, badge: `${usuarios.length}` },
-    { id: 'incidencias', label: 'Alertas & Incidencias', icon: AlertTriangle, badge: `${incidencias.filter(i => i.estado !== 'Resuelta').length}` },
-    { id: 'auditoria', label: 'Pista de Auditoría', icon: ShieldCheck, badge: 'Inmutable' },
-    { id: 'flota', label: 'Flota SOS GAM', icon: Ambulance, badge: '3 Unidades' },
-    { id: 'ajustes', label: 'Ajustes & Umbrales', icon: Sliders }
+    { id: 'vitals', label: t('panel.vitals'), icon: Activity, badge: 'En vivo' },
+    { id: 'locales', label: t('panel.locales'), icon: Building2, badge: `${locales.length}` },
+    { id: 'fotos', label: t('panel.fotos'), icon: Camera, badge: 'Moderación' },
+    { id: 'usuarios', label: t('panel.usuarios'), icon: Users, badge: `${usuarios.length}` },
+    { id: 'incidencias', label: t('panel.incidencias'), icon: AlertTriangle, badge: `${incidencias.filter(i => i.estado !== 'Resuelta').length}` },
+    { id: 'auditoria', label: t('panel.auditoria'), icon: ShieldCheck, badge: 'Inmutable' },
+    { id: 'flota', label: t('panel.flota'), icon: Ambulance, badge: '3 Unidades' },
+    { id: 'ajustes', label: t('panel.ajustes'), icon: Sliders }
   ];
 
   // Cálculo de KPIs globales

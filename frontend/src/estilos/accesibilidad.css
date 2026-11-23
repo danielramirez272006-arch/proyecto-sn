@@ -1,0 +1,136 @@
+/* ============================================================
+   ESTILOS DE ACCESIBILIDAD UNIVERSAL (WCAG 2.1 AA / AAA)
+   ============================================================ */
+
+/* Enlace "Saltar al contenido principal" para navegación por teclado */
+.gotox-skip-link {
+  position: fixed;
+  top: -120px;
+  left: 16px;
+  z-index: 10000;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background-color: #501228;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border: 2px solid #f27b91;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  transition: top 0.15s ease;
+  text-decoration: none;
+}
+
+.gotox-skip-link:focus {
+  top: 16px;
+  outline: 3px solid #facc15;
+  outline-offset: 2px;
+}
+
+/* Foco visible nítido en cualquier control interactivo */
+.gotox-root a:focus-visible,
+.gotox-root button:focus-visible,
+.gotox-root input:focus-visible,
+.gotox-root select:focus-visible,
+.gotox-root textarea:focus-visible,
+.gotox-root [tabindex]:focus-visible {
+  outline: 2.5px solid #f27b91 !important;
+  outline-offset: 2px !important;
+}
+
+/* MODO LECTURA FÁCIL / DISLEXIA */
+:root[data-a11y-dyslexic='true'] body,
+:root[data-a11y-dyslexic='true'] .gotox-root,
+:root[data-a11y-dyslexic='true'] .gotox-root p,
+:root[data-a11y-dyslexic='true'] .gotox-root span,
+:root[data-a11y-dyslexic='true'] .gotox-root button,
+:root[data-a11y-dyslexic='true'] .gotox-root input,
+:root[data-a11y-dyslexic='true'] .gotox-root select,
+:root[data-a11y-dyslexic='true'] .gotox-root textarea,
+:root[data-a11y-dyslexic='true'] .gotox-root li,
+:root[data-a11y-dyslexic='true'] .gotox-root a {
+  font-family: 'Atkinson Hyperlegible', 'Inter', system-ui, sans-serif !important;
+  letter-spacing: 0.035em !important;
+  word-spacing: 0.1em !important;
+  line-height: 1.8 !important;
+}
+
+/* MODO REDUCIR MOVIMIENTO MANUAL */
+:root[data-a11y-motion='reduced'] *,
+:root[data-a11y-motion='reduced'] *::before,
+:root[data-a11y-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+:root[data-a11y-motion='reduced'] .gotox-radar-dot {
+  animation: none !important;
+}
+
+/* RESALTAR ENLACES Y BOTONES */
+:root[data-a11y-links='true'] .gotox-root a {
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 3px !important;
+}
+
+:root[data-a11y-links='true'] .gotox-root button,
+:root[data-a11y-links='true'] .gotox-root input,
+:root[data-a11y-links='true'] .gotox-root select,
+:root[data-a11y-links='true'] .gotox-root textarea {
+  outline: 1.5px dashed rgba(242, 123, 145, 0.75);
+  outline-offset: 1px;
+}
+
+/* ALTO CONTRASTE (WCAG AAA) EN TEMA CLARO */
+:root[data-a11y-contrast='high'][data-tema='claro'] body,
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root h1,
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root h2,
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root h3,
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root p,
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root span:not(.text-white),
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root label {
+  opacity: 1 !important;
+}
+
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root input,
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root select,
+:root[data-a11y-contrast='high'][data-tema='claro'] .gotox-root textarea {
+  border: 2px solid #0f172a !important;
+  color: #000000 !important;
+}
+
+/* ALTO CONTRASTE (WCAG AAA) EN TEMAS OSCURO / VINO */
+:root[data-a11y-contrast='high']:not([data-tema='claro']) body,
+:root[data-a11y-contrast='high']:not([data-tema='claro']) .gotox-root {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+:root[data-a11y-contrast='high']:not([data-tema='claro']) .gotox-root [class*='border'] {
+  border-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+:root[data-a11y-contrast='high']:not([data-tema='claro']) .gotox-root p,
+:root[data-a11y-contrast='high']:not([data-tema='claro']) .gotox-root span,
+:root[data-a11y-contrast='high']:not([data-tema='claro']) .gotox-root label,
+:root[data-a11y-contrast='high']:not([data-tema='claro']) .gotox-root h1,
+:root[data-a11y-contrast='high']:not([data-tema='claro']) .gotox-root h2,
+:root[data-a11y-contrast='high']:not([data-tema='claro']) .gotox-root h3 {
+  opacity: 1 !important;
+}
+
+:root[data-a11y-contrast='high'] .gotox-root a:focus-visible,
+:root[data-a11y-contrast='high'] .gotox-root button:focus-visible,
+:root[data-a11y-contrast='high'] .gotox-root input:focus-visible,
+:root[data-a11y-contrast='high'] .gotox-root select:focus-visible,
+:root[data-a11y-contrast='high'] .gotox-root textarea:focus-visible {
+  outline: 3.5px solid #facc15 !important;
+  outline-offset: 2px !important;
+}

@@ -14,6 +14,7 @@ import { LugarFoto } from '../components/LugarFoto';
 import { esFavorito, alternarFavorito } from '../servicios/almacenamientoCliente';
 import { useTema } from '../context/TemaContext';
 import { useSesion } from '../hooks/useSesion';
+import { useIdioma } from '../context/IdiomaContext';
 import {
   ShieldCheck,
   Navigation,
@@ -44,6 +45,7 @@ export function Home() {
   const navigate = useNavigate();
   const { esClaro, esMorado, esOscuro } = useTema();
   const { isLoggedIn } = useSesion();
+  const { idioma, t } = useIdioma();
 
   // Estados del Buscador Inteligente
   const [consulta, setConsulta] = useState('');
@@ -199,16 +201,16 @@ export function Home() {
       <section className="relative overflow-hidden rounded-3xl p-6 sm:p-10 border border-current/10 bg-gradient-to-b from-[#55152D]/15 via-transparent to-transparent text-left space-y-6">
         <div className="max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-[#501228] text-white border border-[#F27B91]/30 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-[#F27B91]" />
-            <span>Descubrimiento Inteligente GAM &bull; Personas & Mascotas</span>
+            <Sparkles className="w-3.5 h-3.5 text-[#F27B91]" aria-hidden="true" />
+            <span>{t('home.badge')}</span>
           </div>
 
           <h1 className="font-serif text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-            ¿Qué puedo hacer hoy cerca de mí?
+            {t('home.titulo')}
           </h1>
 
           <p className="text-sm sm:text-base opacity-75 font-sans leading-relaxed">
-            Explora restaurantes, cafeterías de especialidad, actividades culturales bajo techo y espacios verdes en el GAM según tu presupuesto, tiempo disponible y compañía.
+            {t('home.subtitulo')}
           </p>
 
           {/* Barra de Ubicación Activa con Geodetección */}
@@ -219,10 +221,10 @@ export function Home() {
               disabled={detectandoGps}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-current/15 hover:border-[#F27B91] hover:bg-current/5 transition-all"
             >
-              <MapPin className={`w-3.5 h-3.5 text-rose-500 ${detectandoGps ? 'animate-bounce' : ''}`} />
-              <span>{detectandoGps ? 'Calculando GPS...' : ubicacionUsuario}</span>
+              <MapPin className={`w-3.5 h-3.5 text-rose-500 ${detectandoGps ? 'animate-bounce' : ''}`} aria-hidden="true" />
+              <span>{detectandoGps ? t('home.gpsCalculando') : ubicacionUsuario}</span>
             </button>
-            <span className="text-[11px] opacity-50">&bull; Haz clic para actualizar</span>
+            <span className="text-[11px] opacity-50">&bull; {t('home.gpsClic')}</span>
           </div>
         </div>
 
@@ -235,12 +237,13 @@ export function Home() {
               ? 'bg-[#1F0C18] border-[#F27B91]/30 focus-within:ring-2 focus-within:ring-[#F27B91]/30'
               : 'bg-[#162032] border-white/10 focus-within:ring-2 focus-within:ring-white/20'
           }`}>
-            <Search className="w-5 h-5 opacity-40 ml-2 shrink-0" />
+            <Search className="w-5 h-5 opacity-40 ml-2 shrink-0" aria-hidden="true" />
             <input
               type="text"
               value={consulta}
               onChange={(e) => setConsulta(e.target.value)}
-              placeholder="Consulta natural (ej. Quiero salir con mi perro, algo económico, dos horas libres)..."
+              aria-label={t('home.buscadorPlaceholder')}
+              placeholder={t('home.buscadorPlaceholder')}
               className="w-full bg-transparent text-sm sm:text-base outline-none px-2 py-1 placeholder:opacity-40"
             />
             {consulta && (
@@ -249,40 +252,44 @@ export function Home() {
                 onClick={() => setConsulta('')}
                 className="text-xs px-2 py-1 rounded-md opacity-60 hover:opacity-100"
               >
-                Limpiar
+                {t('home.limpiar')}
               </button>
             )}
             <button
               type="button"
               onClick={alternarVoz}
-              title={escuchandoVoz ? 'Detener voz' : 'Hablar por micrófono'}
+              aria-label={escuchandoVoz ? t('home.microfonoDetener') : t('home.microfonoHablar')}
+              title={escuchandoVoz ? t('home.microfonoDetener') : t('home.microfonoHablar')}
               className={`p-2.5 rounded-xl transition-all shrink-0 ${
                 escuchandoVoz
                   ? 'bg-rose-600 text-white animate-pulse'
                   : 'bg-current/5 hover:bg-current/10 border border-current/10'
               }`}
             >
-              {escuchandoVoz ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              {escuchandoVoz ? <MicOff className="w-4 h-4" aria-hidden="true" /> : <Mic className="w-4 h-4" aria-hidden="true" />}
             </button>
           </div>
 
           {/* Chips de Consultas Naturales Sugeridas */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] uppercase font-bold opacity-60 mr-1">Prueba rápida:</span>
-            {CONSULTAS_RAPIDAS_SUGERIDAS.map((sug, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setConsulta(sug.texto)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                  consulta === sug.texto
-                    ? 'bg-[#501228] text-white border-[#F27B91]/40 font-semibold'
-                    : 'bg-current/5 border-current/10 hover:border-current/25 opacity-80 hover:opacity-100'
-                }`}
-              >
-                {sug.texto}
-              </button>
-            ))}
+            <span className="text-[11px] uppercase font-bold opacity-60 mr-1">{t('home.pruebaRapida')}</span>
+            {CONSULTAS_RAPIDAS_SUGERIDAS.map((sug, i) => {
+              const textoChip = idioma === 'es' ? sug.texto : t(`home.chip${(i % 4) + 1}`, sug.texto);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setConsulta(sug.texto)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                    consulta === sug.texto
+                      ? 'bg-[#501228] text-white border-[#F27B91]/40 font-semibold'
+                      : 'bg-current/5 border-current/10 hover:border-current/25 opacity-80 hover:opacity-100'
+                  }`}
+                >
+                  {textoChip}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -292,10 +299,21 @@ export function Home() {
             {CATEGORIAS_DESCUBRIMIENTO.map((cat) => {
               const Icono = mapIconoCategoria(cat.icon);
               const activa = categoriaSeleccionada === cat.id;
+              const mapaCat = {
+                todas: 'home.catTodas',
+                gastronomia: 'home.catRestaurantes',
+                cafe: 'home.catRestaurantes',
+                'aire-libre': 'home.catParques',
+                cultural: 'home.catCultura',
+                'pet-friendly': 'home.catPetFriendly',
+                'bajo-techo': 'home.catBajoTecho'
+              };
+              const etiquetaCat = idioma === 'es' ? cat.label : t(mapaCat[cat.id] || 'home.catTodas', cat.label);
               return (
                 <button
                   key={cat.id}
                   type="button"
+                  aria-pressed={activa}
                   onClick={() => setCategoriaSeleccionada(cat.id)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${
                     activa
@@ -303,8 +321,8 @@ export function Home() {
                       : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100 hover:bg-current/10'
                   }`}
                 >
-                  <Icono className="w-4 h-4" />
-                  <span>{cat.label}</span>
+                  <Icono className="w-4 h-4" aria-hidden="true" />
+                  <span>{etiquetaCat}</span>
                 </button>
               );
             })}
@@ -316,9 +334,9 @@ export function Home() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-serif font-bold text-lg">
-                Recomendaciones ({lugaresFiltrados.length})
+                {t('home.recomendaciones')} ({lugaresFiltrados.length})
               </span>
-              <span className="text-xs opacity-60">lugares reales y verificables</span>
+              <span className="text-xs opacity-60">{t('home.lugaresReales')}</span>
               <button
                 type="button"
                 onClick={refrescarReales}
@@ -326,15 +344,15 @@ export function Home() {
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-current/15 text-[11px] font-semibold hover:bg-current/5 transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-3 h-3 ${cargandoReales ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />
-                <span>{cargandoReales ? 'Actualizando...' : 'Actualizar en vivo'}</span>
+                <span>{cargandoReales ? t('home.actualizando') : t('home.actualizarVivo')}</span>
               </button>
             </div>
             <Link
               to={isLoggedIn ? "/explorar" : "/terrazas"}
               className="text-xs font-bold text-[#F27B91] hover:underline flex items-center gap-1"
             >
-              <span>{isLoggedIn ? 'Ver catálogo completo con filtros' : 'Ver terrazas verificadas'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>{isLoggedIn ? t('home.verCatalogo') : t('home.verTerrazas')}</span>
+              <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
             </Link>
           </div>
 

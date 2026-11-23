@@ -6,6 +6,7 @@ import { TERRAZAS } from '../data/terrazas';
 import { PageWrapper } from '../components/PageWrapper';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 import {
   MapPin,
   Volume2,
@@ -147,6 +148,7 @@ function crearPinLugarHtml(lugar, seleccionado, esClaro, reducedMotion) {
 export function MapaPage() {
   const telemetria = useTelemetria();
   const { tema } = useTema();
+  const { t } = useIdioma();
   const tokens = useMemo(() => obtenerTokensMapa(tema), [tema]);
   const prefersReducedMotion = useReducedMotion();
 
@@ -593,14 +595,14 @@ export function MapaPage() {
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold ${tokens.badgeDemo}`}
                 >
                   <Compass className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Demo GAM</span>
+                  <span>{t('mapa.badge')}</span>
                 </span>
                 <h1 className={`font-serif text-xl sm:text-2xl font-bold tracking-tight ${tokens.textoTitulo}`}>
-                  Mapa Interactivo
+                  {t('mapa.titulo')}
                 </h1>
               </div>
               <p className={`text-xs ${tokens.textoMuted}`}>
-                Estados y distancias ilustrativas (no confirmadas por los locales).
+                {t('mapa.subtitulo')}
               </p>
             </div>
 
@@ -608,13 +610,13 @@ export function MapaPage() {
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border ${tokens.superficiePrincipal}`}>
                 <Thermometer className="w-3.5 h-3.5 text-[#F27B91]" aria-hidden="true" />
                 <span className={tokens.textoCuerpo}>
-                  Asfalto: <strong className={tokens.textoTitulo}>{telemetria.temperaturaAsfalto} °C</strong>
+                  {t('mapa.asfalto')} <strong className={tokens.textoTitulo}>{telemetria.temperaturaAsfalto} °C</strong>
                 </span>
               </div>
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border ${tokens.superficiePrincipal}`}>
                 <Volume2 className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
                 <span className={tokens.textoCuerpo}>
-                  Ruido: <strong className={tokens.textoTitulo}>{telemetria.aforoAcusticoDb} dB</strong>
+                  {t('mapa.ruido')} <strong className={tokens.textoTitulo}>{telemetria.aforoAcusticoDb} dB</strong>
                 </span>
               </div>
             </div>

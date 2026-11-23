@@ -6,6 +6,8 @@ import { MisPlanesPage } from './MisPlanesPage';
 import { FavoritosPage } from './FavoritosPage';
 import { MiMascotaPage } from './MiMascotaPage';
 import { Perfil } from './Perfil';
+import { useSesion } from '../hooks/useSesion';
+import { useIdioma } from '../context/IdiomaContext';
 import { obtenerFavoritosIds, obtenerPlanes } from '../servicios/almacenamientoCliente';
 import { Compass, Calendar, Heart, Dog, User } from 'lucide-react';
 
@@ -18,6 +20,7 @@ const TABS_VALIDAS = ['cuenta', 'explorar', 'planes', 'favoritos', 'mascota'];
  * Al presionar el logo GoToX en la barra lateral o móvil, regresa a la página principal (/).
  */
 export function UsuarioPanel() {
+  const { t } = useIdioma();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabQuery = searchParams.get('tab');
   const initialTab = TABS_VALIDAS.includes(tabQuery) ? tabQuery : 'cuenta';
@@ -54,11 +57,11 @@ export function UsuarioPanel() {
   };
 
   const tabsConfig = [
-    { id: 'cuenta', label: 'Mi Cuenta & Bóveda', icon: User },
-    { id: 'explorar', label: 'Explorar Lugares', icon: Compass },
-    { id: 'planes', label: 'Mis Planes', icon: Calendar, badge: planesCount },
-    { id: 'favoritos', label: 'Mis Favoritos', icon: Heart, badge: favoritosCount },
-    { id: 'mascota', label: 'Mi Mascota', icon: Dog }
+    { id: 'cuenta', label: t('usuario.cuenta'), icon: User },
+    { id: 'explorar', label: t('usuario.explorar'), icon: Compass },
+    { id: 'planes', label: t('usuario.planes'), icon: Calendar, badge: planesCount },
+    { id: 'favoritos', label: t('usuario.favoritos'), icon: Heart, badge: favoritosCount },
+    { id: 'mascota', label: t('usuario.mascota'), icon: Dog }
   ];
 
   return (

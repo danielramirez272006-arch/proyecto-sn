@@ -179,20 +179,20 @@ export function TerrazasPage() {
                   whileHover={{ scale: 1.05 }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#090D14] via-transparent to-transparent opacity-80" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
                 {/* Badge Flotante sobre la Foto */}
-                <div className="absolute bottom-4 left-4 right-4 p-3 rounded-2xl bg-[#111827]/90 backdrop-blur-md border border-white/15 flex items-center justify-between">
+                <div className="terrazas-overlay-card absolute bottom-4 left-4 right-4 p-3 rounded-2xl bg-black/80 backdrop-blur-md border border-white/20 flex items-center justify-between shadow-xl">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-[#55152D] text-[#F27B91] flex items-center justify-center font-bold text-xs">
-                      <Award className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-xl bg-[#501228] text-white border border-[#F27B91]/30 flex items-center justify-center font-bold text-xs shrink-0">
+                      <Award className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-[#E8EDF5]">{t('terrazas.estandar')}</p>
-                      <p className="text-[10px] text-[#94A3B8]">{t('terrazas.aguaSombra')}</p>
+                      <p className="text-xs font-bold text-white">{t('terrazas.estandar')}</p>
+                      <p className="text-[10px] text-slate-200">{t('terrazas.aguaSombra')}</p>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-400/40 shrink-0">
                     {t('terrazas.certificado')}
                   </span>
                 </div>

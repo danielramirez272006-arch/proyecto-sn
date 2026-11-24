@@ -637,3 +637,33 @@
 :root[data-tema='claro'] .selector-idioma-popup button[aria-selected='true'] * {
   color: #FFFFFF !important;
 }
+
+/* ============================================================
+   TARJETAS FLOTANTES SOBRE FOTOGRAFÍAS (SIEMPRE NÍTIDAS Y OSCURAS)
+   ============================================================ */
+.telemetria-overlay-card,
+.terrazas-overlay-card,
+:root[data-tema='claro'] .telemetria-overlay-card,
+:root[data-tema='claro'] .terrazas-overlay-card {
+  background-color: rgba(15, 23, 42, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.telemetria-overlay-card p,
+.telemetria-overlay-card span,
+.telemetria-overlay-card a,
+.terrazas-overlay-card p,
+.terrazas-overlay-card span,
+:root[data-tema='claro'] .telemetria-overlay-card p,
+:root[data-tema='claro'] .telemetria-overlay-card span,
+:root[data-tema='claro'] .telemetria-overlay-card a span,
+:root[data-tema='claro'] .terrazas-overlay-card p,
+:root[data-tema='claro'] .terrazas-overlay-card span {
+  color: #FFFFFF !important;
+}
+
+.telemetria-overlay-card .corredor-tag,
+:root[data-tema='claro'] .telemetria-overlay-card .corredor-tag {
+  color: #FDA4AF !important;
+}

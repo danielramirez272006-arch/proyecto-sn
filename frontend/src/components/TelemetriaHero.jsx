@@ -151,23 +151,23 @@ export function TelemetriaHero() {
                   loading="eager"
                 />
                 {/* Degradado cinematográfico inferior suave */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#090D14]/90 via-[#090D14]/25 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
                 {/* Tarjeta flotante con contexto real sobre la imagen */}
-                <div className="absolute bottom-4 left-4 right-4 sm:bottom-6 sm:left-6 sm:right-6 p-4 rounded-2xl bg-[#111827]/85 backdrop-blur-md border border-white/10 text-white flex items-center justify-between gap-3 shadow-lg">
+                <div className="telemetria-overlay-card absolute bottom-4 left-4 right-4 sm:bottom-6 sm:left-6 sm:right-6 p-4 rounded-2xl bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center justify-between gap-3 shadow-xl">
                   <div className="space-y-0.5 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-[11px] uppercase tracking-wider font-semibold text-[#F27B91]">
+                      <span className="corredor-tag text-[11px] uppercase tracking-wider font-semibold text-[#FDA4AF]">
                         {t('telemetriaHero.corredorTag')}
                       </span>
                     </div>
-                    <p className="text-xs sm:text-sm font-medium text-[#E8EDF5] truncate">
+                    <p className="text-xs sm:text-sm font-medium text-white truncate">
                       {t('telemetriaHero.heroCardSub')}
                     </p>
                   </div>
                   <Link to="/terrazas" className="shrink-0">
-                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#E8EDF5] transition-colors border border-white/15">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors border border-white/30">
                       {t('telemetriaHero.verLocales')}
                     </span>
                   </Link>
@@ -246,7 +246,7 @@ export function TelemetriaHero() {
                       </span>
                     </div>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-[#55152D]/40 text-[#F27B91] border border-[#F27B91]/20 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#FDF2F4] dark:bg-[#55152D]/40 text-[#501228] dark:text-[#F27B91] border border-[#F9E2E8] dark:border-[#F27B91]/20 flex items-center justify-center shrink-0">
                     <Thermometer className="w-5 h-5" />
                   </div>
                 </div>
@@ -273,10 +273,10 @@ export function TelemetriaHero() {
                       <span className="font-serif font-bold text-3xl sm:text-4xl text-[#E8EDF5] tabular-nums">
                         {ventanaSecaMinutos}
                       </span>
-                      <span className="text-sm font-semibold text-blue-400 font-sans">{t('telemetriaHero.minutos')}</span>
+                      <span className="text-sm font-semibold text-blue-500 dark:text-blue-400 font-sans">{t('telemetriaHero.minutos')}</span>
                     </div>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-500/20 flex items-center justify-center shrink-0">
                     <CloudRain className="w-5 h-5" />
                   </div>
                 </div>
@@ -308,10 +308,10 @@ export function TelemetriaHero() {
                       <span className="font-serif font-bold text-3xl sm:text-4xl text-[#E8EDF5] tabular-nums">
                         {aforoAcusticoDb}
                       </span>
-                      <span className="text-sm font-semibold text-purple-400 font-sans">dB</span>
+                      <span className="text-sm font-semibold text-purple-500 dark:text-purple-400 font-sans">dB</span>
                     </div>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200/80 dark:border-purple-500/20 flex items-center justify-center shrink-0">
                     <Volume2 className="w-5 h-5" />
                   </div>
                 </div>

@@ -8,7 +8,7 @@ import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { LUGARES_GOTOX, CATEGORIAS_DESCUBRIMIENTO, CONSULTAS_RAPIDAS_SUGERIDAS } from '../data/lugaresGoToX';
-import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { useResolvedPlacePhotos, useDatabasePlaces } from '../shared/services/place-photos-service';
 import { useLiveMultisourcePlaces } from '../shared/services/multisource-places-service';
 import { LugarFoto } from '../components/LugarFoto';
 import { esFavorito, alternarFavorito } from '../servicios/almacenamientoCliente';
@@ -125,21 +125,40 @@ export function Home() {
     );
   };
 
-  const { lugaresConFotos, cargandoFotos } = useResolvedPlacePhotos(LUGARES_GOTOX);
+  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
+  const { lugaresConFotos, cargandoFotos: cargandoFotosLocales } = useResolvedPlacePhotos(LUGARES_GOTOX);
   const { lugaresReales, cargandoReales, refrescarReales } = useLiveMultisourcePlaces({
     lat: 9.9352,
     lng: -84.0695,
-    radius: 2200,
-    limit: 10
+    radius: 5000,
+    limit: 25
   });
+  const cargandoFotos = cargandoDb || cargandoFotosLocales;
 
   const lugaresCombinados = useMemo(() => {
-    const nombresExistentes = new Set(lugaresConFotos.map((l) => l.nombre.trim().toLowerCase()));
-    const nuevosReales = lugaresReales.filter(
-      (r) => r?.nombre && !nombresExistentes.has(r.nombre.trim().toLowerCase())
-    );
-    return [...lugaresConFotos, ...nuevosReales];
-  }, [lugaresConFotos, lugaresReales]);
+    const porNombre = new Map();
+    // 1. Priorizar nuestros restaurantes reales de Supabase con sus fotos propias
+    for (const dbItem of lugaresDb) {
+      if (dbItem?.nombre) {
+        porNombre.set(dbItem.nombre.trim().toLowerCase(), dbItem);
+      }
+    }
+    // 2. Complementar con lugares locales si no existen en Supabase
+    for (const localItem of lugaresConFotos) {
+      const key = localItem?.nombre?.trim().toLowerCase();
+      if (key && !porNombre.has(key)) {
+        porNombre.set(key, localItem);
+      }
+    }
+    // 3. Complementar con búsqueda cercana DB si aporta adicionales
+    for (const realItem of lugaresReales) {
+      const key = realItem?.nombre?.trim().toLowerCase();
+      if (key && !porNombre.has(key)) {
+        porNombre.set(key, realItem);
+      }
+    }
+    return Array.from(porNombre.values());
+  }, [lugaresDb, lugaresConFotos, lugaresReales]);
 
   // Procesamiento de consultas naturales y filtrado reactivo
   const lugaresFiltrados = useMemo(() => {

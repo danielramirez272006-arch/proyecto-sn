@@ -1,6 +1,8 @@
-# Sistema de Sinergia Urbana Costa Rica — Fullstack Monorepo
+# 🐾 GoToX — Sistema Operativo Pet-Friendly y Copiloto Urbano para la GAM (Costa Rica)
 
-Plataforma urbana inteligente y colaborativa para Costa Rica. Integra un backend Express desacoplado con **Supabase PostgreSQL** (`app_private` con RLS), motor de IA **DeepSeek**, conectores de servicios públicos costarricenses (Hacienda, BCCR, Recope, OSRM, RainViewer) y tolerancia total a desconexión mediante fallback local SQLite.
+**GoToX** es una plataforma fullstack inteligente diseñada para tutores de mascotas, comercios aliados y administración urbana en la **Gran Área Metropolitana (GAM) de Costa Rica** (San José, Heredia, Alajuela y Cartago).
+
+Integra un backend empresarial en **Node.js + Express**, persistencia en **Supabase PostgreSQL** (`app_private` con RLS y **12 migraciones versionadas**) con respaldo automático en **SQLite**, **Supabase Storage** (buckets privado y público para moderación de fotografías), inteligencia artificial dual (**Google Gemini Multimodal Vision** para clientes y **DeepSeek AI** para operaciones/administración), **8 Agentes de IA con gobernanza y auditoría**, y **3 flujos de automatización en n8n conectados con Google Workspace**.
 
 ---
 
@@ -8,87 +10,111 @@ Plataforma urbana inteligente y colaborativa para Costa Rica. Integra un backend
 
 ```mermaid
 graph TD
-    FE["Frontend (React / Vite) :5173"] -->|HTTP / SSE / Bearer Token| BE["Backend Express :4000"]
-    BE -->|PostgreSQL Pooler :5432| SB_DB["Supabase PostgreSQL (app_private + RLS)"]
-    BE -->|Auth & Storage API| SB_AUTH["Supabase Cloud API & Auth"]
-    BE -->|AI Chat & Copilot| DS["DeepSeek AI (chat-v3 / reasoner-r1)"]
-    BE -.->|Fallback Offline| SQLITE["SQLite Local /data/*.db"]
-    BE -->|Conectores CR| EXT["Hacienda, Recope, RainViewer, OSRM"]
+    FE["Frontend (React 18 / Vite / Tailwind) :5173"] -->|REST JSON / JWT Bearer| BE["Backend Express :4000"]
+    BE -->|PostgreSQL Pooler :5432| SB_DB["Supabase PostgreSQL (app_private + RLS - 12 Migraciones)"]
+    BE -->|Buckets Privado y Público| SB_ST["Supabase Storage (Moderación de Fotos EXIF-Clean)"]
+    BE -->|Multimodal Vision & Copiloto Cliente| GEM["Google Gemini AI (Vision / Chat / YouTube Video)"]
+    BE -->|Agentes Operativos & Admin| DS["DeepSeek AI (AutoTagger / Planes / Consenso)"]
+    BE <-->|Webhooks & Cron Automatizados| N8N["n8n + Google Workspace (Calendar, Sheets, Docs, Drive, Gmail)"]
+    BE -.->|Fallback Resiliente Offline| SQLITE["SQLite Local (Cero Configuración)"]
+    BE -->|Conectores Abiertos CR| EXT["OSM Overpass, Geoapify, Foursquare, Wikimedia, Open-Meteo, BCCR, Hacienda"]
 ```
 
-- **Backend:** Node.js + Express 4 con arquitectura modular por dominios (`backend/src/modules/`).
-- **Base de Datos Principal:** **Supabase PostgreSQL 17** (Proyecto `hnnnreowlbtqqjhpmdvd`, esquema privado `app_private` cerrado con Row Level Security).
-- **Base de Datos de Respaldo:** SQLite integrado en Node.js (cero configuración para desarrollo offline y pruebas).
-- **Inteligencia Artificial:** DeepSeek AI (`deepseek-chat` y `deepseek-reasoner`) para copiloto de voz tico, itinerarios multi-día y resolución de imprevistos.
-- **Frontend:** React + Vite (`frontend/src/`) con diseño accesible, soporte PWA y modo sin conexión.
+### Estructura en Capas del Backend (`backend/src/`)
+- `backend/src/config/` — Configuración de entorno, base de datos, Supabase, Google Gemini y DeepSeek.
+- `backend/src/models/` — Modelos y acceso a entidades relacionales en 3FN (`users`, `roles`, `user_roles`, `user_consents`, `password_reset_tokens`, `data_deletion_requests`, `ai_interaction_logs`, `places`, `place_photos`).
+- `backend/src/controllers/` — Controladores HTTP (`pet-vision-controller.js`, `agents-controller.js`, `auth-controller.js`, etc.).
+- `backend/src/routes/` — Definición de rutas con guardias RBAC y rate limiting (`pet-vision-routes.js`, `agents-routes.js`, etc.).
+- `backend/src/services/` — Lógica de negocio (`pet-vision-triage-service.js`, `ai-agents-hub-service.js`, etc.).
+- `backend/src/middlewares/` — Validación de esquemas (`input-validator.js`), sanitización anti-Prototype Pollution/Prompt Injection/SSRF (`payload-sanitizer.js`), guardias JWT/RBAC (`auth-role-guard.js`) y cabeceras HTTP (`security-headers.js`).
+
+---
+
+## ✨ Módulos Principales
+
+### 1. 🩺 Pre-Triaje Visual de Mascotas con Google Gemini Vision (`/api/pets/analyze-photo`)
+Analizador multimodal que evalúa **de 1 a 3 fotografías simultáneas** de la mascota junto con síntomas reportados por el tutor:
+- **Privacidad por Diseño (Ley N.º 8968):** Inspecciona el binario (`JPEG`, `PNG`, `WebP`) y **elimina automáticamente los metadatos EXIF/GPS (`APP1`/`XMP`)** antes de enviar la imagen a la nube de IA.
+- **10 Áreas Clínicas Especializadas (`GET /api/pets/analyze-photo/focus-areas`):**
+  `general`, `patas_almohadillas`, `piel_pelaje`, `ojos_orejas`, `dientes_encias`, `heridas_sangrado`, `garrapatas_parasitos`, `peso_condicion`, `postura_movilidad`, `golpe_calor_respiracion`.
+- **Perfil Morfológico Aproximado (`approximate_profile`):** Especie, raza/cruce estimado, rango de peso en kg, etapa de edad, color de manto, condición corporal y sensibilidad térmica/braquicefalia.
+- **Semáforo de Gravedad y Escalado Veterinario (`visual_health_triage` & `veterinary_action_plan`):**
+  - Clasifica en `leve` (🟢), `moderado` (🟡) o `urgente` (🔴) con `severity_score` (1–10).
+  - Cuando detecta un problema moderado o grande (quemaduras podales por asfalto, heridas abiertas, sangrado, infecciones oculares/óticas o golpe de calor), activa **`requires_vet_visit: true`** y **`immediate_emergency: true`**, entregando instrucciones de estabilización pre-traslado (`pre_transport_stabilization`), qué **NO** hacer en casa (`what_not_to_do`), 3 preguntas clave para el veterinario (`questions_for_your_vet`) y lista de signos vitales (`vital_signs_checklist`).
+- **Clima Térmico GAM en Vivo + Clínicas Veterinarias 24/7 con GPS (`recommended_vet_clinics`):**
+  - Calcula la temperatura estimada del asfalto (`estimated_asphalt_temp_c`) en tiempo real y ordena los hospitales veterinarios 24/7 de la GAM por especialidad y distancia GPS (`distance_km`), incluyendo enlaces directos a **Waze**, **Google Maps** y llamada telefónica (`tel:+506...`).
+- **Seguimiento Evolutivo (`POST /api/pets/analyze-photo/follow-up`):** Compara una nueva foto contra un `previous_analysis_id` para determinar si la lesión va `mejorando`, `estable` o `empeorando`.
+
+### 2. 🤖 Hub de 8 Agentes de IA con Gobernanza (`/api/agents`)
+Todos los agentes aplican control de acceso por rol (RBAC), redactan datos personales (PII: correos, teléfonos de CR y cédulas) + escudo Anti-Prompt Injection antes de construir el prompt, y registran cada ejecución en la tabla `ai_interaction_logs`:
+1. **`bruno-concierge`** *(Google Gemini)* — Copiloto de bienestar animal y rutas pet-friendly en la GAM.
+2. **`video-analyzer`** *(Google Gemini)* — Analizador multimodal de videos educativos de YouTube con fragmentos verificados y marcas de tiempo (`startSeconds`).
+3. **`auto-tagger`** *(DeepSeek AI)* — Clasificador semántico de comercios, acústica y terrazas.
+4. **`propose-alternative`** *(DeepSeek AI)* — Replanificador automático de salidas ante lluvia o aforo alto.
+5. **`daily-briefing`** *(DeepSeek AI)* — Editor del boletín operativo y térmico diario de la GAM.
+6. **`lost-pet-matcher`** *(DeepSeek AI)* — Matcher visual y geográfico (Haversine) para alertas SOS de mascotas extraviadas.
+7. **`invoice-extractor`** *(DeepSeek AI)* — Extractor de facturas con IVA (13%), servicio (10%) y división por SINPE Móvil.
+8. **`report-consensus`** *(DeepSeek AI)* — Moderador de consenso para reportes ciudadanos.
+
+### 3. 🗺️ Mapa Multi-Fuente Pet-Friendly y Moderación de Fotos en Supabase Storage
+- **Coordinador Multi-Fuente (`GET /api/places/multisource/search`):** Combina catálogo interno verificado, OpenStreetMap (Overpass), Geoapify, Foursquare y Wikimedia Commons con caché y deduplicación geográfica.
+- **Pipeline Seguro de Fotografías (`/api/admin/places/photos/*`):**
+  - Subida desde el navegador en Base64 (`POST /api/admin/places/photos/upload`), validación de magic bytes y dimensiones mínimas, limpieza de EXIF y almacenamiento inicial en el bucket privado (`place-photos-private`) en estado `pending_review`.
+  - Aprobación administrativa (`POST /api/admin/places/photos/:photoId/approve`) que promueve la imagen al bucket público (`place-photos-public`).
+- **Políticas de Mascotas Verificadas:** Editor visual administrativo de políticas por comercio (`petPolicy`: tamaños permitidos, agua disponible, terraza techada, nivel acústico en dB y fecha de vigencia).
+
+### 4. 🔐 Seguridad Empresarial y Cumplimiento Ley N.º 8968 (Costa Rica)
+- **Autenticación y Sesiones:** Hashing con **`bcryptjs`** (`$2a$`/`$2b$`, factor 10) con migración automática de hashes legacy, rotación de Refresh Tokens y **revocación instantánea de Access Tokens JWT (`jti`)** al hacer `logout`, `reset-password` o `delete-account`.
+- **Modelo Relacional 3FN:** Tablas `roles` y `user_roles`, registro inmutable de consentimiento informado en `user_consents` (`acceptTerms` y `acceptPrivacy` obligatorios), recuperación de contraseña (`password_reset_tokens` con vigencia de 15 minutos) y derecho al olvido (`POST /api/auth/delete-account` con auditoría en `data_deletion_requests`).
+- **Blindaje HTTP y Payloads:**
+  - Bloqueo **Anti-SSRF** (`assertSafeOutboundUrl`) contra `localhost`, IPs privadas RFC1918 y metadatos cloud (`169.254.169.254`) en `photo_url` y webhooks.
+  - Middleware global **Anti-Prototype Pollution** (`__proto__`, `constructor`, `prototype`) y limpieza de bytes nulos.
+  - Escudo **Anti-Prompt Injection** en todos los puntos de entrada de IA.
+  - Rate Limiting por IP (protegido contra falsificación de `X-Forwarded-For`) y por cuenta de correo (`loginEmailLimiter`).
+
+### 5. ⚡ Automatización con n8n + Google Workspace (`n8n/workflows/`)
+Tres flujos listos para importar en **n8n**, estructurados como **un solo grafo 100% conectado** con nodos oficiales de Google:
+1. [`01-pet-policy-expiring-alert.json`](n8n/workflows/01-pet-policy-expiring-alert.json) — Auditoría diaria de políticas pet-friendly por vencer + **Google Calendar** + **Google Gemini (`Basic LLM Chain`)** + **Gmail** + **Google Sheets**.
+2. [`02-gam-daily-briefing-and-weather-sync.json`](n8n/workflows/02-gam-daily-briefing-and-weather-sync.json) — Boletín climático y térmico podal de la GAM + **Google Gemini** + **Google Docs** + **Google Drive** + **Google Sheets** + **Gmail**.
+3. [`03-ley8968-data-deletion-and-sos-monitor.json`](n8n/workflows/03-ley8968-data-deletion-and-sos-monitor.json) — Gobernanza Ley N.º 8968 y monitor de emergencias SOS + **Google Sheets** + **Google Gemini** + **Google Calendar** + **Gmail**.
 
 ---
 
 ## 🚀 Inicio Rápido Local
 
-### 1. Requisitos Previos
-- **Node.js** v20+ o v24+
-- **NPM** v10+
-
-### 2. Poner en Marcha el Backend
+### 1. Iniciar Backend y Frontend juntos (Recomendado)
+Desde la raíz del repositorio:
 ```bash
-# 1. Navegar a la carpeta backend
+npm run dev
+```
+Esto levanta simultáneamente:
+- **Backend API:** `http://localhost:4000/api` (Documentación interactiva OpenAPI en `http://localhost:4000/api/docs`)
+- **Frontend Vite:** `http://localhost:5173`
+
+### 2. Comandos Útiles del Backend
+```bash
 cd backend
 
-# 2. Instalar dependencias
-npm install
+# Ejecutar migraciones en la base de datos local / configurada
+npm run migrate
 
-# 3. Iniciar el servidor (conectará automáticamente a Supabase PostgreSQL)
-npm run dev
-```
+# Verificar estado y aplicar las 12 migraciones en Supabase Cloud
+npm run db:supabase:check
+npm run db:supabase:migrate
 
-El servidor estará escuchando en `http://localhost:4000/api`.
-- Chequeo de salud general: `GET http://localhost:4000/api/health`
-- Chequeo de conexión a Supabase: `GET http://localhost:4000/api/health/supabase`
-- Chequeo de base de datos relacional: `GET http://localhost:4000/api/health/db`
-- Swagger UI interactivo: `http://localhost:4000/api/docs`
-
-### 3. Poner en Marcha el Frontend
-```bash
-# Desde otra terminal:
-cd frontend
-npm install   # Si no están instaladas las dependencias
-npm run dev
-```
-La aplicación abrirá en `http://localhost:5173`.
-
----
-
-## 🧪 Pruebas Automatizadas
-
-El backend cuenta con **38 pruebas automatizadas** con 100% de éxito:
-
-```bash
-# Desde la carpeta backend:
+# Ejecutar la suite completa de pruebas automatizadas (137 pruebas)
 npm test
-
-# O desde la raíz del proyecto:
-npm run test:backend
 ```
-
-### Cobertura de las Pruebas:
-1. **Transacciones ACID y Rollbacks:** Verificación atómica en creación de planes y paradas.
-2. **Seguridad y Criptografía:** Hashing de contraseñas con PBKDF2 (100.000 iteraciones + salt aleatorio) y rotación de Refresh Tokens.
-3. **Observabilidad Enterprise:** Inyección distribuida de `x-request-id`, telemetría del sistema y métricas Prometheus (`/api/metrics`).
-4. **DeepSeek AI Copilot:** Conversación multi-turn con memoria de sesión, generación de itinerarios multi-día y clasificación de intenciones de voz en lenguaje coloquial costarricense.
-5. **Catálogo Geográfico:** Búsqueda radial GPS (Haversine) y paginación con metadatos.
-6. **Supabase Cloud:** Diagnóstico de salud, cliente seguro resiliente y almacenamiento.
-7. **Concurrencia Optimista:** Prevención de colisiones con HTTP 409 ante propuestas obsoletas.
-8. **Resiliencia Offline:** Operación continua sin interrupciones cuando proveedores externos o redes no están disponibles.
 
 ---
 
-## 📂 Documentación del Proyecto
+## 🧪 Suite de Pruebas Automatizadas (137/137 Passing)
 
-| Documento | Audiencia | Descripción |
-|---|---|---|
-| 📘 [Guía de Integración para el Frontend](docs/frontend-integration-guide.md) | **Desarrollador Frontend** | Guía paso a paso para consumir la API, autenticación Supabase, cliente HTTP reutilizable, sockets SSE y ejemplos de componentes |
-| 📑 [Contrato de API y OpenAPI](docs/api-contract.md) | Fullstack / Evaluadores | Especificación técnica de todos los endpoints, formato envolvente `{ ok, data, error }` y códigos de estado |
-| 🗺️ [Recorrido de Prueba y Checklist MVP](docs/mvp-checklist.md) | QA / Evaluadores | Pasos secuenciales para verificar el 100% de la funcionalidad del MVP |
-| 🌐 [Integraciones Abiertas y Resiliencia](docs/integrations.md) | Arquitectura | Conectores públicos sin costo (Hacienda, Recope, OSRM, RainViewer, etc.) |
-| 🗄️ [Scripts y Esquema de Supabase](backend/supabase/README.md) | DevOps / DBA | DDL del esquema `app_private`, políticas RLS y seeds de demostración |
+El backend incluye **137 pruebas automatizadas** con el runner nativo `node --test`:
+- `backend/test/pet-vision-triage.test.js` — Pre-triaje visual con Google Gemini Vision, sanitización EXIF GPS, 10 áreas clínicas, derivación urgente a veterinarias 24/7 con rutas Waze/Maps y seguimiento evolutivo (`/follow-up`).
+- `backend/test/rubric-100-compliance.test.js` — Validación de esquemas, registro con `acceptTerms`/`acceptPrivacy`, `bcryptjs`, 3FN (`user_roles`, `user_consents`), ciclo `forgot-password` → `reset-password` → `delete-account` (Ley N.º 8968) y ejecución de los 8 agentes de IA con anonimización PII en `ai_interaction_logs`.
+- `backend/test/security-hardening.test.js` — RBAC en rutas administrativas, bloqueo Anti-SSRF, Anti-Prompt Injection, Anti-Prototype Pollution, revocación inmediata de JWT tras `logout`, protección de `X-Forwarded-For` y cabeceras de seguridad.
+- `backend/test/photo-storage-pipeline.test.js` — Sanitización EXIF APP1, validación binaria, subida privada y aprobación pública en Supabase Storage.
+- `backend/test/multisource-places.test.js` & `backend/test/pet-friendly-restaurants.test.js` — Búsqueda radial multi-fuente y filtros de políticas de mascotas.
+- `backend/test/pet-care-videos.test.js` — Catálogo de videos educativos de YouTube, rotación en vivo y función «Pregúntale al video».
+- `backend/test/enterprise-features.test.js` & `backend/test/full-backend-flow.test.js` — Transacciones ACID, Hash Chain Ledger, patrón Outbox, códigos QR criptográficos, BCCR/SINPE Móvil e i18n en 10 idiomas.

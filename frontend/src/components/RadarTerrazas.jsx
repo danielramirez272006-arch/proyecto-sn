@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TERRAZAS } from '../data/terrazas';
 import { api } from '../shared/services/api-client';
-import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { useResolvedPlacePhotos, useDatabasePlaces } from '../shared/services/place-photos-service';
 import { LugarFoto } from './LugarFoto';
 import { useIdioma } from '../context/IdiomaContext';
 import { Card } from './ui/Card';
@@ -33,7 +33,26 @@ export function RadarTerrazas() {
   const [busqueda, setBusqueda] = useState('');
   const [terrazaSeleccionada, setTerrazaSeleccionada] = useState(null);
   const [backendPlacesCount, setBackendPlacesCount] = useState(null);
-  const { lugaresConFotos: terrazasConFotos, cargandoFotos } = useResolvedPlacePhotos(TERRAZAS);
+  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
+  const { lugaresConFotos: terrazasLocalesConFotos, cargandoFotos: cargandoFotosLocales } = useResolvedPlacePhotos(TERRAZAS);
+  const cargandoFotos = cargandoDb || cargandoFotosLocales;
+
+  const terrazasConFotos = React.useMemo(() => {
+    const porNombre = new Map();
+    // Mostrar primero restaurantes con fotografía real de nuestra BD Supabase (hasta 12 en el radar)
+    for (const dbItem of lugaresDb.filter((p) => p?.imagen).slice(0, 12)) {
+      if (dbItem?.nombre) {
+        porNombre.set(dbItem.nombre.trim().toLowerCase(), dbItem);
+      }
+    }
+    for (const localItem of terrazasLocalesConFotos) {
+      const key = localItem?.nombre?.trim().toLowerCase();
+      if (key && !porNombre.has(key)) {
+        porNombre.set(key, localItem);
+      }
+    }
+    return Array.from(porNombre.values());
+  }, [lugaresDb, terrazasLocalesConFotos]);
 
   useEffect(() => {
     let activo = true;
@@ -214,7 +233,7 @@ export function RadarTerrazas() {
                       cargando={cargandoFotos}
                       className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/15 to-transparent pointer-events-none" />
 
                     {/* Badge de Verificación y Procedencia */}
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">

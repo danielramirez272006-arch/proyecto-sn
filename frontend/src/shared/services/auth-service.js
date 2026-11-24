@@ -54,7 +54,8 @@ export const authService = {
     pet,
     acceptTerms = true,
     acceptPrivacy = true,
-    termsVersion = '2026.11-CR-8968'
+    termsVersion = '2026.11-CR-8968',
+    cookiesPreferences = null
   }) {
     const consentRecord = {
       email,
@@ -80,7 +81,8 @@ export const authService = {
       pet,
       acceptTerms: Boolean(acceptTerms),
       acceptPrivacy: Boolean(acceptPrivacy),
-      termsVersion
+      termsVersion,
+      cookiesPreferences
     });
     saveAuthTokens(data);
     return data;
@@ -223,8 +225,8 @@ export const authService = {
     const refreshToken =
       typeof localStorage !== 'undefined' ? localStorage.getItem(REFRESH_TOKEN_KEY) : null;
     try {
-      if (refreshToken) {
-        await api.post('/auth/logout', { refresh_token: refreshToken });
+      if (refreshToken || api.token) {
+        await api.post('/auth/logout', { refresh_token: refreshToken || null });
       }
     } finally {
       clearAuthTokens();

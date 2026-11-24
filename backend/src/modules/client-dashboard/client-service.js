@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const { query, execute } = require('../../shared/config/database');
+const { encryptColumnValue, decryptColumnValue } = require('../../models');
 
 function safeJsonParse(raw, fallback) {
   if (raw === null || raw === undefined) return fallback;
@@ -18,9 +19,22 @@ class ClientDashboardService {
 
   async _ensurePetPhotoColumn() {
     if (this._photoColChecked) return;
-    try {
-      await execute('ALTER TABLE user_pets ADD COLUMN photo_url TEXT').catch(() => {});
-    } catch (_) {}
+    const alterStatements = [
+      'ALTER TABLE user_pets ADD COLUMN photo_url TEXT',
+      'ALTER TABLE user_vaults ADD COLUMN phone VARCHAR(64)',
+      'ALTER TABLE user_vaults ADD COLUMN zone VARCHAR(120)',
+      'ALTER TABLE user_vaults ADD COLUMN has_pet INTEGER DEFAULT 1',
+      "ALTER TABLE user_vaults ADD COLUMN budget_level VARCHAR(32) DEFAULT 'medio'",
+      'ALTER TABLE user_vaults ADD COLUMN interests_json TEXT',
+      'ALTER TABLE user_vaults ADD COLUMN preferences_json TEXT',
+      "ALTER TABLE user_vaults ADD COLUMN pets_json TEXT DEFAULT '[]'",
+      "ALTER TABLE user_vaults ADD COLUMN saved_routes_json TEXT DEFAULT '[]'",
+      'ALTER TABLE user_vaults ADD COLUMN expenses_total_crc NUMERIC(12, 2) DEFAULT 0',
+      "ALTER TABLE user_vaults ADD COLUMN badges_json TEXT DEFAULT '[]'"
+    ];
+    for (const sql of alterStatements) {
+      await execute(sql).catch(() => {});
+    }
     this._photoColChecked = true;
   }
 
@@ -134,7 +148,7 @@ class ClientDashboardService {
       raza: p.breed || 'Mestizo',
       pesoKg: Number(p.weight_kg || 15),
       edadAnos: Number(p.age_years || 2),
-      microchipId: p.microchip_id || '',
+      microchipId: decryptColumnValue(p.microchip_id) || '',
       colorManto: p.color_coat || 'Variado',
       foto: p.photo_url || null,
       photoUrl: p.photo_url || null,
@@ -293,7 +307,7 @@ class ClientDashboardService {
               incomingPet.raza || incomingPet.breed || 'Mestizo',
               Number(incomingPet.pesoKg || incomingPet.weight_kg || 15),
               Number(incomingPet.edadAnos || incomingPet.age_years || 2),
-              incomingPet.microchipId || incomingPet.microchip_id || null,
+              encryptColumnValue(incomingPet.microchipId || incomingPet.microchip_id || null),
               incomingPet.colorManto || incomingPet.color_coat || 'Variado',
               allergiesStr,
               finalPhoto,
@@ -313,7 +327,7 @@ class ClientDashboardService {
               incomingPet.raza || incomingPet.breed || 'Mestizo',
               Number(incomingPet.pesoKg || incomingPet.weight_kg || 15),
               Number(incomingPet.edadAnos || incomingPet.age_years || 2),
-              incomingPet.microchipId || incomingPet.microchip_id || null,
+              encryptColumnValue(incomingPet.microchipId || incomingPet.microchip_id || null),
               incomingPet.colorManto || incomingPet.color_coat || 'Variado',
               allergiesStr,
               incomingPhoto

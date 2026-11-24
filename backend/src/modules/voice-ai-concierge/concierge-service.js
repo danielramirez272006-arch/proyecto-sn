@@ -57,7 +57,7 @@ Devuelve exclusivamente un JSON con los campos:
       ? `${contextParts.join('\n')}\n\nConsulta del usuario: ${message}`
       : message;
 
-    const systemInstruction = `Eres Bruno, el copiloto inteligente de GoToX Pet OS en Costa Rica.
+    const systemInstruction = `Eres Argos, el copiloto inteligente de Synodos en Costa Rica.
 Ayudas al usuario con:
 1. Clima urbano, temperatura del asfalto, rutas seguras y terrazas pet-friendly.
 2. Seguimiento cotidiano del bienestar de su mascota (energía, hidratación, apetito, estrés por calor o ruido, cuidado de almohadillas y hábitos diarios).
@@ -83,7 +83,7 @@ REGLA OBLIGATORIA:
 
     return {
       ...result,
-      disclaimer: 'Orientación informativa: Bruno no es médico veterinario.',
+      disclaimer: 'Orientación informativa: Argos no es médico veterinario.',
     };
   }
 

@@ -209,7 +209,8 @@ export function SesionProvider({ children }) {
     pet,
     acceptTerms = true,
     acceptPrivacy = true,
-    termsVersion = '2026.11-CR-8968'
+    termsVersion = '2026.11-CR-8968',
+    cookiesPreferences = null
   }) => {
     setCargandoAuth(true);
     setErrorAuth(null);
@@ -224,7 +225,8 @@ export function SesionProvider({ children }) {
         pet,
         acceptTerms,
         acceptPrivacy,
-        termsVersion
+        termsVersion,
+        cookiesPreferences
       });
       aplicarUsuarioBackend(data?.user);
       return data;

@@ -1,6 +1,94 @@
+const crypto = require('node:crypto');
 const jwt = require('jsonwebtoken');
 const env = require('../config/env-config');
+const { execute, query } = require('../config/database');
 const { unauthorized, forbidden } = require('../utils/http-response');
+
+// Registro en memoria + respaldo persistente en BD (revoked_tokens) para sobrevivir reinicios del servidor
+const revokedTokenIds = new Set();
+const revokedUsersCutoffMs = new Map();
+let lastTokenIssuedMs = 0;
+let revokedTableReady = false;
+
+async function ensureRevokedTokensTable() {
+  if (revokedTableReady) return;
+  await execute(`
+    CREATE TABLE IF NOT EXISTS revoked_tokens (
+      jti VARCHAR(128) PRIMARY KEY,
+      expires_at TIMESTAMP NULL,
+      revoked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `).catch(() => {});
+  revokedTableReady = true;
+}
+
+async function hydrateRevokedTokensFromDb() {
+  try {
+    await ensureRevokedTokensTable();
+    const nowSql = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    await execute('DELETE FROM revoked_tokens WHERE expires_at IS NOT NULL AND expires_at < ?', [nowSql]).catch(() => {});
+    const rows = await query('SELECT jti FROM revoked_tokens').catch(() => []);
+    for (const row of rows || []) {
+      if (row?.jti) revokedTokenIds.add(String(row.jti));
+    }
+    return { hydrated: (rows || []).length };
+  } catch {
+    return { hydrated: 0 };
+  }
+}
+
+function nextMonotonicMs() {
+  const now = Date.now();
+  lastTokenIssuedMs = now > lastTokenIssuedMs ? now : lastTokenIssuedMs + 1;
+  return lastTokenIssuedMs;
+}
+
+function revokeAccessToken(rawTokenOrJti) {
+  if (!rawTokenOrJti) return false;
+  const clean = String(rawTokenOrJti).replace(/^Bearer\s+/i, '').trim();
+  if (!clean) return false;
+
+  revokedTokenIds.add(clean);
+  let jtiKey = clean.length <= 120 ? clean : crypto.createHash('sha256').update(clean).digest('hex');
+  let expiresAtSql = null;
+
+  try {
+    const decoded = jwt.decode(clean);
+    if (decoded?.jti) {
+      revokedTokenIds.add(decoded.jti);
+      jtiKey = String(decoded.jti);
+    }
+    if (decoded?.exp) {
+      expiresAtSql = new Date(Number(decoded.exp) * 1000).toISOString().replace('T', ' ').slice(0, 19);
+    }
+  } catch {}
+
+  // Persistencia asíncrona en BD (no bloquea el flujo de respuesta)
+  ensureRevokedTokensTable()
+    .then(() =>
+      execute(
+        'INSERT INTO revoked_tokens (jti, expires_at) VALUES (?, ?) ON CONFLICT (jti) DO NOTHING',
+        [jtiKey, expiresAtSql]
+      )
+    )
+    .catch(() => {});
+
+  return true;
+}
+
+function revokeAllUserAccessTokens(userId) {
+  if (!userId) return false;
+  revokedUsersCutoffMs.set(String(userId), nextMonotonicMs());
+  return true;
+}
+
+function getRevocationStats() {
+  return {
+    revoked_tokens_count: revokedTokenIds.size,
+    revoked_users_cutoff_count: revokedUsersCutoffMs.size,
+    persistent_backing_table: 'revoked_tokens'
+  };
+}
 
 const PERMISSIONS = {
   PLANS_CREATE: 'plans:create',
@@ -28,7 +116,22 @@ function getPermissionsForRole(role = 'client') {
 
 function verifyToken(token) {
   try {
-    return jwt.verify(token, env.jwtSecret);
+    const clean = String(token || '').replace(/^Bearer\s+/i, '').trim();
+    if (!clean || revokedTokenIds.has(clean)) {
+      return null;
+    }
+    const decoded = jwt.verify(clean, env.jwtSecret);
+    if (decoded?.jti && revokedTokenIds.has(decoded.jti)) {
+      return null;
+    }
+    if (decoded?.id && revokedUsersCutoffMs.has(String(decoded.id))) {
+      const cutoffMs = revokedUsersCutoffMs.get(String(decoded.id));
+      const tokenIssuedMs = Number(decoded.issued_at_ms) || (Number(decoded.iat) * 1000) || 0;
+      if (tokenIssuedMs <= cutoffMs) {
+        return null;
+      }
+    }
+    return decoded;
   } catch (err) {
     return null;
   }
@@ -99,6 +202,18 @@ module.exports = {
   requireRole,
   requirePermission,
   requireAdmin: requireRole(['admin']),
-  generateToken: (payload, expiresIn = '1h') => jwt.sign(payload, env.jwtSecret, { expiresIn }),
-  generateRefreshToken: (payload, expiresIn = '30d') => jwt.sign({ ...payload, is_refresh: true }, env.jwtSecret, { expiresIn }),
+  revokeAccessToken,
+  revokeAllUserAccessTokens,
+  hydrateRevokedTokensFromDb,
+  getRevocationStats,
+  generateToken: (payload, expiresIn = '1h') => {
+    const issuedAtMs = nextMonotonicMs();
+    const jti = payload?.jti || `jti_${issuedAtMs}_${crypto.randomBytes(4).toString('hex')}`;
+    return jwt.sign({ ...payload, jti, issued_at_ms: issuedAtMs }, env.jwtSecret, { expiresIn });
+  },
+  generateRefreshToken: (payload, expiresIn = '30d') => {
+    const issuedAtMs = nextMonotonicMs();
+    const jti = payload?.jti || `rt_${issuedAtMs}_${crypto.randomBytes(4).toString('hex')}`;
+    return jwt.sign({ ...payload, jti, issued_at_ms: issuedAtMs, is_refresh: true }, env.jwtSecret, { expiresIn });
+  },
 };

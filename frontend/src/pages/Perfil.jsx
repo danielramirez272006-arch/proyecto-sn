@@ -11,6 +11,7 @@ import { Tabla, Tr, Td } from '../components/ui/Tabla';
 import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
 import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useSesion } from '../hooks/useSesion';
+import { api } from '../shared/services/api-client';
 import { useIdioma } from '../context/IdiomaContext';
 import { authService } from '../shared/services/auth-service';
 import { abrirConfiguracionCookies } from '../shared/utils/cookie-consent';
@@ -60,6 +61,9 @@ export function Perfil({ embebido = false }) {
   const [guardando, setGuardando] = useState(false);
   const [guardadoExito, setGuardadoExito] = useState('');
   const [errorGuardado, setErrorGuardado] = useState('');
+  const [claveBaja, setClaveBaja] = useState('');
+  const [eliminandoCuenta, setEliminandoCuenta] = useState(false);
+  const [mensajeBaja, setMensajeBaja] = useState('');
 
   const [favoritosCount, setFavoritosCount] = useState(() => obtenerFavoritosIds().length);
   const [planesCount, setPlanesCount] = useState(() => obtenerPlanes().length);
@@ -580,6 +584,51 @@ export function Perfil({ embebido = false }) {
                       {t('perfil.abrirBtn')} <ArrowRight className="w-3 h-3" />
                     </strong>
                   </Link>
+                </div>
+              </Card>
+
+              <Card className="p-6 border-rose-500/25 bg-rose-500/5 space-y-3 text-left">
+                <h3 className="font-serif font-bold text-sm text-rose-500 flex items-center gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  <span>Eliminar Cuenta y Datos (Ley N.º 8968)</span>
+                </h3>
+                <p className="text-[11px] opacity-80 leading-relaxed">
+                  Ejerce tu derecho de supresión: elimina tus mascotas, bóveda y sesiones de forma irreversible.
+                </p>
+                {mensajeBaja && (
+                  <p className="text-[11px] text-rose-400 font-semibold">{mensajeBaja}</p>
+                )}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="password"
+                    value={claveBaja}
+                    onChange={(e) => setClaveBaja(e.target.value)}
+                    placeholder="Confirma tu contraseña"
+                    aria-label="Confirma tu contraseña para eliminar cuenta"
+                    className="flex-1 px-3 py-2 rounded-xl border border-rose-500/30 bg-transparent text-xs outline-none"
+                  />
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    icon={Trash2}
+                    disabled={eliminandoCuenta || !claveBaja}
+                    onClick={async () => {
+                      setMensajeBaja('');
+                      setEliminandoCuenta(true);
+                      try {
+                        await api.post('/auth/delete-account', { password: claveBaja });
+                        cerrarSesion();
+                        navigate('/', { replace: true });
+                      } catch (err) {
+                        setMensajeBaja(err?.message || 'Contraseña incorrecta o sesión no válida.');
+                      } finally {
+                        setEliminandoCuenta(false);
+                      }
+                    }}
+                  >
+                    {eliminandoCuenta ? 'Procesando...' : 'Dar de baja'}
+                  </Button>
                 </div>
               </Card>
             </div>

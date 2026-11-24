@@ -2,6 +2,80 @@ const { query, execute } = require('../../shared/config/database');
 const { haversineDistanceKm } = require('../../shared/utils/geo-math');
 
 class PlacesRepository {
+  async _attachApprovedPhotos(places) {
+    if (!Array.isArray(places) || places.length === 0) return places;
+    const ids = places.map((p) => p?.id).filter(Boolean);
+    if (ids.length === 0) return places;
+
+    const photosByPlaceId = new Map();
+    try {
+      const placeholders = ids.map(() => '?').join(',');
+      const rows = await query(
+        `SELECT place_id, photo_url, provider, alt_text, author, attribution_text, source_page_url, license, license_url, width, height, photo_type, is_cover, approval_status, reviewed_at
+         FROM place_photos
+         WHERE place_id IN (${placeholders}) AND approval_status = 'approved'
+         ORDER BY is_cover DESC, created_at DESC`,
+        ids
+      );
+      for (const row of rows || []) {
+        if (!row.photo_url) continue;
+        if (!photosByPlaceId.has(row.place_id)) {
+          photosByPlaceId.set(row.place_id, []);
+        }
+        photosByPlaceId.get(row.place_id).push(row);
+      }
+    } catch {
+      // Si la tabla place_photos no existe en entornos mínimos de prueba, devolver lugares sin error
+      return places;
+    }
+
+    return places.map((place) => {
+      const list = photosByPlaceId.get(place.id) || [];
+      if (list.length === 0) {
+        return {
+          ...place,
+          photo_url: place.photo_url || null,
+          photo: place.photo || null,
+          gallery: Array.isArray(place.gallery) ? place.gallery : [],
+        };
+      }
+      const cover = list[0];
+      const gallery = list.map((item) => ({
+        url: item.photo_url,
+        alt_text: item.alt_text || `${place.name} - ${item.photo_type || 'fotografía'}`,
+        author: item.author || null,
+        credit: item.attribution_text || item.author || null,
+        license: item.license || 'Catálogo propio Synodos',
+        source_page_url: item.source_page_url || null,
+        width: item.width || null,
+        height: item.height || null,
+        photo_type: item.photo_type || 'otro',
+      }));
+      return {
+        ...place,
+        photo_url: cover.photo_url,
+        photo: {
+          url: cover.photo_url,
+          provider: cover.provider || 'supabase_database',
+          alt_text: cover.alt_text || `${place.name} - ${cover.photo_type || 'fotografía'}`,
+          author: cover.author || null,
+          credit: cover.attribution_text || cover.author || null,
+          source_page_url: cover.source_page_url || null,
+          license: cover.license || 'Catálogo propio Synodos',
+          license_url: cover.license_url || null,
+          width: cover.width || null,
+          height: cover.height || null,
+          photo_type: cover.photo_type || 'otro',
+          is_cover: Boolean(cover.is_cover),
+          approval_status: cover.approval_status || 'approved',
+          reviewed_at: cover.reviewed_at || null,
+          gallery,
+        },
+        gallery,
+      };
+    });
+  }
+
   async findAll({ category, verifiedOnly, search, limit = 50, offset = 0 } = {}) {
     let sql = 'SELECT * FROM places WHERE 1=1';
     const params = [];
@@ -23,7 +97,8 @@ class PlacesRepository {
     params.push(limit, offset);
 
     const rows = await query(sql, params);
-    return rows.map(r => this.deserialize(r));
+    const deserialized = rows.map(r => this.deserialize(r));
+    return this._attachApprovedPhotos(deserialized);
   }
 
   async findPaginated({
@@ -91,7 +166,7 @@ class PlacesRepository {
       const totalGeo = itemsWithDistance.length;
       const totalPagesGeo = Math.ceil(totalGeo / limit) || 1;
       const offsetGeo = (page - 1) * limit;
-      const pageItems = itemsWithDistance.slice(offsetGeo, offsetGeo + limit);
+      const pageItems = await this._attachApprovedPhotos(itemsWithDistance.slice(offsetGeo, offsetGeo + limit));
 
       return {
         items: pageItems,
@@ -111,7 +186,7 @@ class PlacesRepository {
     params.push(limit, offset);
 
     const rows = await query(sql, params);
-    const items = rows.map(r => this.deserialize(r));
+    const items = await this._attachApprovedPhotos(rows.map(r => this.deserialize(r)));
     const totalPages = Math.ceil(totalRecords / limit) || 1;
 
     return {
@@ -130,7 +205,8 @@ class PlacesRepository {
   async findById(id) {
     const rows = await query('SELECT * FROM places WHERE id = ?', [id]);
     if (!rows || rows.length === 0) return null;
-    return this.deserialize(rows[0]);
+    const enriched = await this._attachApprovedPhotos([this.deserialize(rows[0])]);
+    return enriched[0] || null;
   }
 
   async create(placeData) {

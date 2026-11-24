@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TERRAZAS } from '../data/terrazas';
 import { api } from '../shared/services/api-client';
-import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { useResolvedPlacePhotos, useDatabasePlaces } from '../shared/services/place-photos-service';
 import { LugarFoto } from '../components/LugarFoto';
 import { PageWrapper } from '../components/PageWrapper';
 import { Modal } from '../components/ui/Modal';
@@ -40,7 +40,25 @@ export function TerrazasPage() {
   const [soloEspacioDisponible, setSoloEspacioDisponible] = useState(false);
   const [terrazaSeleccionada, setTerrazaSeleccionada] = useState(null);
   const [backendPlacesCount, setBackendPlacesCount] = useState(null);
-  const { lugaresConFotos: terrazasConFotos, cargandoFotos } = useResolvedPlacePhotos(TERRAZAS);
+  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
+  const { lugaresConFotos: terrazasLocalesConFotos, cargandoFotos: cargandoFotosLocales } = useResolvedPlacePhotos(TERRAZAS);
+  const cargandoFotos = cargandoDb || cargandoFotosLocales;
+
+  const terrazasConFotos = useMemo(() => {
+    const porNombre = new Map();
+    for (const dbItem of lugaresDb) {
+      if (dbItem?.nombre && dbItem.imagen) {
+        porNombre.set(dbItem.nombre.trim().toLowerCase(), dbItem);
+      }
+    }
+    for (const localItem of terrazasLocalesConFotos) {
+      const key = localItem?.nombre?.trim().toLowerCase();
+      if (key && !porNombre.has(key)) {
+        porNombre.set(key, localItem);
+      }
+    }
+    return Array.from(porNombre.values());
+  }, [lugaresDb, terrazasLocalesConFotos]);
 
   // Simulación de carga inicial para stagger suave
   useEffect(() => {
@@ -337,7 +355,7 @@ export function TerrazasPage() {
       <section className="max-w-[1240px] mx-auto px-4 sm:px-6 space-y-6">
         <div className="flex items-center justify-between text-xs text-[#94A3B8]">
           <span>
-            {t('terrazasExt.mostrando', { n: terrazasFiltradas.length, total: TERRAZAS.length })}
+            {t('terrazasExt.mostrando', { n: terrazasFiltradas.length, total: terrazasConFotos.length })}
           </span>
           <span className="flex items-center gap-1 text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -400,11 +418,14 @@ export function TerrazasPage() {
                       cargando={cargandoFotos}
                       className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-black/30 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/20 pointer-events-none" />
 
                     {/* Insignia Superior */}
                     <div className="absolute top-3.5 left-3.5 flex flex-wrap gap-2">
-                      <span className="px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase bg-[#55152D]/90 text-white backdrop-blur-md border border-white/20 shadow-md">
+                      <span
+                        style={{ color: '#FFFFFF' }}
+                        className="px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase bg-[#55152D]/90 text-white backdrop-blur-md border border-white/20 shadow-md"
+                      >
                         {terraza.insignia}
                       </span>
                     </div>
@@ -414,24 +435,23 @@ export function TerrazasPage() {
                       <span>★</span>
                       <span>{terraza.puntuacionPet}</span>
                     </div>
+                  </div>
 
-                    {/* Información Básica sobre la Imagen */}
-                    <div className="absolute bottom-3 left-4 right-4">
+                  {/* Cuerpo de la Ficha con Métricas Reales */}
+                  <div className="p-5 sm:p-6 space-y-4 flex-1 flex flex-col justify-between">
+                    <div className="space-y-1">
                       <span className="text-[11px] font-semibold text-[#F27B91] uppercase tracking-wider block">
                         {terraza.categoria}
                       </span>
                       <h3 className="font-serif text-2xl font-bold text-[#E8EDF5] tracking-tight">
                         {terraza.nombre}
                       </h3>
-                      <p className="text-xs text-slate-300 flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3.5 h-3.5 text-[#F27B91]" />
+                      <p className="text-xs text-[#94A3B8] flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-[#F27B91] shrink-0" />
                         <span>{terraza.zona}</span>
                       </p>
                     </div>
-                  </div>
 
-                  {/* Cuerpo de la Ficha con Métricas Reales */}
-                  <div className="p-5 sm:p-6 space-y-4 flex-1 flex flex-col justify-between">
                     <p className="text-xs text-[#94A3B8] leading-relaxed line-clamp-2">
                       {terraza.descripcion}
                     </p>

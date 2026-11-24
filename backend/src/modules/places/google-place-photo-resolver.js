@@ -1,8 +1,94 @@
 const googlePlacesClient = require('../../shared/clients/google-places-client');
 const foursquarePlacesClient = require('../../shared/clients/foursquare-places-client');
 const wikimediaPlacesClient = require('../../shared/clients/wikimedia-places-client');
+const placesRepository = require('./places-repository');
 const { PHOTO_NAME_REGEX } = googlePlacesClient;
 const { haversineDistanceKm } = require('../../shared/utils/geo-math');
+
+// Caché en memoria de corta duración del catálogo interno para reflejar fotos nuevas rápidamente
+let internalCatalogCache = { items: null, ts: 0 };
+const INTERNAL_CATALOG_TTL_MS = 15 * 1000;
+
+async function getInternalPlacesWithPhotos(repo = placesRepository) {
+  if (internalCatalogCache.items && Date.now() - internalCatalogCache.ts < INTERNAL_CATALOG_TTL_MS) {
+    return internalCatalogCache.items;
+  }
+  try {
+    const rows = await repo.findAll({ limit: 500 });
+    const withPhotos = (rows || []).filter((p) => p && p.photo_url);
+    internalCatalogCache = { items: withPhotos, ts: Date.now() };
+    return withPhotos;
+  } catch {
+    return [];
+  }
+}
+
+async function resolveFromInternalDatabase(placeInput, deps = {}) {
+  const internalId = String(placeInput?.id || '').trim();
+  const name = String(placeInput?.name || placeInput?.nombre || '').trim();
+  const lat = Number(placeInput?.lat);
+  const lng = Number(placeInput?.lng);
+  const repo = deps.placesRepo || placesRepository;
+
+  const catalog = await getInternalPlacesWithPhotos(repo);
+  if (catalog.length === 0) return null;
+
+  let matched = null;
+  if (internalId) {
+    matched = catalog.find((p) => String(p.id) === internalId) || null;
+  }
+
+  if (!matched && name) {
+    const targetNorm = normalizeText(name);
+    matched = catalog.find((p) => normalizeText(p.name) === targetNorm) || null;
+  }
+
+  if (!matched && name) {
+    const targetTokens = tokenSet(name);
+    let bestScore = 0;
+    for (const candidate of catalog) {
+      const candTokens = tokenSet(candidate.name);
+      const nameScore = jaccardSimilarity(targetTokens, candTokens);
+      if (nameScore < 0.5) continue;
+      if (Number.isFinite(lat) && Number.isFinite(lng) && Number.isFinite(candidate.lat) && Number.isFinite(candidate.lng)) {
+        const distKm = haversineDistanceKm(lat, lng, candidate.lat, candidate.lng);
+        if (distKm > 2.5) continue;
+      }
+      if (nameScore > bestScore) {
+        bestScore = nameScore;
+        matched = candidate;
+      }
+    }
+  }
+
+  if (!matched || !matched.photo_url) return null;
+
+  const galleryEntries = Array.isArray(matched.gallery) && matched.gallery.length > 0
+    ? matched.gallery.map((g) => ({
+        url: g.url,
+        attributions: g.credit || g.author
+          ? [{ displayName: g.credit || g.author, uri: g.source_page_url || null, photoUri: null }]
+          : [{ displayName: 'Catálogo Synodos', uri: null, photoUri: null }],
+      }))
+    : [{
+        url: matched.photo_url,
+        attributions: [{ displayName: 'Catálogo Synodos', uri: null, photoUri: null }],
+      }];
+
+  return {
+    internal_id: internalId || matched.id,
+    external_id: matched.id,
+    provider: 'supabase_database',
+    status: 'resolved',
+    photo_url: matched.photo_url,
+    gallery: galleryEntries,
+    attributions: galleryEntries[0]?.attributions || [],
+    source_url: matched.photo?.source_page_url || null,
+    matched_name: matched.name,
+    matched_address: matched.address || matched.district || matched.canton || null,
+    reason: null,
+  };
+}
 
 function normalizeText(value) {
   return String(value || '')
@@ -183,6 +269,24 @@ async function resolvePlacePhotos(placeInput, deps = {}) {
     return { ...baseResult, status: 'invalid_input', reason: 'Falta el nombre del establecimiento.' };
   }
 
+  // 0. Prioridad absoluta: Base de datos propia en Supabase (cero dependencia de APIs externas)
+  if (!deps.googleClient && deps.skipInternalDb !== true) {
+    const dbHit = await resolveFromInternalDatabase({ id: internalId, name, address, zone, lat, lng }, deps);
+    if (dbHit) {
+      return dbHit;
+    }
+  }
+
+  // Si se solicitó modo solo base de datos (sin llamadas a APIs externas), retornar sin consultar terceros
+  if (deps.dbOnly === true) {
+    return {
+      ...baseResult,
+      provider: 'supabase_database',
+      status: 'no_photos',
+      reason: 'Sin fotografía registrada en la base de datos propia.',
+    };
+  }
+
   // 1. Intentar Foursquare Places API si está configurada (ideal para restaurantes/cafés sin billing de Google)
   if (fsqClient && fsqClient.isConfigured()) {
     const fsqResult = await resolveFromFoursquare({ id: internalId, name, address, zone, lat, lng }, fsqClient);
@@ -346,18 +450,23 @@ async function resolveBatchPlacePhotos(rawPlaces = [], deps = {}) {
     throw err;
   }
 
-  const limited = rawPlaces.slice(0, 10);
+  const limited = rawPlaces.slice(0, 50);
   const items = await Promise.all(limited.map((p) => resolvePlacePhotos(p, deps)));
 
   return {
     items,
-    provider: 'google_places',
-    configured: (deps.googleClient || googlePlacesClient).isConfigured(),
+    provider: deps.dbOnly ? 'supabase_database' : 'supabase_database_first',
+    configured: true,
   };
+}
+
+function clearInternalCatalogCache() {
+  internalCatalogCache = { items: null, ts: 0 };
 }
 
 module.exports = {
   resolvePlacePhotos,
   resolveBatchPlacePhotos,
   scoreCandidate,
+  clearInternalCatalogCache,
 };

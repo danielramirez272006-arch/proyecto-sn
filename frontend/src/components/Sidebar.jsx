@@ -299,7 +299,6 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
                       to={enlace.ruta}
                       aria-current={activa ? 'page' : undefined}
                       aria-label={enlace.nombre}
-                      title={modoCompacto ? enlace.nombre : undefined}
                       onClick={() => esMovil && setMenuMovilAbierto(false)}
                       className={`relative w-full flex items-center justify-start pl-1.5 pr-2.5 py-1 rounded-xl text-xs font-medium whitespace-nowrap overflow-hidden transition-colors duration-150 group ${clasesTema.focusRing} ${activa ? clasesTema.enlaceActivo : clasesTema.enlaceInactivo
                         }`}
@@ -367,6 +366,7 @@ export function Sidebar({ compacta = false, onToggleCompacta }) {
                     {modoCompacto && (
                       <span
                         role="tooltip"
+                        style={esClaro ? { color: '#FFFFFF' } : undefined}
                         className={`pointer-events-none opacity-0 group-hover/nav:opacity-100 group-focus-within/nav:opacity-100 transition-opacity duration-150 fixed left-[5.25rem] -translate-y-8 z-50 px-2.5 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap shadow-lg ${clasesTema.tooltip}`}
                       >
                         {enlace.nombre}

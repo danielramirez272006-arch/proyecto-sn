@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-const { checkHealth, query } = require('../config/database');
+const { checkHealth, query, getDatabaseSecurityStats } = require('../config/database');
+const { getOrmSecurityCatalog } = require('../../models');
+const { inspectSupplyChain } = require('../security/supply-chain-audit');
+const { generateOwaspTop10Report } = require('../security/owasp-report-service');
 const { success, badRequest, failure } = require('../utils/http-response');
 const deepSeekClient = require('../config/deepseek-config');
 const geminiClient = require('../config/gemini-config');
@@ -41,9 +44,9 @@ router.get('/health', (req, res) => {
     status: 'healthy',
     uptime_seconds: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
-    service: 'Sistema de Sinergia Urbana Costa Rica API',
+    service: 'Synodos API — Plataforma Urbana Pet-Friendly Costa Rica',
     ai_copilot: 'DeepSeek AI Active',
-    client_ai: 'Google Gemini',
+    client_ai: 'Google Gemini (Copiloto Argos)',
     admin_ai: 'DeepSeek AI',
     version: '1.0.0',
     mode: process.env.NODE_ENV || 'development'
@@ -356,7 +359,8 @@ router.get('/places/google-photo', async (req, res, next) => {
 router.post('/places/resolve-photos', async (req, res, next) => {
   try {
     const photoResolver = require('../../modules/places/google-place-photo-resolver');
-    const result = await photoResolver.resolveBatchPlacePhotos(req.body?.places);
+    const dbOnly = req.body?.db_only === true || req.query?.source === 'db';
+    const result = await photoResolver.resolveBatchPlacePhotos(req.body?.places, { dbOnly });
     return success(res, result);
   } catch (err) {
     if (err.status === 400 || err.code === 'INVALID_PLACES_LIST') {
@@ -412,7 +416,30 @@ router.get('/places', async (req, res, next) => {
   }
 });
 
-// 5. Pista de Auditoría Enterprise (Admin)
+// 5. Pista de Auditoría Enterprise (Admin) y Estado de Seguridad ORM/BD + OWASP Supply Chain
+router.get('/admin/db/security-status', requireAdmin, async (req, res) => {
+  const dbHealth = await checkHealth();
+  const securityStats = getDatabaseSecurityStats();
+  const ormModels = getOrmSecurityCatalog();
+  const supplyChain = inspectSupplyChain();
+  return success(res, {
+    database_health: dbHealth,
+    security_telemetry: securityStats,
+    supply_chain_integrity: supplyChain,
+    orm_models_count: ormModels.length,
+    orm_models: ormModels
+  });
+});
+
+router.get('/admin/security/owasp-report', requireAdmin, async (req, res, next) => {
+  try {
+    const report = await generateOwaspTop10Report();
+    return success(res, report);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/audit/history', requireAdmin, async (req, res, next) => {
   try {
     const { resource, resource_id, user_id, limit, offset } = req.query;
@@ -712,6 +739,7 @@ router.post('/merchants/webhooks/subscriptions', requireAdmin, async (req, res, 
     });
     return success(res, sub, {}, 201);
   } catch (err) {
+    if (err.status === 400) return badRequest(res, err.message, { code: err.code });
     next(err);
   }
 });
@@ -972,6 +1000,8 @@ router.use('/a11y', require('../../modules/accessibility').a11yRoutes);
 router.use('/weather', require('../../modules/weather-activities').weatherRoutes);
 router.use('/food', require('../../modules/food-radar').foodRoutes);
 router.use('/vet', require('../../modules/vet-hub').vetRoutes);
+router.use('/vet', require('../../routes/pet-vision-routes'));
+router.use('/pets', require('../../routes/pet-vision-routes'));
 router.use('/vet/videos', require('../../modules/vet-hub').petCareVideosRoutes);
 router.use('/pet-videos', require('../../modules/vet-hub').petCareVideosRoutes);
 router.use('/businesses', require('../../modules/businesses').businessesRoutes);

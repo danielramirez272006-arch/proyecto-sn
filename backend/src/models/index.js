@@ -1,7 +1,17 @@
+const {
+  BaseModel,
+  ormSecurityError,
+  encryptColumnValue,
+  decryptColumnValue
+} = require('./base-model');
+const entities = require('./entities');
 const placesRepository = require('../modules/places/places-repository');
-const eventsRepository = require('../modules/events/events-repository');
 
 module.exports = {
-  placesRepository,
-  eventsRepository,
+  BaseModel,
+  ormSecurityError,
+  encryptColumnValue,
+  decryptColumnValue,
+  ...entities,
+  placesRepository
 };

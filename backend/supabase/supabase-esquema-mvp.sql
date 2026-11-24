@@ -626,6 +626,34 @@ ALTER TABLE app_private.data_deletion_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_private.password_reset_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_private.ai_interaction_logs ENABLE ROW LEVEL SECURITY;
 
+-- Sincronización de perfiles de mascotas (user_pets) y columnas extendidas de user_vaults
+CREATE TABLE IF NOT EXISTS app_private.user_pets (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL REFERENCES app_private.users(id) ON DELETE CASCADE,
+    name VARCHAR(120) NOT NULL,
+    species VARCHAR(64) DEFAULT 'Canino',
+    breed VARCHAR(120) DEFAULT 'Mestizo',
+    weight_kg NUMERIC(6, 2) DEFAULT 15,
+    age_years INTEGER DEFAULT 2,
+    microchip_id VARCHAR(120) NULL,
+    color_coat VARCHAR(80) NULL,
+    allergies_text TEXT NULL,
+    photo_url TEXT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_pets_user ON app_private.user_pets (user_id);
+
+ALTER TABLE app_private.user_vaults ADD COLUMN IF NOT EXISTS phone VARCHAR(64) NULL;
+ALTER TABLE app_private.user_vaults ADD COLUMN IF NOT EXISTS zone VARCHAR(120) NULL;
+ALTER TABLE app_private.user_vaults ADD COLUMN IF NOT EXISTS has_pet INTEGER DEFAULT 1;
+ALTER TABLE app_private.user_vaults ADD COLUMN IF NOT EXISTS budget_level VARCHAR(32) DEFAULT 'medio';
+ALTER TABLE app_private.user_vaults ADD COLUMN IF NOT EXISTS interests_json TEXT NULL;
+ALTER TABLE app_private.user_vaults ADD COLUMN IF NOT EXISTS preferences_json TEXT NULL;
+
+ALTER TABLE app_private.user_pets ENABLE ROW LEVEL SECURITY;
+
 REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private FROM PUBLIC, anon, authenticated;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA app_private TO postgres, service_role;
 

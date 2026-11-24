@@ -1,20 +1,19 @@
 const crypto = require('node:crypto');
 const { query, execute } = require('../../shared/config/database');
+const { assertSafeOutboundUrl } = require('../../shared/middlewares/payload-sanitizer');
 
 class MerchantWebhooksService {
   /**
-   * Registra una suscripción a webhooks para un comercio aliado
+   * Registra una suscripción a webhooks para un comercio aliado (con protección anti-SSRF)
    */
   async registerSubscription({ merchantId, targetUrl, events = ['*'] }) {
     if (!merchantId || !targetUrl) {
-      throw new Error('merchantId y targetUrl son obligatorios para registrar un webhook');
+      const err = new Error('merchantId y targetUrl son obligatorios para registrar un webhook');
+      err.status = 400;
+      throw err;
     }
 
-    try {
-      new URL(targetUrl);
-    } catch {
-      throw new Error('targetUrl debe ser una URL válida (ej: https://comercio.cr/webhook)');
-    }
+    assertSafeOutboundUrl(targetUrl);
 
     const id = `wh_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const secret = `sec_${crypto.randomBytes(24).toString('hex')}`;

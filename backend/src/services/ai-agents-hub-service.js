@@ -26,7 +26,7 @@ function sanitizePiiForPrompt(text) {
 const AGENT_REGISTRY = {
   'bruno-concierge': {
     name: 'bruno-concierge',
-    title: 'Copiloto Bruno (Concierge Bienestar Pet)',
+    title: 'Copiloto Argos (Concierge Bienestar Pet — Synodos)',
     authorized_roles: ['client', 'organizer', 'merchant', 'business_owner', 'admin'],
     provider: 'google_gemini',
     model: geminiClient.model || 'gemini-2.0-flash',
@@ -35,7 +35,7 @@ const AGENT_REGISTRY = {
       const prompt = sanitizePiiForPrompt(input.message || input.prompt || 'Recomendación de paseo pet-friendly en San José');
       const res = await geminiClient.generateJson({
         prompt,
-        systemInstruction: 'Eres Bruno, asistente de bienestar animal y rutas pet-friendly en Costa Rica. Responde en JSON breve.'
+        systemInstruction: 'Eres Argos, asistente de bienestar animal y rutas pet-friendly de Synodos en Costa Rica. Responde en JSON breve.'
       }).catch(() => null);
       return {
         reply: res?.reply || res?.summary || res?.recommendation || 'Para pasear con tu mascota en el GAM, verifica sombra en aceras y lleva hidratación.',

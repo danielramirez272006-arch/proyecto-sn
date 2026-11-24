@@ -17,7 +17,7 @@ const { encryptColumnValue, decryptColumnValue } = require('../../models');
 const DEFAULT_ACCOUNTS = [
   {
     id: 'usr_admin_gotox',
-    name: 'Administrador GoToX',
+    name: 'Administrador Synodos',
     email: process.env.ADMIN_EMAIL || 'admin@gotox.cr',
     password: process.env.ADMIN_PASSWORD || 'AdminGoToX2026!',
     role: 'admin',
@@ -565,7 +565,7 @@ class AuthService {
       [
         outboxId,
         user.email,
-        'Recuperación de contraseña — GoToX Pet OS',
+        'Recuperación de contraseña — Synodos',
         `Solicitaste restablecer tu contraseña. Tu código temporal (válido 15 minutos) es: ${rawToken}`
       ]
     ).catch(() => {});
@@ -704,7 +704,7 @@ class AuthService {
       [
         outboxId,
         originalEmail,
-        'Confirmación de eliminación de datos personales (Ley N.º 8968) — GoToX',
+        'Confirmación de eliminación de datos personales (Ley N.º 8968) — Synodos',
         `Tu solicitud (${reqId}) fue procesada. Tus datos personales y sesiones fueron eliminados/anonimizados.`
       ]
     ).catch(() => {});

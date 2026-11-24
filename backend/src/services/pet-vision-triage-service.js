@@ -167,7 +167,7 @@ class PetVisionTriageService {
       }));
 
     const systemInstruction = [
-      'Eres un asistente experto en pre-triaje visual veterinario y bienestar animal para GoToX Costa Rica (Gran Área Metropolitana - GAM).',
+      'Eres un asistente experto en pre-triaje visual veterinario y bienestar animal para Synodos Costa Rica (Gran Área Metropolitana - GAM).',
       'Tu objetivo es analizar la(s) fotografía(s) de una mascota y entregar SIEMPRE una orientación APROXIMADA en español claro, empático y responsable.',
       'REGLAS CRÍTICAS:',
       '1. NUNCA afirmes que tu respuesta es un diagnóstico clínico definitivo; aclara siempre que es una estimación visual aproximada.',
@@ -245,7 +245,7 @@ class PetVisionTriageService {
           channel: 'email',
           recipient: String(notify_emergency_email).trim(),
           type: 'PET_VISION_URGENT_TRIAGE',
-          title: `🚨 Alerta Veterinaria Urgente GoToX: ${pet_context?.nombre || 'Tu mascota'}`,
+          title: `🚨 Alerta Veterinaria Urgente Synodos: ${pet_context?.nombre || 'Tu mascota'}`,
           priority: 'high',
           payload: {
             analysis_id: analysisId,

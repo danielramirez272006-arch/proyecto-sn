@@ -6,7 +6,7 @@ function renderSwaggerUiHtml(specUrl = '/api/docs/openapi.json') {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sinergia Urbana Costa Rica - API Documentation</title>
+  <title>Synodos — API Documentation (Costa Rica)</title>
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.18.2/swagger-ui.css">
   <style>
     body {
@@ -59,9 +59,9 @@ function renderSwaggerUiHtml(specUrl = '/api/docs/openapi.json') {
 </head>
 <body>
   <div class="hero-banner">
-    <h1>🇨🇷 Sinergia Urbana Costa Rica — Documentación de API</h1>
-    <p>Endpoints REST, Conectores Abiertos y Copiloto Inteligente</p>
-    <div class="badge-ai">Cliente: Google Gemini AI | Admins: DeepSeek AI</div>
+    <h1>🐾 Synodos Costa Rica — Documentación de API</h1>
+    <p>Endpoints REST, Pre-Triaje Visual Gemini Vision, ORM Seguro y Copiloto Argos</p>
+    <div class="badge-ai">Cliente (Argos): Google Gemini AI | Admins: DeepSeek AI</div>
   </div>
   <div id="swagger-ui" class="swagger-ui"></div>
   <script src="https://unpkg.com/swagger-ui-dist@5.18.2/swagger-ui-bundle.js" charset="UTF-8"></script>

@@ -454,6 +454,59 @@ test('ORM Seguro (BaseModel + Entidades 3FN) y Firewall SQL en Tiempo de Ejecuci
     assert.equal(statusJson.ok, true);
     assert.equal(statusJson.data.security_telemetry.sql_firewall_active, true);
     assert.ok(statusJson.data.security_telemetry.firewall_blocked_count >= 1);
+    assert.equal(statusJson.data.supply_chain_integrity.ok, true);
+    assert.ok(statusJson.data.supply_chain_integrity.verified_integrity_hashes >= 5);
     assert.equal(statusJson.data.orm_models_count, 11);
+  });
+});
+
+test('OWASP A03:2025 (Supply Chain) y A10:2025 (Condiciones Excepcionales: enmascarado SQL y sanitización de logs)', () => {
+  const { inspectSupplyChain } = require('../src/shared/security/supply-chain-audit');
+  const errorHandler = require('../src/shared/middlewares/error-handler');
+
+  // 1. A03:2025 — Verificar integridad SHA-512 de dependencias en package-lock.json
+  const supplyReport = inspectSupplyChain();
+  assert.equal(supplyReport.ok, true);
+  assert.equal(supplyReport.findings.length, 0);
+  assert.equal(supplyReport.verified_integrity_hashes, supplyReport.production_dependencies_count);
+
+  // 2. A10:2025 — El manejador global debe enmascarar mensajes internos SQL/BD en respuestas 500
+  let capturedStatus = null;
+  let capturedJson = null;
+  const fakeRes = {
+    headersSent: false,
+    status(code) { capturedStatus = code; return this; },
+    json(body) { capturedJson = body; return this; }
+  };
+  const fakeReq = { method: 'GET', originalUrl: '/api/test?token=secreto123', id: 'req_owasp_a10' };
+  const sqlErr = new Error('SQLITE_ERROR: syntax error at or near SELECT * FROM users');
+
+  errorHandler(sqlErr, fakeReq, fakeRes, () => {});
+  assert.equal(capturedStatus, 500);
+  assert.equal(capturedJson.ok, false);
+  assert.equal(capturedJson.error.message.includes('SQLITE_ERROR'), false);
+  assert.equal(capturedJson.error.message.includes('SELECT'), false);
+  assert.equal(errorHandler.sanitizeErrorLogText('GET /x?api_key=abc123 Bearer eyJ.tok.sig'), 'GET /x?api_key=*** Bearer ***');
+});
+
+test('OWASP Report en vivo (/api/admin/security/owasp-report) y compresión HTTP gzip nativa', async () => {
+  await conServidor(async (base) => {
+    const adminToken = generateToken({ id: 'usr_admin_owasp', role: 'admin', name: 'Admin OWASP' });
+
+    const res = await fetch(`${base}/api/admin/security/owasp-report`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Accept-Encoding': 'gzip'
+      }
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-encoding'), 'gzip');
+    const json = await res.json();
+    assert.equal(json.ok, true);
+    assert.equal(json.data.score, '10/10');
+    assert.equal(json.data.all_controls_compliant, true);
+    assert.equal(json.data.controls.length, 10);
   });
 });

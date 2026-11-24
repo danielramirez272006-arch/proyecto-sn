@@ -70,14 +70,88 @@ const DEFAULT_ACCOUNTS = [
   }
 ];
 
+const COMMON_WEAK_PASSWORDS = new Set([
+  '123456', '1234567', '12345678', '123456789', '1234567890',
+  'password', 'qwerty', 'qwerty123', 'admin', 'admin123',
+  'contraseña', 'contrasena', 'letmein', '11111111', '00000000',
+  'abc12345', 'welcome1', 'iloveyou', 'synodos', 'gotox123'
+]);
+
 class AuthService {
+  _getTargetRounds() {
+    const configured = Number(env.security?.bcryptRounds || (env.isTest ? 10 : 12));
+    return Math.max(10, Math.min(14, Number.isFinite(configured) ? configured : 12));
+  }
+
+  _getPepper() {
+    return String(env.security?.passwordPepper || '').trim();
+  }
+
+  _applyPepper(password, pepper = this._getPepper()) {
+    const raw = String(password);
+    if (!pepper) return raw;
+    // HMAC-SHA256 con pepper secreto elimina el límite de 72 bytes de bcrypt y protege ante filtrado de BD
+    return crypto.createHmac('sha256', pepper).update(raw).digest('base64');
+  }
+
+  validatePasswordStrength(password) {
+    const raw = String(password || '');
+    if (raw.length < 8) {
+      return { valid: false, message: 'La contraseña debe tener al menos 8 caracteres.' };
+    }
+    if (raw.length > 128) {
+      return { valid: false, message: 'La contraseña no puede superar los 128 caracteres.' };
+    }
+    if (COMMON_WEAK_PASSWORDS.has(raw.trim().toLowerCase())) {
+      return { valid: false, message: 'Esta contraseña es demasiado común. Elige una combinación más segura.' };
+    }
+    const hasLetter = /[a-zA-Z]/.test(raw);
+    const hasNumber = /\d/.test(raw);
+    if (!hasLetter || !hasNumber) {
+      return { valid: false, message: 'La contraseña debe incluir al menos una letra y un número.' };
+    }
+    return { valid: true, message: null };
+  }
+
+  _needsHashUpgrade(storedHash) {
+    const raw = String(storedHash || '');
+    if (!raw) return false;
+    const pepper = this._getPepper();
+    const targetRounds = this._getTargetRounds();
+
+    if (pepper) {
+      if (!raw.startsWith('v2p$')) return true;
+      const inner = raw.slice(4);
+      const match = inner.match(/^\$2[aby]\$(\d{2})\$/);
+      return !match || parseInt(match[1], 10) < targetRounds;
+    }
+
+    const match = raw.match(/^\$2[aby]\$(\d{2})\$/);
+    return !match || parseInt(match[1], 10) < targetRounds;
+  }
+
   hashPassword(password) {
-    return bcrypt.hashSync(String(password), 10);
+    const rounds = this._getTargetRounds();
+    const pepper = this._getPepper();
+    const material = this._applyPepper(password, pepper);
+    const hashed = bcrypt.hashSync(material, rounds);
+    return pepper ? `v2p$${hashed}` : hashed;
   }
 
   verifyPassword(password, storedHash) {
     if (!storedHash) return false;
     const raw = String(storedHash);
+
+    // 0. Formato endurecido v2p$: HMAC-SHA256(pepper) + bcrypt cost 12
+    if (raw.startsWith('v2p$')) {
+      const pepper = this._getPepper();
+      if (!pepper) return false;
+      try {
+        return bcrypt.compareSync(this._applyPepper(password, pepper), raw.slice(4));
+      } catch {
+        return false;
+      }
+    }
 
     // 1. Formato estándar bcrypt ($2a$ / $2b$ / $2y$)
     if (raw.startsWith('$2a$') || raw.startsWith('$2b$') || raw.startsWith('$2y$')) {
@@ -99,14 +173,18 @@ class AuthService {
       }
     }
 
-    // 3. Compatibilidad con hashes simples de desarrollo / semillas SQL
+    // 3. Compatibilidad con hashes simples de desarrollo / semillas SQL (comparación tiempo constante)
     if (raw.startsWith('sha256_')) {
       const legacy = `sha256_${crypto.createHash('sha256').update(String(password)).digest('hex')}`;
-      return legacy === raw;
+      const a = Buffer.from(legacy, 'utf8');
+      const b = Buffer.from(raw, 'utf8');
+      return a.length === b.length && crypto.timingSafeEqual(a, b);
     }
 
     const simpleHash = crypto.createHash('sha256').update(String(password)).digest('hex');
-    return simpleHash === raw;
+    const a = Buffer.from(simpleHash, 'utf8');
+    const b = Buffer.from(raw, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
   }
 
   async ensureDefaultAccounts() {
@@ -303,9 +381,8 @@ class AuthService {
       throw new Error('INVALID_CREDENTIALS');
     }
 
-    // Auto-upgrade transparente de hashes legacy (SHA-256 / PBKDF2) a bcrypt (cost 10)
-    const storedStr = String(user.password_hash || '');
-    if (storedStr && !storedStr.startsWith('$2a$') && !storedStr.startsWith('$2b$') && !storedStr.startsWith('$2y$')) {
+    // Auto-upgrade transparente de hashes legacy (SHA-256 / PBKDF2 / bcrypt cost < 12 / sin pepper)
+    if (this._needsHashUpgrade(user.password_hash)) {
       const upgradedHash = this.hashPassword(password);
       await execute(
         'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',

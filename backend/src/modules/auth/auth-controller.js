@@ -28,7 +28,8 @@ class AuthController {
       } = req.body || {};
       if (!name || !email || !password) return badRequest(res, 'name, email y password son requeridos');
       if (!EMAIL_REGEX.test(String(email).trim())) return badRequest(res, 'El formato del correo electrónico no es válido');
-      if (String(password).length < 6) return badRequest(res, 'La contraseña debe tener al menos 6 caracteres');
+      const strength = authService.validatePasswordStrength(password);
+      if (!strength.valid) return badRequest(res, strength.message);
       if (acceptTerms !== true || acceptPrivacy !== true) {
         return badRequest(res, 'Debes aceptar los Términos y Condiciones (acceptTerms: true) y la Política de Privacidad (acceptPrivacy: true) según la Ley N.º 8968.');
       }
@@ -130,8 +131,9 @@ class AuthController {
       if (!EMAIL_REGEX.test(String(email).trim())) {
         return badRequest(res, 'El formato del correo electrónico no es válido.');
       }
-      if (String(newPassword).length < 6) {
-        return badRequest(res, 'La nueva contraseña debe tener al menos 6 caracteres.');
+      const strength = authService.validatePasswordStrength(newPassword);
+      if (!strength.valid) {
+        return badRequest(res, strength.message);
       }
       const result = await authService.resetPassword({ email, token, newPassword }, req);
       return success(res, result);

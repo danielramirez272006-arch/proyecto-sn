@@ -30,6 +30,22 @@ import {
   ArrowLeft
 } from 'lucide-react';
 
+function evaluarFuerzaClave(clave) {
+  const val = String(clave || '');
+  const reglas = {
+    longitud: val.length >= 8,
+    mayuscula: /[A-Z]/.test(val),
+    numero: /\d/.test(val),
+    simbolo: /[^A-Za-z0-9]/.test(val)
+  };
+  const puntaje = Object.values(reglas).filter(Boolean).length;
+  const nivel =
+    puntaje <= 1 ? 'Débil' : puntaje === 2 ? 'Media' : puntaje === 3 ? 'Segura' : 'Muy segura';
+  const color =
+    puntaje <= 1 ? 'bg-rose-500' : puntaje === 2 ? 'bg-amber-500' : puntaje === 3 ? 'bg-sky-500' : 'bg-emerald-500';
+  return { puntaje, nivel, color, reglas };
+}
+
 export function Acceso() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -110,8 +126,8 @@ export function Acceso() {
     if (!correoRegistro.includes('@') || !correoRegistro.includes('.')) {
       err.correoRegistro = t('accesoExt.errCorreoValido');
     }
-    if (!claveRegistro || claveRegistro.length < 6) {
-      err.claveRegistro = t('accesoExt.errClave6');
+    if (!claveRegistro || claveRegistro.length < 8 || !/[a-zA-Z]/.test(claveRegistro) || !/\d/.test(claveRegistro)) {
+      err.claveRegistro = 'Mínimo 8 caracteres, incluyendo al menos una letra y un número.';
     }
     if (incluirMascota) {
       if (!nombrePerro.trim()) err.nombrePerro = t('accesoExt.errNombreMascota');
@@ -156,8 +172,8 @@ export function Acceso() {
       // Paso 2: validar código y nueva contraseña
       const errRec = {};
       if (!codigoRecuperar.trim()) errRec.codigoRecuperar = t('accesoExt.errCodigoRec');
-      if (!nuevaClaveRecuperar || nuevaClaveRecuperar.length < 6) {
-        errRec.nuevaClaveRecuperar = t('accesoExt.errClave6');
+      if (!nuevaClaveRecuperar || nuevaClaveRecuperar.length < 8 || !/[a-zA-Z]/.test(nuevaClaveRecuperar) || !/\d/.test(nuevaClaveRecuperar)) {
+        errRec.nuevaClaveRecuperar = 'Mínimo 8 caracteres, incluyendo al menos una letra y un número.';
       }
       if (nuevaClaveRecuperar !== confirmarClaveRecuperar) {
         errRec.confirmarClaveRecuperar = t('accesoExt.errClavesNoCoinciden');
@@ -647,16 +663,50 @@ export function Acceso() {
                         required
                       />
                       <Input
-                        label={t('accesoExt.claveMin6')}
+                        label="Contraseña (mín. 8 caracteres)"
                         type="password"
                         icon={Lock}
                         value={claveRegistro}
                         onChange={(e) => setClaveRegistro(e.target.value)}
                         error={errores.claveRegistro}
-                        placeholder="••••••••••"
+                        placeholder="Ej: MiClave2026!"
                         required
                       />
                     </div>
+
+                    {claveRegistro && (() => {
+                      const { puntaje, nivel, color, reglas } = evaluarFuerzaClave(claveRegistro);
+                      return (
+                        <div className="space-y-1.5 pt-0.5">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="opacity-75">Seguridad de la contraseña (bcrypt + pepper)</span>
+                            <span className="font-semibold">{nivel}</span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {[1, 2, 3, 4].map((idx) => (
+                              <div
+                                key={idx}
+                                className={`h-1.5 rounded-full transition-colors ${idx <= puntaje ? color : 'bg-slate-200 dark:bg-white/10'}`}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] opacity-80">
+                            <span className={reglas.longitud ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}>
+                              {reglas.longitud ? '✓' : '○'} 8+ caracteres
+                            </span>
+                            <span className={reglas.mayuscula ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}>
+                              {reglas.mayuscula ? '✓' : '○'} Mayúscula
+                            </span>
+                            <span className={reglas.numero ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}>
+                              {reglas.numero ? '✓' : '○'} Número
+                            </span>
+                            <span className={reglas.simbolo ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}>
+                              {reglas.simbolo ? '✓' : '○'} Símbolo (!@#)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input

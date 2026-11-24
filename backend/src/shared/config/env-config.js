@@ -11,6 +11,15 @@ const env = {
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   jwtSecret: process.env.JWT_SECRET || 'dev_insecure_jwt_secret_change_in_production',
   sessionCookieName: process.env.SESSION_COOKIE_NAME || 'sn_session',
+  security: {
+    passwordPepper: process.env.NODE_ENV === 'test'
+      ? (process.env.TEST_PASSWORD_PEPPER || '')
+      : (process.env.PASSWORD_PEPPER || ''),
+    bcryptRounds: parseInt(
+      process.env.BCRYPT_ROUNDS || (process.env.NODE_ENV === 'test' ? '10' : '12'),
+      10
+    ),
+  },
   db: {
     dialect: process.env.DB_DIALECT || (process.env.NODE_ENV === 'test' ? 'sqlite' : 'mysql'),
     host: process.env.DB_HOST || 'localhost',

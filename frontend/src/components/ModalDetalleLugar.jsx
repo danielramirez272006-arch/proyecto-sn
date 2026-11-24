@@ -14,24 +14,64 @@ import {
   Phone,
   CheckCircle2,
   Users,
-  LogIn
+  LogIn,
+  Droplets,
+  Sun,
+  MessageSquarePlus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTema } from '../context/TemaContext';
 import { useSesion } from '../hooks/useSesion';
-import { esFavorito, alternarFavorito, obtenerPlanes, agregarParadaAPlan } from '../servicios/almacenamientoCliente';
+import {
+  esFavorito,
+  alternarFavorito,
+  obtenerPlanes,
+  agregarParadaAPlan,
+  obtenerCheckinsLugar,
+  registrarCheckinLugar
+} from '../servicios/almacenamientoCliente';
 import { LugarFoto } from './LugarFoto';
+import { useIdioma } from '../context/IdiomaContext';
 
 export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
   const { esClaro, esMorado, esOscuro } = useTema();
-  const { isLoggedIn } = useSesion();
+  const { isLoggedIn, usuario, mascota } = useSesion();
+  const { t } = useIdioma();
   const [favorito, setFavorito] = useState(() => (lugar ? esFavorito(lugar.id) : false));
   const [fotoActiva, setFotoActiva] = useState(0);
   const [modalPlanAbierto, setModalPlanAbierto] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('');
 
+  // Estados de Check-in Comunitario en Vivo
+  const [checkins, setCheckins] = useState(() => (lugar ? obtenerCheckinsLugar(lugar.id) : []));
+  const [formCheckinAbierto, setFormCheckinAbierto] = useState(false);
+  const [chkAgua, setChkAgua] = useState(true);
+  const [chkRuido, setChkRuido] = useState(true);
+  const [chkSombra, setChkSombra] = useState(true);
+  const [chkComentario, setChkComentario] = useState('');
+
   if (!lugar) return null;
 
+  const handlePublicarCheckin = (e) => {
+    e.preventDefault();
+    const nombreMascota =
+      mascota?.nombre && mascota.nombre !== 'Sin mascota registrada'
+        ? `${mascota.nombre} (${mascota.raza || 'Canino'})`
+        : t('detalleLugar.visitaPet');
+    const actualizados = registrarCheckinLugar(lugar.id, {
+      autor: usuario?.nombre || t('comun.tutorDefault'),
+      mascota: nombreMascota,
+      aguaFresca: chkAgua,
+      ruidoCalmo: chkRuido,
+      sombraSegura: chkSombra,
+      comentario: chkComentario
+    });
+    setCheckins(actualizados);
+    setChkComentario('');
+    setFormCheckinAbierto(false);
+    setMensajeExito(t('detalleLugar.checkinOk'));
+    setTimeout(() => setMensajeExito(''), 3500);
+  };
   const galeria = Array.isArray(lugar.galeria) && lugar.galeria.length > 0
     ? lugar.galeria.filter(Boolean)
     : lugar.imagen
@@ -47,12 +87,12 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
   const handleAgregarAPlan = (planId) => {
     agregarParadaAPlan(planId, {
       lugarId: lugar.id,
-      horaEstimada: "Por definir",
+      horaEstimada: t('detalleLugar.porDefinir'),
       duracionMinutos: 60,
-      nota: `Parada en ${lugar.nombre}`
+      nota: t('detalleLugar.paradaEn', { nombre: lugar.nombre })
     });
     setModalPlanAbierto(false);
-    setMensajeExito('¡Añadido a tu itinerario con éxito!');
+    setMensajeExito(t('detalleLugar.anadidoPlan'));
     setTimeout(() => setMensajeExito(''), 3000);
   };
 
@@ -78,7 +118,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
         <button
           type="button"
           onClick={onClose}
-          aria-label="Cerrar modal"
+          aria-label={t('detalleLugar.cerrarAria')}
           className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-black/50 hover:bg-black/80 text-white backdrop-blur-md transition-all active:scale-95"
         >
           <X className="w-5 h-5" />
@@ -99,7 +139,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
             {lugar.verificado && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-md">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>{lugar.insignia || 'Verificado GoToX'}</span>
+                <span>{lugar.insignia || t('detalleLugar.verificadoSynodos')}</span>
               </span>
             )}
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-white/90 text-slate-900 backdrop-blur-sm">
@@ -120,7 +160,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
                     fotoActiva === i ? 'border-[#F27B91] scale-105' : 'border-white/50 opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <img src={img} alt="Miniatura" className="w-full h-full object-cover" />
+                  <img src={img} alt={lugar.nombre} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -131,7 +171,8 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
             <button
               type="button"
               onClick={handleToggleFavorito}
-              title={favorito ? "Quitar de favoritos" : "Guardar en favoritos"}
+              aria-label={favorito ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
+              title={favorito ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
               className="absolute bottom-4 right-4 z-10 p-3 rounded-full bg-white/90 dark:bg-black/70 backdrop-blur-md shadow-lg transition-transform active:scale-90"
             >
               <Heart
@@ -176,7 +217,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
 
           {/* Descripción */}
           <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider opacity-60">Sobre el Lugar</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider opacity-60">{t('detalleLugar.sobreLugar')}</h3>
             <p className="text-sm leading-relaxed opacity-90 font-sans">
               {lugar.descripcion}
             </p>
@@ -187,7 +228,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
             <div className="p-3 rounded-2xl bg-current/5 border border-current/10 space-y-1">
               <div className="flex items-center gap-1 text-[11px] opacity-60">
                 <Clock className="w-3.5 h-3.5" />
-                <span>Horario</span>
+                <span>{t('detalleLugar.horario')}</span>
               </div>
               <p className="text-xs font-bold truncate">{lugar.horario}</p>
             </div>
@@ -195,7 +236,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
             <div className="p-3 rounded-2xl bg-current/5 border border-current/10 space-y-1">
               <div className="flex items-center gap-1 text-[11px] opacity-60">
                 <Volume2 className="w-3.5 h-3.5 text-purple-400" />
-                <span>Acústica</span>
+                <span>{t('detalleLugar.acustica')}</span>
               </div>
               <p className="text-xs font-bold">{lugar.decibelios} dB ({lugar.nivelRuido})</p>
             </div>
@@ -203,15 +244,15 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
             <div className="p-3 rounded-2xl bg-current/5 border border-current/10 space-y-1">
               <div className="flex items-center gap-1 text-[11px] opacity-60">
                 <Users className="w-3.5 h-3.5 text-blue-400" />
-                <span>Aforo Canino</span>
+                <span>{t('detalleLugar.aforoCanino')}</span>
               </div>
-              <p className="text-xs font-bold">{lugar.aforoActual} / {lugar.aforoMax} plazas</p>
+              <p className="text-xs font-bold">{t('detalleLugar.plazasCount', { actual: lugar.aforoActual, max: lugar.aforoMax })}</p>
             </div>
 
             <div className="p-3 rounded-2xl bg-current/5 border border-current/10 space-y-1">
               <div className="flex items-center gap-1 text-[11px] opacity-60">
                 <Compass className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Tiempo Sugerido</span>
+                <span>{t('detalleLugar.tiempoSugerido')}</span>
               </div>
               <p className="text-xs font-bold">{lugar.tiempoEstimado}</p>
             </div>
@@ -226,7 +267,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
             <div className="flex items-center gap-2">
               <Dog className="w-4 h-4" />
               <span className="font-bold text-xs">
-                {lugar.petFriendly === 'solo-humanos' ? 'Espacio Exclusivo para Humanos' : 'Política Pet-Friendly Verificada'}
+                {lugar.petFriendly === 'solo-humanos' ? t('detalleLugar.soloHumanos') : t('detalleLugar.petVerificada')}
               </span>
             </div>
             <p className="text-xs leading-relaxed opacity-90">
@@ -236,30 +277,30 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
 
           {/* Accesibilidad Confirmada */}
           <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider opacity-60">Accesibilidad Confirmada</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider opacity-60">{t('detalleLugar.accesibilidadConfirmada')}</h3>
             <div className="flex flex-wrap gap-2 text-xs">
               {lugar.accesibilidad?.rampa && (
                 <span className="px-3 py-1 rounded-full bg-current/5 border border-current/10 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Rampa de acceso</span>
+                  <span>{t('detalleLugar.rampaAcceso')}</span>
                 </span>
               )}
               {lugar.accesibilidad?.sillaRuedas && (
                 <span className="px-3 py-1 rounded-full bg-current/5 border border-current/10 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Apto para silla de ruedas</span>
+                  <span>{t('detalleLugar.sillaRuedas')}</span>
                 </span>
               )}
               {lugar.accesibilidad?.acusticaTranquila && (
                 <span className="px-3 py-1 rounded-full bg-current/5 border border-current/10 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Ambiente acústicamente calmo</span>
+                  <span>{t('detalleLugar.acusticaCalma')}</span>
                 </span>
               )}
               {lugar.accesibilidad?.estacionamientoPreferencial && (
                 <span className="px-3 py-1 rounded-full bg-current/5 border border-current/10 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Estacionamiento accesible</span>
+                  <span>{t('detalleLugar.estacionamientoAccesible')}</span>
                 </span>
               )}
             </div>
@@ -268,7 +309,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
           {/* Servicios Destacados */}
           {lugar.servicios && (
             <div className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider opacity-60">Comodidades y Servicios</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider opacity-60">{t('detalleLugar.comodidades')}</h3>
               <div className="flex flex-wrap gap-2">
                 {lugar.servicios.map((s, i) => (
                   <span key={i} className="text-xs px-2.5 py-1 rounded-lg bg-current/5 border border-current/10">
@@ -279,6 +320,115 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
             </div>
           )}
 
+          {/* Check-in Comunitario en Vivo (Synodos) */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-current/5 border border-current/15 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#F27B91] flex items-center gap-1.5">
+                  <MessageSquarePlus className="w-3.5 h-3.5" />
+                  <span>{t('detalleLugar.checkinTitulo', { n: checkins.length })}</span>
+                </h3>
+                <p className="text-[11px] opacity-70">
+                  {t('detalleLugar.checkinDesc')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormCheckinAbierto(!formCheckinAbierto)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/35 transition-all self-start sm:self-auto"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#F27B91]" />
+                <span>{formCheckinAbierto ? t('detalleLugar.cerrarCheckin') : t('detalleLugar.hacerCheckin')}</span>
+              </button>
+            </div>
+
+            {formCheckinAbierto && (
+              <form onSubmit={handlePublicarCheckin} className="p-3.5 rounded-xl bg-current/5 border border-[#F27B91]/30 space-y-3 text-xs">
+                <span className="font-bold block">{t('detalleLugar.confirmaEstado')}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-current/15 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={chkAgua}
+                      onChange={(e) => setChkAgua(e.target.checked)}
+                      className="accent-[#501228] w-3.5 h-3.5"
+                    />
+                    <Droplets className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    <span>{t('detalleLugar.bowlAgua')}</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-current/15 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={chkRuido}
+                      onChange={(e) => setChkRuido(e.target.checked)}
+                      className="accent-[#501228] w-3.5 h-3.5"
+                    />
+                    <Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>{t('detalleLugar.acusticaTranquila')}</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg border border-current/15 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={chkSombra}
+                      onChange={(e) => setChkSombra(e.target.checked)}
+                      className="accent-[#501228] w-3.5 h-3.5"
+                    />
+                    <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>{t('detalleLugar.pisoFresco')}</span>
+                  </label>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={chkComentario}
+                    onChange={(e) => setChkComentario(e.target.value)}
+                    placeholder={t('detalleLugar.checkinPlaceholder')}
+                    className="flex-1 px-3 py-2 rounded-xl border border-current/20 bg-transparent outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/40 shrink-0"
+                  >
+                    {t('detalleLugar.publicarCheckin')}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {checkins.length > 0 && (
+              <div className="space-y-2 max-h-44 overflow-y-auto gotox-scrollbar pr-1">
+                {checkins.map((c) => (
+                  <div key={c.id} className="p-3 rounded-xl bg-current/5 border border-current/10 space-y-1.5 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="font-bold">
+                        {c.autor} <span className="opacity-70 font-normal">&bull; {c.mascota}</span>
+                      </span>
+                      <span className="text-[10px] opacity-60">{c.fecha}</span>
+                    </div>
+                    <p className="opacity-90 leading-snug">{c.comentario}</p>
+                    <div className="flex flex-wrap gap-1.5 pt-0.5 text-[10px]">
+                      {c.aguaFresca && (
+                        <span className="px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                          {t('detalleLugar.aguaBadge')}
+                        </span>
+                      )}
+                      {c.ruidoCalmo && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          {t('detalleLugar.ruidoBadge')}
+                        </span>
+                      )}
+                      {c.sombraSegura && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                          {t('detalleLugar.pisoBadge')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Acciones de Pie */}
           <div className="pt-4 border-t border-current/10 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -288,7 +438,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
                 className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold border border-current/20 hover:bg-current/10 transition-colors"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span>Cómo Llegar (Maps)</span>
+                <span>{t('detalleLugar.comoLlegar')}</span>
               </button>
 
               {lugar.telefono && (
@@ -297,7 +447,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
                   className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold border border-current/20 hover:bg-current/10 transition-colors"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  <span>Llamar</span>
+                  <span>{t('comun.llamar')}</span>
                 </a>
               )}
             </div>
@@ -310,7 +460,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/30 transition-all shadow-md active:scale-95"
                 >
                   <CalendarPlus className="w-4 h-4 text-[#F27B91]" />
-                  <span>Añadir a Mis Planes</span>
+                  <span>{t('detalleLugar.anadirPlanes')}</span>
                 </button>
               ) : (
                 <Link
@@ -319,7 +469,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/30 transition-all shadow-md active:scale-95"
                 >
                   <LogIn className="w-4 h-4 text-[#F27B91]" />
-                  <span>Inicia sesión para guardar en Favoritos y Planes</span>
+                  <span>{t('detalleLugar.loginGuardar')}</span>
                 </Link>
               )}
             </div>
@@ -328,7 +478,7 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
           {/* Selector de Plan si se activa */}
           {isLoggedIn && modalPlanAbierto && (
             <div className="p-4 rounded-2xl bg-current/5 border border-current/15 space-y-3 animate-in fade-in">
-              <span className="text-xs font-bold block">Selecciona el plan donde deseas agregar este lugar:</span>
+              <span className="text-xs font-bold block">{t('detalleLugar.seleccionaPlan')}</span>
               <div className="space-y-2">
                 {planes.map(p => (
                   <button
@@ -339,9 +489,9 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
                   >
                     <div>
                       <p className="font-bold">{p.titulo}</p>
-                      <span className="opacity-60 text-[11px]">{p.paradas?.length || 0} paradas programadas</span>
+                      <span className="opacity-60 text-[11px]">{t('detalleLugar.paradasProg', { n: p.paradas?.length || 0 })}</span>
                     </div>
-                    <span className="text-xs font-bold text-[#F27B91]">+ Añadir</span>
+                    <span className="text-xs font-bold text-[#F27B91]">{t('detalleLugar.masAnadir')}</span>
                   </button>
                 ))}
               </div>

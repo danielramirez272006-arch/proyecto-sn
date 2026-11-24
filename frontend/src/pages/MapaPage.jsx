@@ -6,6 +6,7 @@ import { TERRAZAS } from '../data/terrazas';
 import { PageWrapper } from '../components/PageWrapper';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 import {
   MapPin,
   Volume2,
@@ -147,6 +148,7 @@ function crearPinLugarHtml(lugar, seleccionado, esClaro, reducedMotion) {
 export function MapaPage() {
   const telemetria = useTelemetria();
   const { tema } = useTema();
+  const { t } = useIdioma();
   const tokens = useMemo(() => obtenerTokensMapa(tema), [tema]);
   const prefersReducedMotion = useReducedMotion();
 
@@ -180,7 +182,7 @@ export function MapaPage() {
 
   const [lugaresExternosRaw, setLugaresExternosRaw] = useState([]);
   const [zonaModificadaPorUsuario, setZonaModificadaPorUsuario] = useState(false);
-  const [mensajeZona, setMensajeZona] = useState('');
+  const [mensajeZonaKey, setMensajeZonaKey] = useState('');
 
   const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
   const [estadoGps, setEstadoGps] = useState('idle');
@@ -316,7 +318,7 @@ export function MapaPage() {
     map.on('moveend', () => {
       if (userInteractingRef.current && !programmaticMoveRef.current) {
         setZonaModificadaPorUsuario(true);
-        setMensajeZona('');
+        setMensajeZonaKey('');
       }
       userInteractingRef.current = false;
     });
@@ -396,9 +398,9 @@ export function MapaPage() {
     });
 
     L.marker([ubicacionUsuario.lat, ubicacionUsuario.lng], { icon: userIcon })
-      .bindTooltip('Tu ubicación aproximada', { direction: 'top', offset: [0, -10] })
+      .bindTooltip(t('mapaExt.tuUbicacion'), { direction: 'top', offset: [0, -10] })
       .addTo(layer);
-  }, [ubicacionUsuario]);
+  }, [ubicacionUsuario, t]);
 
   // Marcadores de lugares + capas independientes
   useEffect(() => {
@@ -549,10 +551,10 @@ export function MapaPage() {
           setLugaresExternosRaw(items);
         }
       }
-      setMensajeZona('Área actualizada.');
+      setMensajeZonaKey('mapaExt.areaActualizada');
     } catch (err) {
       if (err?.name !== 'AbortError') {
-        setMensajeZona('Mostrando lugares disponibles en el prototipo.');
+        setMensajeZonaKey('mapaExt.mostrandoPrototipo');
       }
     } finally {
       if (abortControllerRef.current === controller) {
@@ -576,7 +578,7 @@ export function MapaPage() {
     setMostrarRutasVerdes(true);
     setMostrarRiesgoPodal(true);
     setZonaModificadaPorUsuario(false);
-    setMensajeZona('');
+    setMensajeZonaKey('');
     setLugaresExternosRaw([]);
     moverMapa(CENTRO_GAM.lat, CENTRO_GAM.lng, 15);
   }, [handleLimpiarFiltros, moverMapa]);
@@ -593,14 +595,14 @@ export function MapaPage() {
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold ${tokens.badgeDemo}`}
                 >
                   <Compass className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Demo GAM</span>
+                  <span>{t('mapa.badge')}</span>
                 </span>
                 <h1 className={`font-serif text-xl sm:text-2xl font-bold tracking-tight ${tokens.textoTitulo}`}>
-                  Mapa Interactivo
+                  {t('mapa.titulo')}
                 </h1>
               </div>
               <p className={`text-xs ${tokens.textoMuted}`}>
-                Estados y distancias ilustrativas (no confirmadas por los locales).
+                {t('mapa.subtitulo')}
               </p>
             </div>
 
@@ -608,13 +610,13 @@ export function MapaPage() {
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border ${tokens.superficiePrincipal}`}>
                 <Thermometer className="w-3.5 h-3.5 text-[#F27B91]" aria-hidden="true" />
                 <span className={tokens.textoCuerpo}>
-                  Asfalto: <strong className={tokens.textoTitulo}>{telemetria.temperaturaAsfalto} °C</strong>
+                  {t('mapa.asfalto')} <strong className={tokens.textoTitulo}>{telemetria.temperaturaAsfalto} °C</strong>
                 </span>
               </div>
               <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border ${tokens.superficiePrincipal}`}>
                 <Volume2 className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
                 <span className={tokens.textoCuerpo}>
-                  Ruido: <strong className={tokens.textoTitulo}>{telemetria.aforoAcusticoDb} dB</strong>
+                  {t('mapa.ruido')} <strong className={tokens.textoTitulo}>{telemetria.aforoAcusticoDb} dB</strong>
                 </span>
               </div>
             </div>
@@ -634,7 +636,7 @@ export function MapaPage() {
           {/* Columna Lateral Escritorio (>= 1024px) */}
           {esEscritorio && (
             <aside
-              aria-label="Buscador, filtros y detalle de lugares"
+              aria-label={t('mapaExt.asideAria')}
               className={`h-full min-h-0 rounded-3xl border p-4 flex flex-col overflow-hidden ${tokens.superficiePrincipal}`}
             >
               {lugarSeleccionado ? (
@@ -682,10 +684,10 @@ export function MapaPage() {
                   <Crosshair className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     {estadoGps === 'ready'
-                      ? 'Ubicación activa'
+                      ? t('mapaExt.ubicacionActiva')
                       : estadoGps === 'locating'
-                      ? 'Ubicando...'
-                      : 'Mi ubicación'}
+                      ? t('mapaExt.ubicando')
+                      : t('mapaExt.miUbicacion')}
                   </span>
                 </button>
 
@@ -696,7 +698,7 @@ export function MapaPage() {
                     className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 shadow-lg transition-transform active:scale-[0.98] ${tokens.botonPrimario} ${tokens.focusRing}`}
                   >
                     <Search className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                    <span>Buscar en esta zona</span>
+                    <span>{t('mapaExt.buscarZona')}</span>
                   </button>
                 )}
               </div>
@@ -705,7 +707,7 @@ export function MapaPage() {
               <div
                 className={`flex flex-wrap items-center gap-1.5 p-1 rounded-xl border ${tokens.superficieFlotante}`}
                 role="group"
-                aria-label="Capas del mapa"
+                aria-label={t('mapaExt.capasAria')}
               >
                 <button
                   type="button"
@@ -716,7 +718,7 @@ export function MapaPage() {
                   }`}
                 >
                   <Navigation className="w-3 h-3 shrink-0" aria-hidden="true" />
-                  <span>Rutas verdes</span>
+                  <span>{t('mapaExt.rutasVerdes')}</span>
                 </button>
                 <button
                   type="button"
@@ -727,16 +729,16 @@ export function MapaPage() {
                   }`}
                 >
                   <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden="true" />
-                  <span>Riesgo podal</span>
+                  <span>{t('mapaExt.riesgoPodal')}</span>
                 </button>
               </div>
 
-              {mensajeZona && (
+              {mensajeZonaKey && (
                 <div
                   role="status"
                   className={`px-3 py-1 rounded-xl border text-[11px] font-medium ${tokens.superficieFlotante}`}
                 >
-                  {mensajeZona}
+                  {t(mensajeZonaKey)}
                 </div>
               )}
             </div>
@@ -745,19 +747,19 @@ export function MapaPage() {
             <div
               className={`absolute top-3 right-3 z-[500] flex flex-col gap-1 p-1.5 rounded-2xl border ${tokens.superficieFlotante}`}
               role="group"
-              aria-label="Controles de zoom del mapa"
+              aria-label={t('mapaExt.zoomAria')}
             >
               <button
                 type="button"
                 onClick={() => mapRef.current?.zoomIn()}
-                aria-label="Acercar mapa"
-                title="Acercar mapa"
+                aria-label={t('mapaExt.acercar')}
+                title={t('mapaExt.acercar')}
                 className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${tokens.botonControlMapa}`}
               >
                 <ZoomIn className="w-4 h-4" aria-hidden="true" />
               </button>
               <span
-                aria-label={`Nivel de zoom ${zoomActual}`}
+                aria-label={t('mapaExt.nivelZoom', { zoom: zoomActual })}
                 className={`text-[11px] font-mono font-bold text-center tabular-nums ${tokens.textoCuerpo}`}
               >
                 z{zoomActual}
@@ -765,8 +767,8 @@ export function MapaPage() {
               <button
                 type="button"
                 onClick={() => mapRef.current?.zoomOut()}
-                aria-label="Alejar mapa"
-                title="Alejar mapa"
+                aria-label={t('mapaExt.alejar')}
+                title={t('mapaExt.alejar')}
                 className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${tokens.botonControlMapa}`}
               >
                 <ZoomOut className="w-4 h-4" aria-hidden="true" />
@@ -774,8 +776,8 @@ export function MapaPage() {
               <button
                 type="button"
                 onClick={resetearVista}
-                aria-label="Restablecer vista del mapa"
-                title="Restablecer vista"
+                aria-label={t('mapaExt.restablecerVista')}
+                title={t('mapaExt.restablecerTitle')}
                 className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${tokens.botonControlMapa}`}
               >
                 <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
@@ -792,7 +794,7 @@ export function MapaPage() {
                   className={`px-3 py-1.5 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 ${tokens.superficieFlotante} ${tokens.focusRing}`}
                 >
                   <Layers className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Leyenda</span>
+                  <span>{t('mapaExt.leyenda')}</span>
                 </button>
               ) : (
                 <div
@@ -800,20 +802,20 @@ export function MapaPage() {
                 >
                   <span className="inline-flex items-center gap-1.5 font-semibold">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/60" />
-                    Permitido (demo)
+                    {t('mapaExt.permitidoDemo')}
                   </span>
                   <span className="inline-flex items-center gap-1.5 font-semibold">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-white/60" />
-                    Desconocido / Alerta
+                    {t('mapaExt.desconocidoAlerta')}
                   </span>
                   <span className="inline-flex items-center gap-1.5 font-semibold">
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-500 border border-white/60" />
-                    No permitido
+                    {t('mapaExt.noPermitido')}
                   </span>
                   {!esEscritorio && (
                     <button
                       type="button"
-                      aria-label="Ocultar leyenda"
+                      aria-label={t('mapaExt.ocultarLeyenda')}
                       onClick={() => setLeyendaMovilAbierta(false)}
                       className={`ml-1 p-1 rounded-lg ${tokens.botonControlMapa}`}
                     >
@@ -841,7 +843,7 @@ export function MapaPage() {
                         elementoInfo.tipo === 'corredor' ? tokens.corredorVerde : tokens.alertaAsfalto
                       }`}
                     >
-                      {elementoInfo.tipo === 'corredor' ? 'Corredor Demo' : 'Alerta Podal Demo'}
+                      {elementoInfo.tipo === 'corredor' ? t('mapaExt.corredorDemo') : t('mapaExt.alertaPodalDemo')}
                     </span>
                     <h3 className={`font-serif font-bold text-sm ${tokens.textoTitulo}`}>
                       {elementoInfo.data.nombre}
@@ -853,7 +855,7 @@ export function MapaPage() {
                   </div>
                   <button
                     type="button"
-                    aria-label="Cerrar aviso del mapa"
+                    aria-label={t('mapaExt.cerrarAviso')}
                     onClick={() => setElementoInfo(null)}
                     className={`p-1.5 rounded-lg border text-xs ${tokens.botonSecundario} ${tokens.focusRing}`}
                   >
@@ -862,7 +864,7 @@ export function MapaPage() {
                 </div>
                 <p className={`text-xs leading-relaxed ${tokens.textoCuerpo}`}>
                   {elementoInfo.tipo === 'corredor'
-                    ? `${elementoInfo.data.decibelios} dB · Sombra ${elementoInfo.data.sombra}. ${elementoInfo.data.detalle}`
+                    ? `${elementoInfo.data.decibelios} dB · ${t('mapaExt.sombraDetalle')} ${elementoInfo.data.sombra}. ${elementoInfo.data.detalle}`
                     : `${elementoInfo.data.temp} · ${elementoInfo.data.alerta}`}
                 </p>
               </div>

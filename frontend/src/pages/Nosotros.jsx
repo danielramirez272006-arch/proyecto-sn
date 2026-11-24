@@ -9,8 +9,10 @@ import { Button } from '../components/ui/Button';
 import { PageWrapper } from '../components/PageWrapper';
 import { ShieldCheck, Heart, Sparkles, MapPin, Award, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useIdioma } from '../context/IdiomaContext';
 
 export function Nosotros() {
+  const { t } = useIdioma();
   const renderAvatar = (tipoAvatar) => {
     switch (tipoAvatar) {
       case 'robin':
@@ -30,16 +32,16 @@ export function Nosotros() {
         {/* Encabezado Editorial */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FDF2F4] text-[#501228] text-xs font-semibold">
-            <Heart className="w-3.5 h-3.5 fill-[#501228]" />
-            <span>Manifiesto GoToX Pet OS</span>
+            <Heart className="w-3.5 h-3.5 fill-[#501228]" aria-hidden="true" />
+            <span>{t('nosotros.badge')}</span>
           </div>
 
           <h1 className="font-serif text-4xl sm:text-5xl font-bold text-[#111827] tracking-tight">
-            Ciudades diseñadas para convivir en cuatro patas
+            {t('nosotros.titulo')}
           </h1>
 
           <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-            GoToX Pet OS nació en San José, Costa Rica, para resolver un vacío crítico: la falta de datos ambientales en tiempo real adaptados a la fisonomía de las mascotas que transitan por nuestras calles.
+            {t('nosotros.subtitulo')}
           </p>
         </div>
 
@@ -50,10 +52,10 @@ export function Nosotros() {
               01
             </div>
             <h3 className="font-serif font-bold text-xl text-[#111827]">
-              Bienestar Podal & Térmico
+              {t('nosotros.pilar1Titulo')}
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Nuestras mascotas no llevan suelas protectoras. Desarrollamos algoritmos que analizan la retención térmica de la mezcla asfáltica bajo el sol tropical de San José Este y Oeste.
+              {t('nosotrosExt.pilar1Desc')}
             </p>
           </Card>
 
@@ -62,10 +64,10 @@ export function Nosotros() {
               02
             </div>
             <h3 className="font-serif font-bold text-xl text-[#111827]">
-              Respeto Acústico Canino
+              {t('nosotros.pilar2Titulo')}
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              El oído canino percibe frecuencias de hasta 45,000 Hz. Auditamos terrazas y bulevares para garantizar que no excedan umbrales detonantes de taquicardia o pánico.
+              {t('nosotrosExt.pilar2Desc')}
             </p>
           </Card>
 
@@ -74,10 +76,10 @@ export function Nosotros() {
               03
             </div>
             <h3 className="font-serif font-bold text-xl text-[#111827]">
-              Soberanía de Datos Médicos
+              {t('nosotros.pilar3Titulo')}
             </h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Un estándar abierto de identificación donde el historial de vacunación, pólizas y contactos de emergencia se resuelven en milisegundos mediante chips universales y códigos QR locales.
+              {t('nosotrosExt.pilar3Desc')}
             </p>
           </Card>
         </div>
@@ -85,12 +87,12 @@ export function Nosotros() {
         {/* Sección de Liderazgo y Equipo */}
         <div className="space-y-8 pt-8">
           <div className="text-center max-w-xl mx-auto space-y-2">
-            <Badge variant="burdeos">Arquitectura & Liderazgo</Badge>
+            <Badge variant="burdeos">{t('nosotros.equipoBadge')}</Badge>
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#111827]">
-              El Equipo Detrás del Sistema Operativo
+              {t('nosotros.equipoTitulo')}
             </h2>
             <p className="text-sm text-slate-600">
-              Ilustraciones exclusivas tipo avatar felino en homenaje al espíritu guardián del ecosistema urbano.
+              {t('nosotrosExt.equipoSub')}
             </p>
           </div>
 
@@ -123,7 +125,7 @@ export function Nosotros() {
 
                 <div className="pt-3 border-t border-slate-100 dark:border-white/10 w-full text-left">
                   <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-400 uppercase block mb-1">
-                    Enfoque Operativo
+                    {t('nosotrosExt.enfoqueOperativo')}
                   </span>
                   <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">
                     {miembro.enfoque}
@@ -138,15 +140,15 @@ export function Nosotros() {
         <div className="p-8 rounded-3xl bg-[#FAF9FE] dark:bg-[#111827] border border-slate-200/80 dark:border-white/10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 max-w-xl">
             <h3 className="font-serif text-2xl font-bold text-[#111827] dark:text-[#E8EDF5]">
-              ¿Gestionas un espacio gastronómico en el GAM?
+              {t('nosotros.ctaTitulo')}
             </h3>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-[#94A3B8]">
-              Solicita la inspección acústica y térmica oficial de GoToX Pet OS para obtener la certificación física e integrarte a nuestro radar satelital.
+              {t('nosotrosExt.ctaDesc')}
             </p>
           </div>
           <Link to="/terrazas">
             <Button variant="primary" icon={ArrowRight}>
-              Ver Locales Auditados
+              {t('nosotros.ctaBtn')}
             </Button>
           </Link>
         </div>
@@ -154,4 +156,6 @@ export function Nosotros() {
     </PageWrapper>
   );
 }
+
+export default Nosotros;
 

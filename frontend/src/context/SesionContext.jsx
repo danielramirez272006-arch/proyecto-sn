@@ -209,7 +209,7 @@ export function SesionProvider({ children }) {
     pet,
     acceptTerms = true,
     acceptPrivacy = true,
-    termsVersion = '2026-11-v2',
+    termsVersion = '2026.11-CR-8968',
     cookiesPreferences = null
   }) => {
     setCargandoAuth(true);

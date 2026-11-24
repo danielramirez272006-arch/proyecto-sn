@@ -3,14 +3,17 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { QrCode, Download, Share2, ShieldAlert, Sparkles, Check, Phone, Heart } from 'lucide-react';
+import { useIdioma } from '../context/IdiomaContext';
 
 export function QrCollar({ mascota }) {
+  const { t } = useIdioma();
   const [copiado, setCopiado] = useState(false);
   const [imprimiendo, setImprimiendo] = useState(false);
 
-  const nombreMascota = mascota?.nombre || 'Mi Mascota';
-  const microchip = mascota?.microchipId || 'PENDIENTE';
-  const telefonoTutor = mascota?.tutor?.telefono || 'Sin registrar';
+  const nombreMascota = mascota?.nombre || t('comun.miMascotaDefault');
+  const microchip = mascota?.microchipId || t('comun.pendiente').toUpperCase();
+  const telefonoTutor = mascota?.tutor?.telefono || t('comun.sinRegistrar');
+  const nombreTutor = mascota?.tutor?.nombre || t('comun.tutorDefault');
   const qrUrl = `https://gotox.cr/sos/${microchip}`;
 
   const handleCopiarEnlace = () => {
@@ -25,7 +28,7 @@ export function QrCollar({ mascota }) {
     setImprimiendo(true);
     setTimeout(() => {
       setImprimiendo(false);
-      alert(`Preparado archivo vectorial de placa para collar de ${nombreMascota}. Resolución: 300 DPI.`);
+      alert(t('qrCollar.alertSvg', { nombre: nombreMascota }));
     }, 800);
   };
 
@@ -35,16 +38,16 @@ export function QrCollar({ mascota }) {
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#501228]">
             <QrCode className="w-3.5 h-3.5" />
-            <span>Collar Inteligente &bull; Placa NFC / QR</span>
+            <span>{t('qrCollar.tag')}</span>
           </div>
           <h3 className="font-serif font-bold text-xl text-[#111827]">
-            Placa QR de Identificación Inmediata
+            {t('qrCollar.titulo')}
           </h3>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Cualquier persona que escanee la medalla con la cámara de su teléfono accede al historial médico y contacto de emergencia de {nombreMascota} sin instalar apps.
+            {t('qrCollar.desc', { nombre: nombreMascota })}
           </p>
         </div>
-        <Badge variant="burdeos">Nivel 1 SOS</Badge>
+        <Badge variant="burdeos">{t('qrCollar.nivelSos')}</Badge>
       </div>
 
       {/* Vista de la Medalla / Collar */}
@@ -56,7 +59,7 @@ export function QrCollar({ mascota }) {
           </div>
 
           <div className="text-[10px] font-black uppercase tracking-widest text-[#501228] pt-1">
-            GOTOX PET OS
+            SYNODOS PET OS
           </div>
 
           {/* Código QR Vectorial SVG del Collar */}
@@ -65,7 +68,7 @@ export function QrCollar({ mascota }) {
               viewBox="0 0 100 100"
               className="w-full h-full text-[#501228]"
               fill="currentColor"
-              aria-label="Código QR del collar canino"
+              aria-label={t('qrCollar.ariaQr')}
             >
               {/* Marcadores de posición en esquinas (Finder patterns) */}
               <rect x="5" y="5" width="26" height="26" rx="4" fill="#501228" />
@@ -123,7 +126,7 @@ export function QrCollar({ mascota }) {
         {/* Detalles de la Placa y Acciones */}
         <div className="space-y-3 flex-1 text-xs text-slate-600">
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 space-y-1">
-            <span className="text-[10px] uppercase font-semibold text-slate-500 block">Enlace de Emergencia</span>
+            <span className="text-[10px] uppercase font-semibold text-slate-500 block">{t('qrCollar.enlaceEmergencia')}</span>
             <p className="font-mono text-[11px] text-[#501228] break-all">
               {qrUrl}
             </p>
@@ -132,11 +135,11 @@ export function QrCollar({ mascota }) {
           <div className="space-y-1.5 text-xs">
             <div className="flex items-center gap-2 text-slate-700">
               <Phone className="w-3.5 h-3.5 text-[#501228]" />
-              <span>Conecta directo a llamada con <strong>{mascota.tutor.nombre}</strong></span>
+              <span>{t('qrCollar.conectaLlamada', { tutor: nombreTutor })}</span>
             </div>
             <div className="flex items-center gap-2 text-slate-700">
               <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-              <span>Advierte de alergias y grupo sanguíneo antes de administrar fármacos</span>
+              <span>{t('qrCollar.advierteAlergias')}</span>
             </div>
           </div>
 
@@ -147,7 +150,7 @@ export function QrCollar({ mascota }) {
               icon={copiado ? Check : Share2}
               onClick={handleCopiarEnlace}
             >
-              {copiado ? 'Enlace Copiado' : 'Copiar URL SOS'}
+              {copiado ? t('qrCollar.enlaceCopiado') : t('qrCollar.copiarUrl')}
             </Button>
             <Button
               variant="primary"
@@ -156,7 +159,7 @@ export function QrCollar({ mascota }) {
               disabled={imprimiendo}
               onClick={handleSimularImpresion}
             >
-              {imprimiendo ? 'Generando...' : 'Descargar SVG de Placa'}
+              {imprimiendo ? t('qrCollar.generando') : t('qrCollar.descargarSvg')}
             </Button>
           </div>
         </div>

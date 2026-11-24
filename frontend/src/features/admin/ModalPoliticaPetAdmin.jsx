@@ -4,8 +4,10 @@ import { api } from '../../shared/services/api-client';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { useIdioma } from '../../context/IdiomaContext';
 
 export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
+  const { t } = useIdioma();
   const [accessStatus, setAccessStatus] = useState('allowed');
   const [sourceType, setSourceType] = useState('business_confirmation');
   const [seatingAccess, setSeatingAccess] = useState('outdoor');
@@ -42,13 +44,13 @@ export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
       const res = await api.put(`/admin/places/${encodeURIComponent(local.id)}/pet-policy`, payload);
       setMensaje({
         tipo: 'ok',
-        texto: 'Política Pet-Friendly y evidencia administrativa registradas correctamente.'
+        texto: t('modalPolitica.okPolitica')
       });
       if (onActualizado) onActualizado(local.id, res);
     } catch (err) {
       setMensaje({
         tipo: 'error',
-        texto: err.message || 'No se pudo actualizar la política pet-friendly en el servidor.'
+        texto: err.message || t('modalPolitica.errPolitica')
       });
     } finally {
       setGuardando(false);
@@ -66,13 +68,13 @@ export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
       });
       setMensaje({
         tipo: 'ok',
-        texto: 'Vigencia semestral confirmada y sellada en la bitácora de evidencia.'
+        texto: t('modalPolitica.okVigencia')
       });
       if (onActualizado) onActualizado(local.id, res);
     } catch (err) {
       setMensaje({
         tipo: 'error',
-        texto: err.message || 'No se pudo confirmar la vigencia del establecimiento.'
+        texto: err.message || t('modalPolitica.errVigencia')
       });
     } finally {
       setGuardando(false);
@@ -90,7 +92,7 @@ export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
         <div className="flex items-start justify-between gap-3 border-b border-current/10 pb-3">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#F27B91]">
-              Evidencia Pet-Friendly &bull; {local.id}
+              {t('modalPolitica.eyebrow', { id: local.id })}
             </span>
             <h3 className="font-serif font-bold text-lg">{local.nombre}</h3>
             <p className="text-xs opacity-70">{local.zona} &bull; {local.categoria}</p>
@@ -99,7 +101,7 @@ export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
             type="button"
             onClick={onCerrar}
             className="p-1.5 rounded-xl border border-current/15 hover:bg-current/10"
-            aria-label="Cerrar editor de política pet-friendly"
+            aria-label={t('modalPolitica.cerrarAria')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -121,47 +123,47 @@ export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
         <form onSubmit={handleGuardarPolitica} className="space-y-3 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold opacity-80">Acceso a mascotas</label>
+              <label className="block text-[11px] font-semibold opacity-80">{t('modalPolitica.lblAcceso')}</label>
               <select
                 value={accessStatus}
                 onChange={(e) => setAccessStatus(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent text-xs"
               >
-                <option value="allowed">Permitido (Allowed)</option>
-                <option value="not_allowed">No permitido (Not Allowed)</option>
-                <option value="unknown">Sin confirmar (Unknown)</option>
+                <option value="allowed">{t('modalPolitica.optAllowed')}</option>
+                <option value="not_allowed">{t('modalPolitica.optNotAllowed')}</option>
+                <option value="unknown">{t('modalPolitica.optUnknown')}</option>
               </select>
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold opacity-80">Fuente de verificación</label>
+              <label className="block text-[11px] font-semibold opacity-80">{t('modalPolitica.lblFuente')}</label>
               <select
                 value={sourceType}
                 onChange={(e) => setSourceType(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent text-xs"
               >
-                <option value="business_confirmation">Confirmación del comercio</option>
-                <option value="admin_review">Inspección administrativa</option>
+                <option value="business_confirmation">{t('modalPolitica.optBusinessConf')}</option>
+                <option value="admin_review">{t('modalPolitica.optAdminReview')}</option>
               </select>
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold opacity-80">Área habilitada</label>
+              <label className="block text-[11px] font-semibold opacity-80">{t('modalPolitica.lblArea')}</label>
               <select
                 value={seatingAccess}
                 onChange={(e) => setSeatingAccess(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-current/20 bg-transparent text-xs"
               >
-                <option value="outdoor">Terraza / Exterior</option>
-                <option value="both">Interior y Terraza</option>
-                <option value="indoor">Solo Interior</option>
+                <option value="outdoor">{t('modalPolitica.optOutdoor')}</option>
+                <option value="both">{t('modalPolitica.optBoth')}</option>
+                <option value="indoor">{t('modalPolitica.optIndoor')}</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
-              label="Máximo de mascotas por mesa"
+              label={t('modalPolitica.lblMaxPets')}
               type="number"
               min="1"
               max="10"
@@ -169,21 +171,21 @@ export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
               onChange={(e) => setMaxPets(e.target.value)}
             />
             <Input
-              label="Restricción de tamaño o peso"
+              label={t('modalPolitica.lblRestriccion')}
               value={restriccionTamano}
               onChange={(e) => setRestriccionTamano(e.target.value)}
             />
           </div>
 
           <Input
-            label="Referencia de evidencia (acta, correo o enlace verificable)"
+            label={t('modalPolitica.lblEvidenciaRef')}
             value={evidenceRef}
             onChange={(e) => setEvidenceRef(e.target.value)}
             required
           />
 
           <Input
-            label="Notas públicas sobre condiciones de ingreso"
+            label={t('modalPolitica.lblNotasPub')}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -196,7 +198,7 @@ export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
                 onChange={(e) => setLeashRequired(e.target.checked)}
                 className="accent-[#501228]"
               />
-              <span>Requiere correa o arnés obligatorio</span>
+              <span>{t('modalPolitica.chkCorrea')}</span>
             </label>
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input
@@ -205,7 +207,7 @@ export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
                 onChange={(e) => setReservationRequired(e.target.checked)}
                 className="accent-[#501228]"
               />
-              <span>Requiere reserva previa para zona pet</span>
+              <span>{t('modalPolitica.chkReserva')}</span>
             </label>
           </div>
 
@@ -218,14 +220,14 @@ export function ModalPoliticaPetAdmin({ local, onCerrar, onActualizado }) {
               disabled={guardando}
               onClick={handleConfirmarVigencia}
             >
-              Revalidar Vigencia Semestral
+              {t('modalPolitica.btnRevalidar')}
             </Button>
             <div className="flex items-center gap-2">
               <Button type="button" size="sm" variant="ghost" onClick={onCerrar}>
-                Cancelar
+                {t('modalPolitica.btnCancelar')}
               </Button>
               <Button type="submit" size="sm" variant="primary" icon={Save} disabled={guardando}>
-                {guardando ? 'Guardando...' : 'Guardar Evidencia'}
+                {guardando ? t('modalPolitica.btnGuardando') : t('modalPolitica.btnGuardar')}
               </Button>
             </div>
           </div>

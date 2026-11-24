@@ -9,10 +9,16 @@ async function bootstrap() {
   try {
     console.log('[Server] Inicializando Sistema de Sinergia Urbana Costa Rica...');
 
-    // 1. Inicializar base de datos
+    // 1. Inicializar servidor HTTP primero para que el proxy de Vite no reciba ECONNREFUSED durante migraciones en nube
+    const server = app.listen(env.port, () => {
+      console.log(`[Server] Backend Express escuchando en http://localhost:${env.port}`);
+      console.log(`[Server] Documentación y salud en http://localhost:${env.port}/api/health`);
+    });
+
+    // 2. Inicializar base de datos
     await initDatabase();
 
-    // 2. Si es desarrollo y la base está limpia, correr migraciones y seeds automáticamente
+    // 3. Si es desarrollo y la base está limpia, correr migraciones y seeds automáticamente
     if (env.nodeEnv !== 'production') {
       try {
         await runMigrations();
@@ -23,7 +29,7 @@ async function bootstrap() {
       }
     }
 
-    // 2.1 Bootstrap opcional de administrador inicial desde variables ADMIN_EMAIL / ADMIN_PASSWORD
+    // 3.1 Bootstrap opcional de administrador inicial desde variables ADMIN_EMAIL / ADMIN_PASSWORD
     try {
       const bootstrapResult = await authService.ensureBootstrapAdmin();
       if (bootstrapResult.created || bootstrapResult.updated) {
@@ -33,15 +39,9 @@ async function bootstrap() {
       console.warn('[Server] Aviso al verificar admin bootstrap:', adminErr.message);
     }
 
-    // 3. Iniciar Worker de Correo y Orquestador de Agentes
+    // 4. Iniciar Worker de Correo y Orquestador de Agentes
     emailWorker.start();
     orchestrator.init();
-
-    // 4. Iniciar servidor HTTP
-    const server = app.listen(env.port, () => {
-      console.log(`[Server] Backend Express escuchando en http://localhost:${env.port}`);
-      console.log(`[Server] Documentación y salud en http://localhost:${env.port}/api/health`);
-    });
 
     // 5. Cierre limpio (Graceful shutdown)
     const shutdown = async () => {

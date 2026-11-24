@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Lock, ShieldCheck, Dog, Sparkles } from 'lucide-react';
+import { Lock, ShieldCheck } from 'lucide-react';
+import { LogoSynodos } from './LogoSynodos';
+import { useIdioma } from '../context/IdiomaContext';
 
 /**
  * Modal animado de cierre de sesión con estética minimalista premium (Apple-like).
  * Muestra el cifrado seguro de la bóveda biométrica antes de redirigir al login (/acceso).
  * Usa createPortal hacia document.body para garantizar centrado perfecto en pantalla completa.
  */
-export function AnimacionCierreSesion({ visible, nombreUsuario = 'Tutor', onCompletado }) {
+export function AnimacionCierreSesion({ visible, nombreUsuario, onCompletado }) {
+  const { t } = useIdioma();
+  const nombreMostrado = nombreUsuario || t('comun.tutorDefault');
   const [progreso, setProgreso] = useState(0);
 
   useEffect(() => {
@@ -55,10 +59,11 @@ export function AnimacionCierreSesion({ visible, nombreUsuario = 'Tutor', onComp
           <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-[#55152D] to-[#6E1E3A] text-white flex items-center justify-center shadow-lg shadow-[#55152D]/35">
             <Lock className="w-9 h-9 text-[#FDF2F4] animate-pulse" />
 
-            {/* Insignia pequeña de mascota */}
-            <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white dark:bg-[#111827] text-[#55152D] dark:text-[#F27B91] border-2 border-white dark:border-[#111827] flex items-center justify-center shadow-sm">
-              <Dog className="w-3.5 h-3.5" />
-            </div>
+            {/* Emblema oficial de Synodos */}
+            <LogoSynodos
+              size="xs"
+              className="absolute -bottom-1 -right-1 border-2 border-white dark:border-[#111827] shadow-sm"
+            />
           </div>
         </div>
 
@@ -66,16 +71,16 @@ export function AnimacionCierreSesion({ visible, nombreUsuario = 'Tutor', onComp
         <div className="space-y-1.5">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#55152D] dark:text-[#F27B91]">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Bóveda Pet-OS
+            {t('cierreAnim.boveda')}
           </span>
           <h3 className="font-serif font-bold text-2xl text-[#111827] dark:text-[#E8EDF5] tracking-tight">
-            Cerrando Sesión
+            {t('cierreAnim.titulo')}
           </h3>
           <p className="text-xs text-slate-600 dark:text-[#94A3B8]">
-            ¡Hasta pronto, <strong className="text-slate-900 dark:text-[#E8EDF5]">{nombreUsuario}</strong>! 🐾
+            {t('cierreAnim.despedidaPrefix')} <strong className="text-slate-900 dark:text-[#E8EDF5]">{nombreMostrado}</strong>! 🐾
           </p>
           <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-0.5">
-            Cifrando tus datos biométricos y volviendo al acceso...
+            {t('cierreAnim.notaCifrado')}
           </p>
         </div>
 

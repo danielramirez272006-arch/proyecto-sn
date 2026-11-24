@@ -1,39 +1,60 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import {
-  Dog,
   ArrowLeft,
   Shield,
-  Bell,
   User,
-  ExternalLink,
   Activity,
   Menu,
   X,
   Globe,
   Radio,
-  Sliders,
   Sun,
   Moon,
   Sparkles,
   ChevronRight,
-  LogOut
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Accessibility
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
 import { BotonTema } from '../components/BotonTema';
 import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
 import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
+import { LogoSynodos } from '../components/LogoSynodos';
 import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
+import { SelectorIdioma } from '../components/SelectorIdioma';
+import { EnlaceSaltarContenido } from '../components/EnlaceSaltarContenido';
+import { abrirPanelAccesibilidad } from '../shared/components/layout/a11y-floating-dock';
 
 export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
-  const { usuario, isLoggedIn, cerrarSesion } = useSesion();
-  const { tema, setTema, esClaro, esMorado, esOscuro } = useTema();
+  const { usuario, cerrarSesion } = useSesion();
+  const { tema, setTema, esClaro, esMorado } = useTema();
+  const { t } = useIdioma();
   const navigate = useNavigate();
+
+  const [compacta, setCompacta] = useState(() => {
+    try {
+      return localStorage.getItem('gotox_sidebar_admin_compacta') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [sidebarMovilAbierto, setSidebarMovilAbierto] = useState(false);
   const [modalConfirmacionAbierto, setModalConfirmacionAbierto] = useState(false);
   const [animandoSalida, setAnimandoSalida] = useState(false);
+
+  const toggleCompacta = () => {
+    setCompacta((prev) => {
+      const nuevo = !prev;
+      try {
+        localStorage.setItem('gotox_sidebar_admin_compacta', String(nuevo));
+      } catch {}
+      return nuevo;
+    });
+  };
 
   const handleSolicitarCierre = () => {
     setSidebarMovilAbierto(false);
@@ -50,6 +71,20 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
     setAnimandoSalida(false);
     navigate('/acceso');
   };
+
+  const clasesColapsoTexto = (modoCompacto, maxWAbierto = 'max-w-[180px]') =>
+    `whitespace-nowrap overflow-hidden transition-[opacity,max-width] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      modoCompacto
+        ? 'opacity-0 max-w-0 duration-150 delay-0 pointer-events-none'
+        : `opacity-100 ${maxWAbierto} duration-200 delay-100`
+    }`;
+
+  const clasesColapsoSeccion = (modoCompacto, maxHAbierto = 'max-h-24') =>
+    `overflow-hidden transition-[opacity,max-height,margin,padding] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      modoCompacto
+        ? 'opacity-0 max-h-0 duration-150 delay-0 pointer-events-none !my-0 !py-0 border-transparent'
+        : `opacity-100 ${maxHAbierto} duration-200 delay-100`
+    }`;
 
   const clasesTema = {
     contenedor: esClaro
@@ -129,11 +164,16 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
       : esMorado
       ? 'text-rose-300 bg-[#2D0E19] hover:bg-[#3D1423] border-rose-800/40'
       : 'text-rose-300 bg-rose-950/30 hover:bg-rose-900/50 border-rose-900/50',
+
+    focusRing:
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F27B91] focus-visible:ring-offset-1'
   };
+
+  const nombreUsuarioMostrar = usuario?.nombre || 'Mariana Rojas';
 
   return (
     <div className={`panel-admin min-h-screen flex flex-col md:flex-row transition-colors duration-200 ${clasesTema.contenedor}`}>
-      {/* Modal de confirmación y advertencia */}
+      <EnlaceSaltarContenido targetId="contenido-principal" />
       <ModalConfirmarCierre
         isOpen={modalConfirmacionAbierto}
         onClose={() => setModalConfirmacionAbierto(false)}
@@ -141,198 +181,259 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
         nombreUsuario={usuario?.nombre}
       />
 
-      {/* Animación de cierre de sesión hacia /acceso */}
       <AnimacionCierreSesion
         visible={animandoSalida}
         nombreUsuario={usuario?.nombre}
         onCompletado={handleCompletarSalida}
       />
+
       {/* ============================================================
-          SIDEBAR DESKTOP & TABLET (Lateral Izquierdo)
+          SIDEBAR DESKTOP & TABLET ADMINISTRATIVO (CONTRAÍBLE Y FLUIDO)
           ============================================================ */}
-      <aside className={`hidden md:flex md:w-64 lg:w-72 flex-col justify-between shrink-0 border-r backdrop-blur-md min-h-screen sticky top-0 z-30 shadow-xs transition-colors ${clasesTema.sidebar}`}>
-        {/* Cabecera del Sidebar con Logotipo y Marca */}
-        <div className={`p-5 border-b flex flex-col gap-4 ${clasesTema.cabeceraBorde}`}>
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-xl bg-[#501228] flex items-center justify-center text-white shadow-sm group-hover:bg-[#6E1E3A] transition-colors">
-                <Dog className="w-5 h-5 text-[#FDF2F4]" />
-              </div>
-              <div className="flex flex-col">
-                <span className={`font-serif font-bold text-base leading-tight flex items-center gap-1.5 ${clasesTema.textoMarca}`}>
-                  GoToX
-                  <span className={`text-[10px] uppercase font-sans font-semibold tracking-wider px-1.5 py-0.5 rounded ${clasesTema.badgePanel}`}>
-                    Panel
+      <aside
+        aria-label={t('navExt.barraAdminAria')}
+        className={`hidden md:flex fixed inset-y-0 left-0 z-40 flex-col justify-between shrink-0 border-r backdrop-blur-md shadow-xl will-change-[width] transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          compacta ? 'w-20' : 'md:w-64 lg:w-72'
+        } ${clasesTema.sidebar}`}
+      >
+        {/* Botón de abrir/cerrar anclado sin superponerse al logo */}
+        <button
+          type="button"
+          onClick={toggleCompacta}
+          aria-expanded={!compacta}
+          aria-label={compacta ? t('nav.expandirSidebar') : t('nav.contraerSidebar')}
+          title={compacta ? t('nav.expandirSidebar') : t('nav.contraerSidebar')}
+          className={`absolute top-5 z-50 w-7 h-7 shrink-0 flex items-center justify-center rounded-lg border shadow-md transition-[right,background-color,border-color,color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            compacta ? '-right-3.5' : 'right-3'
+          } ${clasesTema.focusRing} ${
+            esClaro
+              ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+              : esMorado
+              ? 'bg-[#1F0E19] text-[#FDF2F6] border-[#F27B91]/40 hover:bg-[#55152D]'
+              : 'bg-[#111827] text-slate-200 border-white/20 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          {compacta ? (
+            <PanelLeftOpen className="w-3.5 h-3.5" aria-hidden="true" />
+          ) : (
+            <PanelLeftClose className="w-3.5 h-3.5" aria-hidden="true" />
+          )}
+        </button>
+
+        <div className="flex flex-col h-full min-h-0 justify-between overflow-hidden">
+          {/* Cabecera del Sidebar con Logotipo y Marca */}
+          <div className={`px-3 py-3.5 border-b flex flex-col gap-2.5 shrink-0 ${clasesTema.cabeceraBorde}`}>
+            <Link
+              to="/"
+              title={t('navExt.irPaginaPrincipalSynodos')}
+              className={`flex items-center justify-start pl-1.5 shrink-0 group rounded-xl ${clasesTema.focusRing}`}
+            >
+              <LogoSynodos size="md" alt="Synodos Panel" />
+              <div
+                className={`flex flex-col transition-[opacity,max-width,padding] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  compacta ? 'pl-0' : 'pl-3'
+                } ${clasesColapsoTexto(compacta, 'max-w-[165px]')}`}
+              >
+                <span className={`font-serif font-bold text-base leading-tight flex items-center gap-1.5 whitespace-nowrap ${clasesTema.textoMarca}`}>
+                  Synodos
+                  <span className={`text-[10px] uppercase font-sans font-semibold tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap ${clasesTema.badgePanel}`}>
+                    {t('nav.panelTag')}
                   </span>
                 </span>
-                <span className="text-[11px] text-slate-400 font-sans -mt-0.5">Centro de Mando GAM</span>
+                <span className="text-[11px] text-slate-400 font-sans whitespace-nowrap">{t('nav.centroMandoGam')}</span>
+              </div>
+            </Link>
+
+            {/* Enlace rápido a la Web Pública */}
+            <Link
+              to="/"
+              title={compacta ? t('nav.verWebPublica') : undefined}
+              className={`w-full flex items-center justify-start pl-1.5 pr-2.5 py-0.5 rounded-xl text-xs font-medium border whitespace-nowrap overflow-hidden transition-colors group ${clasesTema.botonWebPublica} ${clasesTema.focusRing}`}
+            >
+              <span className="w-10 h-9 shrink-0 flex items-center justify-center">
+                <Globe className="w-4 h-4 shrink-0 opacity-75 group-hover:opacity-100" aria-hidden="true" />
+              </span>
+              <div className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(compacta, 'max-w-[180px]')}`}>
+                <span className="whitespace-nowrap">{t('nav.verWebPublica')}</span>
+                <ArrowLeft className="w-3.5 h-3.5 shrink-0 rotate-180 opacity-70 group-hover:opacity-100" aria-hidden="true" />
               </div>
             </Link>
           </div>
 
-          {/* Enlace rápido a la Web Pública */}
-          <Link
-            to="/"
-            className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium border transition-colors group ${clasesTema.botonWebPublica}`}
-          >
-            <div className="flex items-center gap-2">
-              <Globe className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100" />
-              <span>Ver Web Pública</span>
-            </div>
-            <ArrowLeft className="w-3.5 h-3.5 rotate-180 opacity-70 group-hover:opacity-100 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        </div>
+          {/* Navegación Principal con Iconos Anclados y Badges */}
+          <nav aria-label={t('nav.navSistema')} className="flex-1 min-h-0 px-3 py-3 space-y-3 overflow-y-auto overflow-x-hidden gotox-scrollbar">
+            <div className="space-y-1">
+              <div className={clasesColapsoSeccion(compacta, 'max-h-7')}>
+                <span className="pl-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 whitespace-nowrap overflow-hidden">
+                  {t('nav.navSistema')}
+                </span>
+              </div>
 
-        {/* Navegación Principal con Iconos Bonitos y Badges */}
-        <div className="flex-1 p-4 space-y-6 overflow-y-auto gotox-scrollbar">
-          <div className="space-y-1">
-            <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-              Módulos de Gestión
-            </span>
-            {tabs &&
-              tabs.map((tab) => {
-                const Icono = tab.icon || Activity;
-                const activa = tabActiva === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => onTabChange && onTabChange(tab.id)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
-                      activa ? clasesTema.tabActiva : clasesTema.tabInactiva
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icono
-                        className={`w-4 h-4 transition-colors ${
-                          activa ? 'text-white' : 'opacity-70 group-hover:opacity-100'
-                        }`}
-                      />
-                      <span className="tracking-tight">{tab.label}</span>
-                    </div>
-                    {tab.badge && (
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                          activa
-                            ? 'bg-white/20 text-white'
-                            : clasesTema.badgeInactiva
-                        }`}
-                      >
-                        {tab.badge}
+              {tabs &&
+                tabs.map((tab) => {
+                  const Icono = tab.icon || Activity;
+                  const activa = tabActiva === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      aria-current={activa ? 'page' : undefined}
+                      title={compacta ? tab.label : undefined}
+                      onClick={() => onTabChange && onTabChange(tab.id)}
+                      className={`w-full flex items-center justify-start pl-1.5 pr-2.5 py-1 rounded-xl text-xs font-medium whitespace-nowrap overflow-hidden transition-colors duration-150 group ${
+                        activa ? clasesTema.tabActiva : clasesTema.tabInactiva
+                      } ${clasesTema.focusRing}`}
+                    >
+                      <span className="w-10 h-10 shrink-0 flex items-center justify-center">
+                        <Icono
+                          className={`w-4 h-4 shrink-0 transition-colors ${
+                            activa ? 'text-white' : 'opacity-70 group-hover:opacity-100'
+                          }`}
+                        />
                       </span>
-                    )}
-                  </button>
-                );
-              })}
-          </div>
 
-          {/* Tarjeta de Telemetría Urbana Operativa */}
-          <div className={`p-3.5 rounded-2xl border space-y-2 ${clasesTema.tarjetaRedGam}`}>
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 text-emerald-500" />
-                Red GAM Activa
-              </span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 gotox-radar-dot" />
+                      <div className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(compacta, 'max-w-[190px]')}`}>
+                        <span className="tracking-tight whitespace-nowrap truncate pr-2">{tab.label}</span>
+                        {tab.badge && (
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 whitespace-nowrap ${
+                              activa ? 'bg-white/20 text-white' : clasesTema.badgeInactiva
+                            }`}
+                          >
+                            {tab.badge}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
             </div>
-            <p className="text-[11px] opacity-75 leading-tight">
-              Sincronización en vivo con sensores de pavimento y clima en San José.
-            </p>
-          </div>
-        </div>
 
-        {/* Sección Inferior del Sidebar: Selector de 3 Temas y Perfil */}
-        <div className={`panel-sidebar-pie p-4 border-t space-y-3 bg-transparent ${clasesTema.cabeceraBorde}`}>
-          {/* Selector Segmentado de los 3 Temas */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">
-              Tono de Pantalla
-            </span>
-            <div className={`grid grid-cols-3 gap-1 p-1 border rounded-xl shadow-2xs ${clasesTema.selectorTonoCaja}`}>
-              <button
-                type="button"
-                onClick={() => setTema('claro')}
-                title="Modo Claro"
-                className={`flex items-center justify-center gap-1 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                  tema === 'claro'
-                    ? 'bg-amber-100 text-amber-900 border border-amber-300 font-semibold shadow-2xs'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <Sun className="w-3 h-3 text-amber-500" />
-                <span>Claro</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTema('oscuro')}
-                title="Modo Oscuro Puro Neutro"
-                className={`flex items-center justify-center gap-1 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                  tema === 'oscuro'
-                    ? 'bg-slate-800 text-white font-semibold shadow-2xs border border-white/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Moon className="w-3 h-3 text-blue-400" />
-                <span>Oscuro</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTema('morado')}
-                title="Modo Morado Vino Marca"
-                className={`flex items-center justify-center gap-1 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                  tema === 'morado'
-                    ? 'bg-[#501228] text-white font-semibold shadow-2xs border border-[#F27B91]/40'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Sparkles className="w-3 h-3 text-[#f0a6be]" />
-                <span>Vino</span>
-              </button>
+            {/* Tarjeta de Telemetría Urbana Operativa siempre en el DOM */}
+            <div className={clasesColapsoSeccion(compacta, 'max-h-24')}>
+              <div className={`p-2.5 rounded-2xl border space-y-1 whitespace-nowrap overflow-hidden ${clasesTema.tarjetaRedGam}`}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold flex items-center gap-1.5 text-[11px] whitespace-nowrap">
+                    <Radio className="w-3.5 h-3.5 text-emerald-500 shrink-0" aria-hidden="true" />
+                    <span>{t('nav.redGam')}</span>
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden="true" />
+                </div>
+                <p className="text-[10px] opacity-75 leading-tight truncate">
+                  {t('nav.redGamAdminSub')}
+                </p>
+              </div>
             </div>
-          </div>
+          </nav>
 
-          {/* Tarjeta del Operador y Cerrar Sesión */}
-          <div className="space-y-2">
-            <div className={`flex items-center justify-between p-2.5 rounded-xl border shadow-2xs ${clasesTema.tarjetaUsuario}`}>
-              <Link to="/usuario?tab=cuenta" className="flex items-center gap-2.5 min-w-0 group flex-1">
-                <div className="relative">
-                  <div className="w-8 h-8 rounded-lg bg-[#501228] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs group-hover:bg-[#6E1E3A] transition-colors">
-                    {usuario?.nombre?.charAt(0) || 'U'}
-                  </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-current" />
-                </div>
-                <div className="truncate text-left">
-                  <p className="text-xs font-bold truncate group-hover:text-[#F27B91] transition-colors">
-                    {usuario?.nombre || 'Administrador'}
-                  </p>
-                  <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                    <Shield className="w-2.5 h-2.5 text-emerald-500" />
-                    <span>Administrador Exclusivo</span>
-                  </p>
-                </div>
-              </Link>
+          {/* Sección Inferior del Sidebar: Idioma, Selector de 3 Temas y Perfil */}
+          <div className={`panel-sidebar-pie shrink-0 px-3 py-3 border-t space-y-2 bg-transparent ${clasesTema.cabeceraBorde}`}>
+            <SelectorIdioma
+              variant="sidebar"
+              compacto={compacta}
+              clasesColapsoTexto={clasesColapsoTexto}
+            />
+
+            <div className="space-y-1">
+              <div className={clasesColapsoSeccion(compacta, 'max-h-6')}>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block pl-1.5 whitespace-nowrap overflow-hidden">
+                  {t('nav.tonoPantalla')}
+                </span>
+              </div>
+              <div
+                className={`grid grid-cols-3 gap-1 p-1 border rounded-xl overflow-hidden ${clasesTema.selectorTonoCaja}`}
+                role="group"
+                aria-label={t('nav.tonoPantalla')}
+              >
+                <button
+                  type="button"
+                  onClick={() => setTema('claro')}
+                  aria-pressed={tema === 'claro'}
+                  title={t('nav.claro')}
+                  className={`flex items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-medium whitespace-nowrap overflow-hidden transition-colors ${
+                    tema === 'claro'
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300 font-semibold'
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-hidden="true" />
+                  <span className={clasesColapsoTexto(compacta, 'max-w-[60px] pl-1')}>{t('nav.claro')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTema('oscuro')}
+                  aria-pressed={tema === 'oscuro'}
+                  title={t('nav.oscuro')}
+                  className={`flex items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-medium whitespace-nowrap overflow-hidden transition-colors ${
+                    tema === 'oscuro'
+                      ? 'bg-slate-800 text-white font-semibold border border-white/20'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Moon className="w-3.5 h-3.5 text-blue-400 shrink-0" aria-hidden="true" />
+                  <span className={clasesColapsoTexto(compacta, 'max-w-[60px] pl-1')}>{t('nav.oscuro')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTema('morado')}
+                  aria-pressed={tema === 'morado'}
+                  title={t('nav.vino')}
+                  className={`flex items-center justify-center py-1.5 px-1 rounded-lg text-[11px] font-medium whitespace-nowrap overflow-hidden transition-colors ${
+                    tema === 'morado'
+                      ? 'bg-[#501228] text-white font-semibold border border-[#F27B91]/40'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#f0a6be] shrink-0" aria-hidden="true" />
+                  <span className={clasesColapsoTexto(compacta, 'max-w-[60px] pl-1')}>{t('nav.vino')}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tarjeta del Operador y Cerrar Sesión */}
+            <div className="space-y-1.5">
               <Link
                 to="/usuario?tab=cuenta"
-                title="Ir a Mi Cuenta"
-                className="p-1 rounded-lg text-slate-400 hover:text-white transition-colors"
+                title={compacta ? `Perfil: ${nombreUsuarioMostrar}` : undefined}
+                className={`w-full flex items-center justify-start pl-1.5 pr-2 py-1 rounded-xl border whitespace-nowrap overflow-hidden transition-colors group ${clasesTema.tarjetaUsuario} ${clasesTema.focusRing}`}
               >
-                <ChevronRight className="w-4 h-4" />
+                <div className="w-10 h-10 shrink-0 flex items-center justify-center">
+                  <div className="relative shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-[#501228] text-white flex items-center justify-center font-bold text-xs group-hover:bg-[#6E1E3A] transition-colors">
+                      {nombreUsuarioMostrar.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-current" />
+                  </div>
+                </div>
+                <div className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(compacta, 'max-w-[185px]')}`}>
+                  <div className="truncate text-left pr-2">
+                    <p className="text-xs font-bold truncate whitespace-nowrap group-hover:text-[#F27B91] transition-colors">
+                      {nombreUsuarioMostrar}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate flex items-center gap-1 whitespace-nowrap">
+                      <Shield className="w-2.5 h-2.5 text-emerald-500 shrink-0" aria-hidden="true" />
+                      <span>{t('nav.adminExclusivo')}</span>
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
+                </div>
               </Link>
-            </div>
 
-            {/* Botón Cerrar Sesión en Sidebar */}
-            <button
-              type="button"
-              onClick={handleSolicitarCierre}
-              className={`btn-cerrar-sesion w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold border transition-all shadow-2xs group active:scale-[0.98] ${clasesTema.botonCerrarSesion}`}
-              title="Cerrar sesión activa y volver al acceso"
-            >
-              <div className="flex items-center gap-2">
-                <LogOut className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-                <span>Cerrar Sesión</span>
-              </div>
-              <span className="text-[10px] opacity-75 font-medium">Salir</span>
-            </button>
+              <button
+                type="button"
+                onClick={handleSolicitarCierre}
+                title={compacta ? t('nav.cerrarSesion') : t('nav.cerrarSesion')}
+                className={`btn-cerrar-sesion w-full flex items-center justify-start pl-1.5 pr-2.5 py-0.5 rounded-xl text-xs font-semibold border whitespace-nowrap overflow-hidden transition-colors active:scale-[0.98] ${clasesTema.botonCerrarSesion} ${clasesTema.focusRing}`}
+              >
+                <span className="w-10 h-9 shrink-0 flex items-center justify-center">
+                  <LogOut className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                </span>
+                <div className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(compacta, 'max-w-[185px]')}`}>
+                  <span className="whitespace-nowrap">{t('nav.cerrarSesion')}</span>
+                  <span className="text-[10px] opacity-75 font-medium whitespace-nowrap">{t('nav.salir')}</span>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </aside>
@@ -342,21 +443,29 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
           ============================================================ */}
       <header className={`md:hidden sticky top-0 z-40 border-b px-4 py-3 flex items-center justify-between backdrop-blur-md ${clasesTema.sidebar}`}>
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#501228] flex items-center justify-center text-white">
-            <Dog className="w-4 h-4 text-[#FDF2F4]" />
-          </div>
+          <LogoSynodos size="sm" alt="Synodos Panel" />
           <div>
-            <span className={`font-serif font-bold text-sm ${clasesTema.textoMarca}`}>GoToX Panel</span>
+            <span className={`font-serif font-bold text-sm ${clasesTema.textoMarca}`}>Synodos Panel</span>
           </div>
         </Link>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={abrirPanelAccesibilidad}
+            aria-label={t('nav.accesibilidad')}
+            title={t('nav.accesibilidad')}
+            className="p-1.5 rounded-xl border border-current/20 text-[#F27B91] hover:bg-current/5 transition-colors"
+          >
+            <Accessibility className="w-4 h-4" aria-hidden="true" />
+          </button>
+          <SelectorIdioma variant="header" />
           <BotonTema conMenu={true} className="w-8 h-8" />
           <button
             type="button"
             onClick={() => setSidebarMovilAbierto(!sidebarMovilAbierto)}
             className="p-2 rounded-xl text-slate-400 hover:text-white border border-current/20"
-            aria-label="Menú de Navegación del Panel"
+            aria-label={t('navExt.menuPanel')}
           >
             {sidebarMovilAbierto ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -369,7 +478,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
           <div className={`w-72 h-full p-4 flex flex-col justify-between shadow-2xl animate-in slide-in-from-left duration-200 border-r ${clasesTema.sidebar}`}>
             <div className="space-y-4">
               <div className={`flex items-center justify-between pb-3 border-b ${clasesTema.cabeceraBorde}`}>
-                <span className={`font-serif font-bold text-sm ${clasesTema.textoMarca}`}>Centro de Mando</span>
+                <span className={`font-serif font-bold text-sm ${clasesTema.textoMarca}`}>{t('navExt.centroMando')}</span>
                 <button
                   type="button"
                   onClick={() => setSidebarMovilAbierto(false)}
@@ -422,7 +531,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                   className="flex items-center gap-2 px-3 py-2 text-xs opacity-75 hover:opacity-100 rounded-xl"
                 >
                   <Globe className="w-4 h-4" />
-                  <span>Volver a Web Pública</span>
+                  <span>{t('navExt.volverWebPublica')}</span>
                 </Link>
                 <Link
                   to="/usuario?tab=cuenta"
@@ -430,7 +539,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                   className="flex items-center gap-2 px-3 py-2 text-xs opacity-75 hover:opacity-100 rounded-xl"
                 >
                   <User className="w-4 h-4" />
-                  <span>Bóveda Pet</span>
+                  <span>{t('nav.boveda')}</span>
                 </Link>
                 <button
                   type="button"
@@ -438,14 +547,14 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                   className={`btn-cerrar-sesion w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold border rounded-xl transition-colors ${clasesTema.botonCerrarSesion}`}
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>Cerrar Sesión</span>
+                  <span>{t('nav.cerrarSesion')}</span>
                 </button>
               </div>
             </div>
 
             <div className={`pt-3 border-t ${clasesTema.cabeceraBorde}`}>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                Tema de Interfaz
+                {t('navExt.temaInterfaz')}
               </span>
               <div className="grid grid-cols-3 gap-1">
                 <button
@@ -455,7 +564,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                     tema === 'claro' ? 'bg-amber-100 text-amber-900 font-bold' : 'text-slate-400'
                   }`}
                 >
-                  Claro
+                  {t('nav.claro')}
                 </button>
                 <button
                   type="button"
@@ -464,7 +573,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                     tema === 'oscuro' ? 'bg-slate-800 text-white font-bold border border-white/20' : 'text-slate-400'
                   }`}
                 >
-                  Oscuro
+                  {t('nav.oscuro')}
                 </button>
                 <button
                   type="button"
@@ -473,7 +582,7 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
                     tema === 'morado' ? 'bg-[#501228] text-white font-bold border border-[#F27B91]/30' : 'text-slate-400'
                   }`}
                 >
-                  Vino
+                  {t('nav.vino')}
                 </button>
               </div>
             </div>
@@ -483,9 +592,15 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
       )}
 
       {/* ============================================================
-          ÁREA PRINCIPAL DE CONTENIDO
+          ÁREA PRINCIPAL DE CONTENIDO (SINCRONIZADA CON EL ANCHO DEL ASIDE)
           ============================================================ */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden min-h-screen">
+      <main
+        id="contenido-principal"
+        tabIndex={-1}
+        className={`flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden min-h-screen outline-none transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[padding] ${
+          compacta ? 'md:pl-24' : 'md:pl-72 lg:pl-80'
+        }`}
+      >
         <div className="max-w-[1280px] mx-auto space-y-6">
           {children || <Outlet />}
         </div>
@@ -493,3 +608,5 @@ export function LayoutPanel({ children, tabs, tabActiva, onTabChange }) {
     </div>
   );
 }
+
+export default LayoutPanel;

@@ -4,6 +4,7 @@ import { TERRAZAS } from '../data/terrazas';
 import { api } from '../shared/services/api-client';
 import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
 import { LugarFoto } from './LugarFoto';
+import { useIdioma } from '../context/IdiomaContext';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react';
 
 export function RadarTerrazas() {
+  const { t } = useIdioma();
   const [filtroRuido, setFiltroRuido] = useState('todos'); // 'todos' | 'silencioso' | 'moderado'
   const [soloEspacioDisponible, setSoloEspacioDisponible] = useState(false);
   const [busqueda, setBusqueda] = useState('');
@@ -80,20 +82,20 @@ export function RadarTerrazas() {
           <div className="space-y-2 max-w-2xl text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111827] border border-white/10 text-xs font-semibold text-[#F27B91]">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Verificación Continua de Espacios en el GAM</span>
+              <span>{t('radar.badge')}</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#E8EDF5] tracking-tight">
-              Radar de Terrazas Verificadas
+              {t('radar.titulo')}
             </h2>
             <p className="text-sm sm:text-base text-[#94A3B8] leading-relaxed">
-              Establecimientos gastronómicos auditados en decibelios acústicos, temperatura de piso, estaciones de agua fresca y protocolos de hospitalidad canina.
+              {t('radar.subtitulo')}
             </p>
           </div>
 
           {backendPlacesCount && (
             <div className="text-xs text-[#94A3B8] bg-[#111827] px-3.5 py-1.5 rounded-xl border border-white/10 self-start md:self-auto flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>{backendPlacesCount} lugares conectados en red</span>
+              <span>{t('radar.lugaresRed', { n: backendPlacesCount })}</span>
             </div>
           )}
         </div>
@@ -109,7 +111,8 @@ export function RadarTerrazas() {
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por nombre, zona o categoría..."
+              aria-label={t('radar.buscarPh')}
+              placeholder={t('radar.buscarPh')}
               className="w-full bg-[#162032] text-xs text-[#E8EDF5] placeholder-[#94A3B8]/60 pl-10 pr-3 py-2.5 rounded-xl border border-white/5 focus:outline-none focus:border-[#F27B91] transition-colors"
             />
           </div>
@@ -117,7 +120,7 @@ export function RadarTerrazas() {
           {/* Chips de filtro por ruido */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[11px] font-semibold text-[#94A3B8] px-2 hidden lg:inline">
-              Ruido:
+              {t('terrazas.ruido')}:
             </span>
             <button
               type="button"
@@ -128,7 +131,7 @@ export function RadarTerrazas() {
                   : 'bg-[#162032] text-[#94A3B8] hover:text-[#E8EDF5] border border-white/5'
               }`}
             >
-              Todos
+              {t('terrazas.todos')}
             </button>
             <button
               type="button"
@@ -139,7 +142,7 @@ export function RadarTerrazas() {
                   : 'bg-[#162032] text-[#94A3B8] hover:text-[#E8EDF5] border border-white/5'
               }`}
             >
-              &lt; 50 dB (Silencioso)
+              {t('radar.silencioso50')}
             </button>
             <button
               type="button"
@@ -150,7 +153,7 @@ export function RadarTerrazas() {
                   : 'bg-[#162032] text-[#94A3B8] hover:text-[#E8EDF5] border border-white/5'
               }`}
             >
-              Moderado
+              {t('radar.moderado')}
             </button>
 
             {/* Toggle de aforo libre */}
@@ -163,7 +166,7 @@ export function RadarTerrazas() {
                   : 'bg-[#162032] text-[#94A3B8] hover:text-[#E8EDF5] border-white/5'
               }`}
             >
-              Solo Cupos Libres
+              {t('radar.soloCupos')}
             </button>
           </div>
         </div>
@@ -175,10 +178,10 @@ export function RadarTerrazas() {
           <div className="p-12 rounded-3xl bg-[#111827] border border-white/10 text-center space-y-3">
             <SlidersHorizontal className="w-8 h-8 text-[#94A3B8] mx-auto" />
             <h3 className="font-serif font-bold text-lg text-[#E8EDF5]">
-              No se encontraron terrazas con los filtros actuales
+              {t('radar.sinResultadosTitulo')}
             </h3>
             <p className="text-xs text-[#94A3B8]">
-              Intenta cambiar los filtros de nivel acústico o limpiar el término de búsqueda.
+              {t('radar.sinResultadosSub')}
             </p>
             <Button
               size="sm"
@@ -190,7 +193,7 @@ export function RadarTerrazas() {
               }}
               className="bg-[#162032] text-[#E8EDF5] border-white/10 hover:border-[#F27B91]/30"
             >
-              Restablecer Filtros
+              {t('radar.restablecerFiltros')}
             </Button>
           </div>
         ) : (
@@ -206,7 +209,7 @@ export function RadarTerrazas() {
                   <div className="relative h-56 sm:h-64 w-full overflow-hidden bg-slate-900">
                     <LugarFoto
                       src={terraza.imagen}
-                      alt={`Terraza de ${terraza.nombre}`}
+                      alt={t('radar.altTerraza', { nombre: terraza.nombre })}
                       photoMeta={terraza.photoMeta}
                       cargando={cargandoFotos}
                       className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
@@ -268,7 +271,7 @@ export function RadarTerrazas() {
                     {terraza.condicionesMascotas && (
                       <div className="p-3 rounded-2xl bg-[#162032] border border-white/5 space-y-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                          Condiciones para Mascotas
+                          {t('radar.condicionesMascotas')}
                         </span>
                         <p className="text-xs text-[#E8EDF5] leading-relaxed">
                           {terraza.condicionesMascotas}
@@ -279,7 +282,7 @@ export function RadarTerrazas() {
                     {/* Indicadores Clave: Aforo y Piso Térmico */}
                     <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-white/5 text-xs">
                       <div className="bg-[#162032] p-2.5 rounded-xl border border-white/5">
-                        <span className="text-[10px] text-[#94A3B8] block uppercase font-medium">Aforo Canino</span>
+                        <span className="text-[10px] text-[#94A3B8] block uppercase font-medium">{t('radar.aforoCanino')}</span>
                         <div className="font-semibold text-[#E8EDF5] flex items-center justify-between mt-0.5">
                           <span>{terraza.aforoCaninoActual} / {terraza.aforoCaninoMax}</span>
                           <span
@@ -289,16 +292,16 @@ export function RadarTerrazas() {
                                 : 'bg-rose-500/15 text-rose-300'
                             }`}
                           >
-                            {espacioLibre > 0 ? `${espacioLibre} libres` : 'Lleno'}
+                            {espacioLibre > 0 ? t('comun.libresCount', { n: espacioLibre }) : t('comun.lleno')}
                           </span>
                         </div>
                       </div>
 
                       <div className="bg-[#162032] p-2.5 rounded-xl border border-white/5">
-                        <span className="text-[10px] text-[#94A3B8] block uppercase font-medium">Piso Térmico</span>
+                        <span className="text-[10px] text-[#94A3B8] block uppercase font-medium">{t('radar.pisoTermico')}</span>
                         <div className="font-semibold text-[#E8EDF5] flex items-center justify-between mt-0.5">
                           <span>{terraza.temperaturaPiso}</span>
-                          <span className="text-[10px] text-emerald-400 font-normal">Sombra {terraza.sombraPorcentaje}%</span>
+                          <span className="text-[10px] text-emerald-400 font-normal">{t('radar.sombraPct', { pct: terraza.sombraPorcentaje })}</span>
                         </div>
                       </div>
                     </div>
@@ -323,7 +326,7 @@ export function RadarTerrazas() {
                       icon={Info}
                       onClick={() => setTerrazaSeleccionada(terraza)}
                     >
-                      Ver Ficha de Verificación
+                      {t('radar.verFicha')}
                     </Button>
                   </div>
                 </Card>
@@ -340,7 +343,7 @@ export function RadarTerrazas() {
               size="lg"
               className="bg-[#111827] text-[#E8EDF5] hover:text-[#F27B91] border-white/10 hover:border-[#F27B91]/30 shadow-md font-semibold"
             >
-              Explorar Catálogo Completo de Terrazas Verificadas &rarr;
+              {t('radar.explorarCompleto')}
             </Button>
           </Link>
         </div>
@@ -352,7 +355,7 @@ export function RadarTerrazas() {
           <Modal
             isOpen={!!terrazaSeleccionada}
             onClose={() => setTerrazaSeleccionada(null)}
-            title={`Auditoría Urbana: ${terrazaSeleccionada.nombre}`}
+            title={t('radar.modalTitulo', { nombre: terrazaSeleccionada.nombre })}
           >
             <div className="space-y-4 text-xs sm:text-sm text-[#CBD5E1] text-left">
               {/* Header de verificación */}
@@ -364,31 +367,31 @@ export function RadarTerrazas() {
                       {terrazaSeleccionada.insignia}
                     </span>
                     <span className="text-[10px] text-[#94A3B8]">
-                      {terrazaSeleccionada.procedenciaVerificacion || 'Auditoría Certificada GAM'}
+                      {terrazaSeleccionada.procedenciaVerificacion || t('radar.auditoriaDefault')}
                     </span>
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
-                  Auditado Vigente
+                  {t('radar.auditadoVigente')}
                 </span>
               </div>
 
               {/* Métricas acústicas y térmicas */}
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3 bg-[#162032] rounded-xl border border-white/5 space-y-1">
-                  <span className="text-[#94A3B8] block uppercase text-[10px]">Nivel Acústico</span>
+                  <span className="text-[#94A3B8] block uppercase text-[10px]">{t('radar.nivelAcustico')}</span>
                   <p className="font-bold text-base text-[#E8EDF5]">
                     {terrazaSeleccionada.decibelios} dB ({terrazaSeleccionada.nivelRuido})
                   </p>
-                  <p className="text-[11px] text-[#94A3B8]">Apto para perros sensibles a sobrecargas sonoras.</p>
+                  <p className="text-[11px] text-[#94A3B8]">{t('radar.aptoSensibles')}</p>
                 </div>
                 <div className="p-3 bg-[#162032] rounded-xl border border-white/5 space-y-1">
-                  <span className="text-[#94A3B8] block uppercase text-[10px]">Temperatura de Calzada</span>
+                  <span className="text-[#94A3B8] block uppercase text-[10px]">{t('radar.tempCalzada')}</span>
                   <p className="font-bold text-base text-[#E8EDF5]">
                     {terrazaSeleccionada.temperaturaPiso}
                   </p>
                   <p className="text-[11px] text-[#94A3B8]">
-                    {terrazaSeleccionada.sombraPorcentaje}% de sombra natural continua.
+                    {t('radar.sombraContinuaDesc', { pct: terrazaSeleccionada.sombraPorcentaje })}
                   </p>
                 </div>
               </div>
@@ -396,7 +399,7 @@ export function RadarTerrazas() {
               {/* Condiciones y Protocolos */}
               <div className="space-y-2">
                 <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
-                  Servicios y Protocolos Verificados
+                  {t('radar.serviciosProtocolos')}
                 </h4>
                 <ul className="space-y-1.5 text-xs">
                   {terrazaSeleccionada.servicios.map((s, idx) => (
@@ -407,7 +410,7 @@ export function RadarTerrazas() {
                   ))}
                   <li className="flex items-center gap-2">
                     <Droplets className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                    <span>Estación de hidratación continua con recambio higienizado</span>
+                    <span>{t('radar.hidratacionContinua')}</span>
                   </li>
                 </ul>
               </div>
@@ -415,7 +418,7 @@ export function RadarTerrazas() {
               {/* Horario y Cierre */}
               <div className="pt-3 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
                 <span className="text-[#94A3B8]">
-                  Horario óptimo de visita: <strong className="text-[#E8EDF5]">{terrazaSeleccionada.horarioRecomendado}</strong>
+                  {t('radar.horarioOptimo')} <strong className="text-[#E8EDF5]">{terrazaSeleccionada.horarioRecomendado}</strong>
                 </span>
                 <Button
                   size="sm"
@@ -423,7 +426,7 @@ export function RadarTerrazas() {
                   onClick={() => setTerrazaSeleccionada(null)}
                   className="bg-[#55152D] hover:bg-[#6E1E3A] text-white"
                 >
-                  Entendido
+                  {t('radar.entendido')}
                 </Button>
               </div>
             </div>

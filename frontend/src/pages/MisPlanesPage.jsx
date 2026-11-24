@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { PageWrapper } from '../components/PageWrapper';
 import { LUGARES_GOTOX } from '../data/lugaresGoToX';
-import { obtenerPlanes, guardarPlan, eliminarPlan } from '../servicios/almacenamientoCliente';
+import {
+  obtenerPlanes,
+  guardarPlan,
+  eliminarPlan,
+  EVENTOS_GAM_CATALOGO,
+  obtenerEventosAgendadosIds,
+  alternarEventoAgendado,
+  descargarEventoIcs
+} from '../servicios/almacenamientoCliente';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 import {
   Calendar,
   Clock,
@@ -16,13 +25,17 @@ import {
   Sparkles,
   CheckCircle2,
   Dog,
-  ExternalLink
+  ExternalLink,
+  CalendarPlus,
+  Volume2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function MisPlanesPage() {
   const { esClaro, esMorado, esOscuro } = useTema();
+  const { t } = useIdioma();
   const [planes, setPlanes] = useState(obtenerPlanes);
+  const [eventosAgendados, setEventosAgendados] = useState(obtenerEventosAgendadosIds);
   const [modalNuevoPlan, setModalNuevoPlan] = useState(false);
   const [lugarParaVer, setLugarParaVer] = useState(null);
 
@@ -46,14 +59,14 @@ export function MisPlanesPage() {
     guardarPlan({
       titulo: nuevoTitulo,
       fecha: nuevaFecha,
-      descripcion: nuevaDescripcion || 'Salida organizada con GoToX',
+      descripcion: nuevaDescripcion || t('planes.descDefecto'),
       conMascota,
       paradas: [
         {
           lugarId: lugarSeleccionadoId,
           horaEstimada: "10:00 AM",
           duracionMinutos: 90,
-          nota: "Punto de partida del itinerario"
+          nota: t('planes.notaPartida')
         }
       ]
     });
@@ -64,12 +77,36 @@ export function MisPlanesPage() {
   };
 
   const handleEliminar = (id) => {
-    if (confirm('¿Deseas eliminar este itinerario de tus planes?')) {
+    if (confirm(t('planes.confirmarEliminar'))) {
       eliminarPlan(id);
     }
   };
 
   const getLugarPorId = (id) => LUGARES_GOTOX.find(l => l.id === id);
+
+  const textoPlanSeed = (plan) => {
+    if (plan.id === 'plan-demo-escalante') {
+      return {
+        titulo: t('planes.defaultPlan1Titulo'),
+        descripcion: t('planes.defaultPlan1Desc'),
+        notas: [t('planes.defaultPlan1P1Nota'), t('planes.defaultPlan1P2Nota')]
+      };
+    }
+    if (plan.id === 'plan-lluvia-cultural') {
+      return {
+        titulo: t('planes.defaultPlan2Titulo'),
+        descripcion: t('planes.defaultPlan2Desc'),
+        notas: [t('planes.defaultPlan2P1Nota'), t('planes.defaultPlan2P2Nota')]
+      };
+    }
+    return { titulo: plan.titulo, descripcion: plan.descripcion, notas: null };
+  };
+
+  const eventosTraducidos = [
+    { tituloKey: 'planes.ev1Titulo', catKey: 'planes.ev1Cat', descKey: 'planes.ev1Desc' },
+    { tituloKey: 'planes.ev2Titulo', catKey: 'planes.ev2Cat', descKey: 'planes.ev2Desc' },
+    { tituloKey: 'planes.ev3Titulo', catKey: 'planes.ev3Cat', descKey: 'planes.ev3Desc' }
+  ];
 
   return (
     <PageWrapper className="space-y-8">
@@ -78,13 +115,13 @@ export function MisPlanesPage() {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#501228] text-white border border-[#F27B91]/30 mb-2">
             <Calendar className="w-3.5 h-3.5 text-[#F27B91]" />
-            <span>Itinerarios & Rutas Urbanas</span>
+            <span>{t('planes.tag')}</span>
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight">
-            Mis Planes
+            {t('planes.titulo')}
           </h1>
           <p className="text-sm opacity-75 mt-1 font-sans">
-            Organiza tus salidas, define horarios y calcula la duración de tus recorridos en el GAM.
+            {t('planes.subtitulo')}
           </p>
         </div>
 
@@ -94,7 +131,7 @@ export function MisPlanesPage() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/30 transition-all shadow-md active:scale-95 self-start sm:self-auto"
         >
           <Plus className="w-4 h-4 text-[#F27B91]" />
-          <span>Crear Nuevo Plan</span>
+          <span>{t('planes.crearNuevo')}</span>
         </button>
       </div>
 
@@ -103,16 +140,16 @@ export function MisPlanesPage() {
         {planes.length === 0 ? (
           <div className="p-12 text-center rounded-3xl border border-current/10 space-y-4">
             <Calendar className="w-12 h-12 opacity-30 mx-auto" />
-            <h3 className="font-serif font-bold text-lg">Aún no has creado ningún plan</h3>
+            <h3 className="font-serif font-bold text-lg">{t('planes.vacioTitulo')}</h3>
             <p className="text-xs opacity-60 max-w-sm mx-auto">
-              Diseña tu primera salida añadiendo paradas, restaurantes, terrazas y parques.
+              {t('planes.vacioSub')}
             </p>
             <button
               type="button"
               onClick={() => setModalNuevoPlan(true)}
               className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white"
             >
-              Crear mi primer itinerario
+              {t('planes.crearPrimero')}
             </button>
           </div>
         ) : (
@@ -120,6 +157,7 @@ export function MisPlanesPage() {
             const duracionTotal = plan.paradas?.reduce((acc, p) => acc + (p.duracionMinutos || 60), 0) || 0;
             const horas = Math.floor(duracionTotal / 60);
             const minutos = duracionTotal % 60;
+            const txtPlan = textoPlanSeed(plan);
 
             return (
               <div
@@ -143,28 +181,29 @@ export function MisPlanesPage() {
                       {plan.conMascota && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
                           <Dog className="w-3 h-3" />
-                          <span>Paseo Canino</span>
+                          <span>{t('planes.paseoCanino')}</span>
                         </span>
                       )}
                     </div>
                     <h2 className="font-serif font-bold text-xl sm:text-2xl tracking-tight">
-                      {plan.titulo}
+                      {txtPlan.titulo}
                     </h2>
-                    <p className="text-xs opacity-75">{plan.descripcion}</p>
+                    <p className="text-xs opacity-75">{txtPlan.descripcion}</p>
                   </div>
 
                   <div className="flex items-center gap-3 self-start sm:self-auto">
                     <div className="text-right text-xs">
-                      <span className="opacity-60 block">Duración Estimada</span>
+                      <span className="opacity-60 block">{t('planes.duracionEst')}</span>
                       <strong className="text-sm">
-                        {horas > 0 ? `${horas}h ` : ''}{minutos > 0 ? `${minutos}min` : ''}
+                        {horas > 0 ? `${horas}${t('planes.horaAbr')} ` : ''}{minutos > 0 ? `${minutos}${t('planes.minAbr')}` : ''}
                       </strong>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => handleEliminar(plan.id)}
-                      title="Eliminar este plan"
+                      title={t('planes.btnEliminarPlanAria')}
+                      aria-label={t('planes.btnEliminarPlanAria')}
                       className="p-2 rounded-xl text-rose-400 hover:bg-rose-500/10 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -175,13 +214,14 @@ export function MisPlanesPage() {
                 {/* Paradas del Itinerario */}
                 <div className="space-y-3">
                   <span className="text-xs font-bold uppercase tracking-wider opacity-60 block">
-                    Paradas del Recorrido ({plan.paradas?.length || 0})
+                    {t('planes.paradasTitulo', { n: plan.paradas?.length || 0 })}
                   </span>
 
                   <div className="space-y-3 relative before:absolute before:top-4 before:bottom-4 before:left-5 before:w-0.5 before:bg-current/10">
                     {plan.paradas?.map((parada, idx) => {
                       const lugar = getLugarPorId(parada.lugarId);
                       if (!lugar) return null;
+                      const notaParada = (txtPlan.notas && txtPlan.notas[idx]) || parada.nota;
 
                       return (
                         <div
@@ -201,7 +241,7 @@ export function MisPlanesPage() {
                                 {lugar.nombre}
                               </h4>
                               <span className="text-[11px] font-mono text-[#F27B91] shrink-0">
-                                {parada.horaEstimada} &bull; {parada.duracionMinutos} min
+                                {parada.horaEstimada} &bull; {parada.duracionMinutos} {t('planes.minAbr')}
                               </span>
                             </div>
 
@@ -210,9 +250,9 @@ export function MisPlanesPage() {
                               <span>{lugar.zona} &bull; {lugar.categoria}</span>
                             </p>
 
-                            {parada.nota && (
+                            {notaParada && (
                               <p className="text-xs italic opacity-80 pt-1">
-                                &ldquo;{parada.nota}&rdquo;
+                                &ldquo;{notaParada}&rdquo;
                               </p>
                             )}
                           </div>
@@ -221,7 +261,8 @@ export function MisPlanesPage() {
                             type="button"
                             onClick={() => setLugarParaVer(lugar)}
                             className="p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:bg-current/10 text-xs shrink-0"
-                            title="Ver ficha del lugar"
+                            title={t('planes.btnVerLugarAria')}
+                            aria-label={t('planes.btnVerLugarAria')}
                           >
                             <ExternalLink className="w-4 h-4" />
                           </button>
@@ -238,13 +279,119 @@ export function MisPlanesPage() {
                     className="text-[#F27B91] hover:underline font-bold flex items-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Añadir más paradas desde el catálogo</span>
+                    <span>{t('planes.anadirParadas')}</span>
                   </Link>
                 </div>
               </div>
             );
           })
         )}
+      </div>
+
+      {/* AGENDA DE EVENTOS COMUNITARIOS SYNODOS & ENCUENTROS PET-FRIENDLY GAM */}
+      <div className="space-y-4 pt-6 border-t border-current/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#F27B91] uppercase tracking-wider mb-1">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{t('planes.eventosTag')}</span>
+            </div>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight">
+              {t('planes.eventosTitulo')}
+            </h2>
+            <p className="text-xs opacity-70">
+              {t('planes.eventosSub')}
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#501228] text-white border border-[#F27B91]/35 self-start sm:self-auto">
+            {t('planes.eventosAgendados', { n: eventosAgendados.length })}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {EVENTOS_GAM_CATALOGO.map((evt, evtIdx) => {
+            const agendado = eventosAgendados.includes(evt.id);
+            const metaEvt = eventosTraducidos[evtIdx];
+            const tituloEvt = metaEvt ? t(metaEvt.tituloKey) : evt.titulo;
+            const catEvt = metaEvt ? t(metaEvt.catKey) : evt.categoria;
+            const descEvt = metaEvt ? t(metaEvt.descKey) : evt.descripcion;
+
+            return (
+              <div
+                key={evt.id}
+                className={`p-5 rounded-3xl border shadow-sm flex flex-col justify-between gap-4 transition-all ${
+                  agendado
+                    ? 'border-[#F27B91] bg-[#501228]/15 shadow-md'
+                    : esClaro
+                    ? 'bg-white border-slate-200'
+                    : esMorado
+                    ? 'bg-[#180A14] border-[#F27B91]/20'
+                    : 'bg-[#111827] border-white/10'
+                }`}
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#501228] text-[#F27B91] border border-[#F27B91]/30">
+                      {catEvt}
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-emerald-400 flex items-center gap-1">
+                      <Volume2 className="w-3 h-3" />
+                      {evt.acustica}
+                    </span>
+                  </div>
+
+                  <h3 className="font-serif font-bold text-lg leading-snug">{tituloEvt}</h3>
+
+                  <p className="text-xs opacity-80 leading-relaxed">{descEvt}</p>
+
+                  <div className="pt-1 space-y-1 text-[11px] opacity-75">
+                    <div className="flex items-center gap-1.5 font-semibold text-[#F27B91]">
+                      <Calendar className="w-3.5 h-3.5 shrink-0" />
+                      <span>{evt.fecha} &bull; {evt.hora}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{evt.zona}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-current/10 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEventosAgendados(alternarEventoAgendado(evt.id))}
+                    className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                      agendado
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/35'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{agendado ? t('planes.agendadoLista') : t('planes.agendarEvento')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      descargarEventoIcs({
+                        titulo: tituloEvt,
+                        fecha: evt.fecha,
+                        hora: evt.hora,
+                        ubicacion: evt.zona,
+                        descripcion: descEvt
+                      })
+                    }
+                    title={t('mascotaPage.descargarIcs')}
+                    className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border border-current/20 hover:border-[#F27B91] transition-colors"
+                  >
+                    <CalendarPlus className="w-3.5 h-3.5 text-[#F27B91]" />
+                    <span>.ics</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Modal Crear Nuevo Plan */}
@@ -254,10 +401,11 @@ export function MisPlanesPage() {
             esClaro ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#180A14] border-[#F27B91]/30 text-white'
           }`}>
             <div className="flex items-center justify-between pb-3 border-b border-current/10">
-              <h3 className="font-serif font-bold text-xl">Crear Nuevo Itinerario</h3>
+              <h3 className="font-serif font-bold text-xl">{t('planes.modalTitulo')}</h3>
               <button
                 type="button"
                 onClick={() => setModalNuevoPlan(false)}
+                aria-label={t('planes.cerrarModalAria')}
                 className="p-1 rounded-lg opacity-60 hover:opacity-100"
               >
                 &times;
@@ -266,20 +414,20 @@ export function MisPlanesPage() {
 
             <form onSubmit={handleCrearPlan} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="font-semibold opacity-70 block">Título del Plan</label>
+                <label className="font-semibold opacity-70 block">{t('planes.lblTituloPlan')}</label>
                 <input
                   type="text"
                   required
                   value={nuevoTitulo}
                   onChange={(e) => setNuevoTitulo(e.target.value)}
-                  placeholder="Ej. Tarde de café y libros en Amón"
+                  placeholder={t('planes.phTituloPlan')}
                   className="w-full p-2.5 rounded-xl border border-current/20 bg-transparent text-sm outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-semibold opacity-70 block">Fecha Programada</label>
+                  <label className="font-semibold opacity-70 block">{t('planes.lblFecha')}</label>
                   <input
                     type="date"
                     required
@@ -290,7 +438,7 @@ export function MisPlanesPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold opacity-70 block">Primer Punto de Encuentro</label>
+                  <label className="font-semibold opacity-70 block">{t('planes.lblPunto')}</label>
                   <select
                     value={lugarSeleccionadoId}
                     onChange={(e) => setLugarSeleccionadoId(e.target.value)}
@@ -304,12 +452,12 @@ export function MisPlanesPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold opacity-70 block">Descripción u Objetivo</label>
+                <label className="font-semibold opacity-70 block">{t('planes.lblDesc')}</label>
                 <textarea
                   rows="2"
                   value={nuevaDescripcion}
                   onChange={(e) => setNuevaDescripcion(e.target.value)}
-                  placeholder="Ej. Salida tranquila bajo lluvia con impermeable..."
+                  placeholder={t('planes.phDesc')}
                   className="w-full p-2.5 rounded-xl border border-current/20 bg-transparent text-xs outline-none"
                 />
               </div>
@@ -321,7 +469,7 @@ export function MisPlanesPage() {
                   onChange={(e) => setConMascota(e.target.checked)}
                   className="accent-[#501228] w-4 h-4 rounded"
                 />
-                <span className="font-semibold">Incluye paseo con mascota</span>
+                <span className="font-semibold">{t('planes.chkMascota')}</span>
               </label>
 
               <div className="pt-3 border-t border-current/10 flex justify-end gap-2">
@@ -330,13 +478,13 @@ export function MisPlanesPage() {
                   onClick={() => setModalNuevoPlan(false)}
                   className="px-4 py-2 rounded-xl opacity-70 hover:opacity-100"
                 >
-                  Cancelar
+                  {t('comun.cancelar')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 rounded-xl font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/40"
                 >
-                  Guardar Itinerario
+                  {t('planes.guardarItinerario')}
                 </button>
               </div>
             </form>

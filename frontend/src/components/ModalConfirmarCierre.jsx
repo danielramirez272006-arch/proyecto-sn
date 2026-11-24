@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, LogOut, X, ShieldAlert } from 'lucide-react';
 import { Button } from './ui/Button';
+import { useIdioma } from '../context/IdiomaContext';
 
 /**
  * Modal de advertencia antes de cerrar sesión.
@@ -16,6 +17,7 @@ export function ModalConfirmarCierre({
   onConfirmar,
   nombreUsuario = 'Tutor'
 }) {
+  const { t } = useIdioma();
   const estaAbierto = Boolean(isOpen ?? visible);
   const handleCerrar = onClose || onCancelar || (() => {});
 
@@ -62,13 +64,13 @@ export function ModalConfirmarCierre({
             </div>
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
-                Advertencia de Seguridad
+                {t('cerrarModal.seguridad')}
               </span>
               <h3
                 id="modal-confirmar-cierre-titulo"
                 className="font-serif font-bold text-xl text-[#111827] dark:text-[#E8EDF5] tracking-tight"
               >
-                ¿Seguro que quieres cerrar sesión?
+                {t('cerrarModal.titulo')}
               </h3>
             </div>
           </div>
@@ -76,7 +78,7 @@ export function ModalConfirmarCierre({
           <button
             type="button"
             onClick={handleCerrar}
-            aria-label="Cancelar y cerrar modal"
+            aria-label={t('cerrarModal.cancelar')}
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -86,7 +88,7 @@ export function ModalConfirmarCierre({
         {/* Mensaje descriptivo de la advertencia */}
         <div className="space-y-2 text-xs text-slate-600 dark:text-[#94A3B8] leading-relaxed">
           <p>
-            Estás a punto de salir de la cuenta de{' '}
+            {t('cerrarModal.prefijo')}{' '}
             <strong className="text-slate-900 dark:text-[#E8EDF5] font-semibold">
               {nombreUsuario}
             </strong>
@@ -95,7 +97,7 @@ export function ModalConfirmarCierre({
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#162032] border border-slate-200/70 dark:border-white/10 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <span>
-              La bóveda biométrica y telemetría de tu mascota quedarán protegidas. Deberás ingresar tus credenciales nuevamente para acceder.
+              {t('cerrarModal.nota')}
             </span>
           </div>
         </div>
@@ -107,7 +109,7 @@ export function ModalConfirmarCierre({
             onClick={handleCerrar}
             className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-[#1e293b] hover:bg-slate-200 dark:hover:bg-[#273549] border border-slate-200/80 dark:border-white/10 transition-colors"
           >
-            Cancelar
+            {t('cerrarModal.cancelar')}
           </button>
           <button
             type="button"
@@ -115,7 +117,7 @@ export function ModalConfirmarCierre({
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:scale-[0.98] shadow-md shadow-rose-600/20 transition-all"
           >
             <LogOut className="w-4 h-4" />
-            <span>Sí, Cerrar Sesión</span>
+            <span>{t('cerrarModal.confirmar')}</span>
           </button>
         </div>
       </div>

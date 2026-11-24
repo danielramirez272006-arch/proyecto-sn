@@ -746,7 +746,7 @@ class AuthService {
       const rawToken = authHeader.replace(/^Bearer\s+/, '');
       const decoded = verifyToken(rawToken);
       if (decoded && !decoded.is_refresh) {
-        let userInfo = {
+        let userRecord = {
           id: decoded.id,
           name: decoded.name,
           email: decoded.email,
@@ -759,20 +759,20 @@ class AuthService {
             [decoded.id]
           );
           if (rows && rows.length > 0) {
-            userInfo = rows[0];
+            userRecord = rows[0];
           }
         } catch (dbErr) {
           // Mantener datos del JWT si la consulta no aplica en este contexto
         }
 
-        const profileDetails = await this._loadUserProfileDetails(userInfo.id);
+        const profileDetails = await this._loadUserProfileDetails(userRecord.id);
 
         return {
           authenticated: true,
           type: 'registered_user',
           user: {
-            ...userInfo,
-            permissions: getPermissionsForRole(userInfo.role),
+            ...userRecord,
+            permissions: getPermissionsForRole(userRecord.role),
             ...profileDetails
           }
         };

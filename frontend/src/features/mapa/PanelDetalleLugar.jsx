@@ -19,6 +19,7 @@ import {
   etiquetaTerraza,
   etiquetaTranquilidad
 } from './adaptadorLugares';
+import { useIdioma } from '../../context/IdiomaContext';
 
 export function PanelDetalleLugar({
   lugar,
@@ -28,6 +29,7 @@ export function PanelDetalleLugar({
   onCentrarEnMapa,
   triggerRef
 }) {
+  const { t } = useIdioma();
   const closeButtonRef = useRef(null);
   const panelRef = useRef(null);
   const prefersReducedMotion = useReducedMotion();
@@ -104,7 +106,7 @@ export function PanelDetalleLugar({
               }`}
             >
               <Info className="w-3 h-3 shrink-0" aria-hidden="true" />
-              <span>{lugar.esDemo ? 'Demo Editorial' : 'Señal Externa'}</span>
+              <span>{lugar.esDemo ? t('mapaExt.demoEditorial') : t('mapaExt.senalExternaBadge')}</span>
             </span>
             <span className={`text-[11px] font-semibold uppercase tracking-wide ${tokens.textoMuted}`}>
               {lugar.categoria}
@@ -119,7 +121,7 @@ export function PanelDetalleLugar({
             <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
             <span>
               {lugar.direccion}
-              {lugar.distanciaKm !== null ? ` · ~${lugar.distanciaKm.toFixed(1)} km (estimado)` : ''}
+              {lugar.distanciaKm !== null ? ` · ~${lugar.distanciaKm.toFixed(1)} km ${t('mapaExt.distanciaEstimada')}` : ''}
             </span>
           </p>
         </div>
@@ -128,11 +130,11 @@ export function PanelDetalleLugar({
           ref={closeButtonRef}
           type="button"
           onClick={onCerrar}
-          aria-label="Cerrar detalle del lugar"
+          aria-label={t('mapaExt.cerrarDetalleAria')}
           className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-semibold ${tokens.botonSecundario} ${tokens.focusRing}`}
         >
           <X className="w-4 h-4" aria-hidden="true" />
-          <span className="sr-only sm:not-sr-only">Cerrar</span>
+          <span className="sr-only sm:not-sr-only">{t('comun.cerrar')}</span>
         </button>
       </div>
 
@@ -148,7 +150,7 @@ export function PanelDetalleLugar({
             />
             {lugar.fotoCredito && (
               <p className={`px-2.5 py-1 text-[10px] ${tokens.textoMuted}`}>
-                Fotografía: {lugar.fotoCredito}
+                {t('mapaExt.fotografiaLabel')} {lugar.fotoCredito}
               </p>
             )}
           </div>
@@ -156,25 +158,31 @@ export function PanelDetalleLugar({
 
         {/* Aviso explícito de procedencia / no verificación oficial */}
         <div className={`p-3 rounded-xl border text-xs space-y-1 ${tokens.superficieSecundaria}`}>
-          <p className={`font-bold ${tokens.textoTitulo}`}>Procedencia de la información</p>
-          <p className={tokens.textoCuerpo}>{lugar.etiquetaProcedencia}</p>
-          <p className={`text-[11px] ${tokens.textoMuted}`}>Fuente: {lugar.fuente}</p>
+          <p className={`font-bold ${tokens.textoTitulo}`}>{t('mapaExt.procedenciaInfo')}</p>
+          <p className={tokens.textoCuerpo}>
+            {lugar.confirmadoPorEstablecimiento
+              ? t('mapaExt.confirmadoLocal')
+              : lugar.esDemo
+              ? t('mapaExt.demoEditorial')
+              : t('mapaExt.senalExternaPend')}
+          </p>
+          <p className={`text-[11px] ${tokens.textoMuted}`}>{t('mapaExt.fuenteLabel')} {lugar.fuente}</p>
         </div>
 
         {/* Estado de compatibilidad y condiciones */}
         <div className="flex flex-wrap gap-2">
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold ${badgeMascota}`}>
             <IconoMascota className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            <span>{etiquetaEstadoMascota(lugar.petStatus)}</span>
+            <span>{etiquetaEstadoMascota(lugar.petStatus, t)}</span>
           </span>
 
           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${tokens.badgeDesconocido}`}>
             <Volume2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            <span>{etiquetaTranquilidad(lugar.tranquilidad, lugar.decibelios)}</span>
+            <span>{etiquetaTranquilidad(lugar.tranquilidad, lugar.decibelios, t)}</span>
           </span>
 
           <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-semibold ${tokens.badgeDesconocido}`}>
-            {etiquetaTerraza(lugar.terraza)}
+            {etiquetaTerraza(lugar.terraza, t)}
           </span>
         </div>
 
@@ -184,7 +192,7 @@ export function PanelDetalleLugar({
 
         {lugar.condicionesMascotas && (
           <div className={`p-3 rounded-xl border text-xs space-y-1 ${tokens.superficieSecundaria}`}>
-            <span className={`font-bold block ${tokens.textoTitulo}`}>Notas registradas (demo)</span>
+            <span className={`font-bold block ${tokens.textoTitulo}`}>{t('mapaExt.notasDemo')}</span>
             <p className={tokens.textoCuerpo}>{lugar.condicionesMascotas}</p>
           </div>
         )}
@@ -194,13 +202,13 @@ export function PanelDetalleLugar({
             {lugar.temperaturaPiso && (
               <p className={`flex items-center gap-2 ${tokens.textoCuerpo}`}>
                 <Thermometer className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                <span>Calzada estimada (demo): {lugar.temperaturaPiso}</span>
+                <span>{t('mapaExt.calzadaDemo')} {lugar.temperaturaPiso}</span>
               </p>
             )}
             {lugar.horarioRecomendado && (
               <p className={`flex items-center gap-2 ${tokens.textoCuerpo}`}>
                 <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                <span>Horario: {lugar.horarioRecomendado}</span>
+                <span>{t('detalleLugar.horario')}: {lugar.horarioRecomendado}</span>
               </p>
             )}
             {lugar.telefono && (
@@ -221,7 +229,7 @@ export function PanelDetalleLugar({
           className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold ${tokens.botonSecundario} ${tokens.focusRing}`}
         >
           <Crosshair className="w-3.5 h-3.5" aria-hidden="true" />
-          <span>Centrar en mapa</span>
+          <span>{t('mapaExt.centrarMapa')}</span>
         </button>
 
         {Number.isFinite(lugar.lat) && Number.isFinite(lugar.lng) && (
@@ -231,7 +239,7 @@ export function PanelDetalleLugar({
             rel="noreferrer"
             className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold ${tokens.botonPrimario} ${tokens.focusRing}`}
           >
-            <span>Ver en OpenStreetMap</span>
+            <span>{t('mapaExt.verOsm')}</span>
             <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
           </a>
         )}

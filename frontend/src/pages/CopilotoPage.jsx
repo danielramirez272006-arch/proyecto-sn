@@ -334,7 +334,7 @@ export function CopilotoPage() {
               </motion.div>
 
               <div className="space-y-1.5">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#55152D]/35 text-[#F27B91] border border-[#F27B91]/30 text-xs font-semibold">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FDF2F4] dark:bg-[#55152D]/30 text-[#501228] dark:text-[#F27B91] border border-[#F9E2E8] dark:border-[#55152D]/50 text-xs font-semibold">
                   <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>{t('copiloto.badge')}</span>
                 </div>

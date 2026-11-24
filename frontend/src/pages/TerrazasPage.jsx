@@ -128,7 +128,7 @@ export function TerrazasPage() {
               transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1.0] }}
               className="lg:col-span-7 space-y-5 text-left"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#55152D]/35 text-[#F27B91] border border-[#F27B91]/30 text-xs font-semibold backdrop-blur-md">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FDF2F4] dark:bg-[#55152D]/30 text-[#501228] dark:text-[#F27B91] border border-[#F9E2E8] dark:border-[#55152D]/50 text-xs font-semibold backdrop-blur-md">
                 <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{t('terrazas.badge')}</span>
               </div>

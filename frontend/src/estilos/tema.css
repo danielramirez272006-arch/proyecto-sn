@@ -606,3 +606,34 @@
   background-color: rgba(255, 255, 255, 0.15) !important;
   color: #FFFFFF !important;
 }
+
+/* ============================================================
+   SELECTOR DE IDIOMA FLOTANTE (PORTAL LIBRE DE OVERFLOW)
+   ============================================================ */
+.selector-idioma-popup {
+  z-index: 99999 !important;
+}
+
+:root[data-tema='claro'] .selector-idioma-popup {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  color: #111827 !important;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.15) !important;
+}
+
+:root[data-tema='claro'] .selector-idioma-popup button {
+  color: #1E293B !important;
+}
+
+:root[data-tema='claro'] .selector-idioma-popup button:hover {
+  background-color: #F8FAFC !important;
+}
+
+:root[data-tema='claro'] .selector-idioma-popup button[aria-selected='true'] {
+  background-color: #501228 !important;
+  color: #FFFFFF !important;
+}
+
+:root[data-tema='claro'] .selector-idioma-popup button[aria-selected='true'] * {
+  color: #FFFFFF !important;
+}

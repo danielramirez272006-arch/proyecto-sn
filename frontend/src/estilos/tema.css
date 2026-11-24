@@ -486,3 +486,123 @@
   border-color: rgba(242, 123, 145, 0.25) !important;
   color: #FDF2F6 !important;
 }
+
+/* ============================================================
+   BANNER DE LLAMADO A LA ACCIÓN (CTA) - SINERGIA URBANA GOTOX
+   Garantiza contraste nítido, paleta de marca y botones legibles
+   ============================================================ */
+.gotox-banner-cta {
+  border: 1px solid rgba(242, 123, 145, 0.3) !important;
+  box-shadow: 0 20px 40px -15px rgba(80, 18, 40, 0.35) !important;
+}
+
+/* Modo Claro: Fondo vino de marca continuo y luminoso, texto blanco cristalino */
+:root[data-tema='claro'] .gotox-banner-cta {
+  background: linear-gradient(135deg, #501228 0%, #681735 50%, #3B0B1D 100%) !important;
+  border-color: rgba(242, 123, 145, 0.4) !important;
+}
+
+/* Modo Oscuro: Fondo carbón con destellos vino y borde rosa */
+:root[data-tema='oscuro'] .gotox-banner-cta {
+  background: linear-gradient(135deg, #131B2A 0%, #221223 50%, #0F172A 100%) !important;
+  border-color: rgba(242, 123, 145, 0.3) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Modo Morado / Vino: Fondo vino profundo editorial */
+:root[data-tema='morado'] .gotox-banner-cta {
+  background: linear-gradient(135deg, #3B0B1D 0%, #501228 50%, #260713 100%) !important;
+  border-color: rgba(242, 123, 145, 0.45) !important;
+  box-shadow: 0 20px 40px -15px rgba(45, 14, 25, 0.5) !important;
+}
+
+/* Tipografía del Banner (Inmune a sobreescrituras genéricas de tema) */
+.gotox-banner-cta .cta-titulo,
+:root[data-tema='claro'] .gotox-banner-cta .cta-titulo,
+:root[data-tema='oscuro'] .gotox-banner-cta .cta-titulo,
+:root[data-tema='morado'] .gotox-banner-cta .cta-titulo {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+}
+
+.gotox-banner-cta .cta-subtitulo,
+:root[data-tema='claro'] .gotox-banner-cta .cta-subtitulo,
+:root[data-tema='morado'] .gotox-banner-cta .cta-subtitulo {
+  color: #F8D7E0 !important;
+}
+
+:root[data-tema='oscuro'] .gotox-banner-cta .cta-subtitulo {
+  color: #CBD5E1 !important;
+}
+
+.gotox-banner-cta .cta-badge,
+:root[data-tema='claro'] .gotox-banner-cta .cta-badge,
+:root[data-tema='morado'] .gotox-banner-cta .cta-badge {
+  background-color: rgba(255, 255, 255, 0.14) !important;
+  color: #FDA4AF !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  backdrop-filter: blur(8px);
+}
+
+:root[data-tema='oscuro'] .gotox-banner-cta .cta-badge {
+  background-color: rgba(242, 123, 145, 0.15) !important;
+  color: #FDA4AF !important;
+  border: 1px solid rgba(242, 123, 145, 0.3) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Botón Principal del Banner (Blanco con texto vino en Claro y Morado; Vino con texto blanco en Oscuro) */
+.gotox-banner-cta .cta-btn-primary,
+:root[data-tema='claro'] .gotox-banner-cta .cta-btn-primary,
+:root[data-tema='morado'] .gotox-banner-cta .cta-btn-primary {
+  background-color: #FFFFFF !important;
+  color: #501228 !important;
+  border: 1px solid transparent !important;
+}
+
+.gotox-banner-cta .cta-btn-primary:hover,
+:root[data-tema='claro'] .gotox-banner-cta .cta-btn-primary:hover,
+:root[data-tema='morado'] .gotox-banner-cta .cta-btn-primary:hover {
+  background-color: #FDF2F4 !important;
+  color: #6E1837 !important;
+}
+
+:root[data-tema='oscuro'] .gotox-banner-cta .cta-btn-primary {
+  background-color: #501228 !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(242, 123, 145, 0.4) !important;
+}
+
+:root[data-tema='oscuro'] .gotox-banner-cta .cta-btn-primary:hover {
+  background-color: #6E1837 !important;
+  color: #FFFFFF !important;
+}
+
+/* Botón Secundario del Banner (Píldora traslúcida con borde blanco nítido) */
+.gotox-banner-cta .cta-btn-secondary,
+:root[data-tema='claro'] .gotox-banner-cta .cta-btn-secondary,
+:root[data-tema='morado'] .gotox-banner-cta .cta-btn-secondary {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+}
+
+.gotox-banner-cta .cta-btn-secondary:hover,
+:root[data-tema='claro'] .gotox-banner-cta .cta-btn-secondary:hover,
+:root[data-tema='morado'] .gotox-banner-cta .cta-btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+:root[data-tema='oscuro'] .gotox-banner-cta .cta-btn-secondary {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+:root[data-tema='oscuro'] .gotox-banner-cta .cta-btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+}

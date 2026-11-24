@@ -541,16 +541,16 @@ export function Home() {
           ============================================================ */}
       <section className="py-12 relative overflow-hidden">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
-          <div className="relative rounded-3xl p-8 sm:p-12 overflow-hidden border border-[#F27B91]/25 bg-gradient-to-r from-[#55152D] via-[#3d0f20] to-[#111827] text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
+          <div className="gotox-banner-cta relative rounded-3xl p-8 sm:p-12 overflow-hidden shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
             <div className="max-w-xl space-y-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold tracking-wide uppercase text-[#F27B91] border border-white/15">
+              <span className="cta-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase">
                 <Sparkles className="w-3 h-3" />
                 {t('homeExt.ctaBadge')}
               </span>
-              <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-white">
+              <h2 className="cta-titulo font-serif text-3xl sm:text-4xl font-bold tracking-tight">
                 {t('homeExt.ctaTitulo')}
               </h2>
-              <p className="text-slate-300 text-sm leading-relaxed">
+              <p className="cta-subtitulo text-sm leading-relaxed">
                 {t('homeExt.ctaSubtitulo')}
               </p>
             </div>
@@ -562,7 +562,7 @@ export function Home() {
                     <Button
                       variant="secondary"
                       size="lg"
-                      className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
+                      className="cta-btn-primary w-full sm:w-auto justify-center font-bold shadow-md"
                     >
                       {t('homeExt.ctaExplorar')}
                     </Button>
@@ -571,7 +571,7 @@ export function Home() {
                     <Button
                       variant="outline"
                       size="lg"
-                      className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
+                      className="cta-btn-secondary w-full sm:w-auto justify-center font-semibold"
                     >
                       {t('homeExt.ctaCrearPlan')}
                     </Button>
@@ -583,7 +583,7 @@ export function Home() {
                     <Button
                       variant="secondary"
                       size="lg"
-                      className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
+                      className="cta-btn-primary w-full sm:w-auto justify-center font-bold shadow-md"
                     >
                       {t('homeExt.ctaVerMapa')}
                     </Button>
@@ -592,7 +592,7 @@ export function Home() {
                     <Button
                       variant="outline"
                       size="lg"
-                      className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
+                      className="cta-btn-secondary w-full sm:w-auto justify-center font-semibold"
                     >
                       {t('homeExt.ctaLoginPlanes')}
                     </Button>

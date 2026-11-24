@@ -39,11 +39,11 @@ export function IdiomaProvider({ children }) {
   const solicitandoRef = useRef(new Set());
   const { anunciar } = useA11yAnnouncer();
 
-  // Sincronizar catálogo de los 10 idiomas desde /api/i18n/languages del backend
+  // Sincronizar catálogo de los 10 idiomas desde /api/i18n/languages del backend (silencioso si backend está offline)
   useEffect(() => {
     let activo = true;
     api
-      .get('/i18n/languages')
+      .get('/i18n/languages', { silent: true })
       .then((res) => {
         if (!activo || !Array.isArray(res?.languages)) return;
         const fusion = res.languages.map((beLang) => {
@@ -88,7 +88,7 @@ export function IdiomaProvider({ children }) {
     solicitandoRef.current.add(idioma);
     let activo = true;
     api
-      .get(`/i18n/translations/${idioma}`)
+      .get(`/i18n/translations/${idioma}`, { silent: true })
       .then((res) => {
         if (!activo || !res?.dictionary) return;
         setDiccionariosBackend((prev) => ({

@@ -289,11 +289,10 @@ export function Home() {
                   key={i}
                   type="button"
                   onClick={() => setConsulta(textoChip)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                    consulta === textoChip
-                      ? 'bg-[#501228] text-white border-[#F27B91]/40 font-semibold'
-                      : 'bg-current/5 border-current/10 hover:border-current/25 opacity-80 hover:opacity-100'
-                  }`}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${consulta === textoChip
+                    ? 'bg-[#501228] text-white border-[#F27B91]/40 font-semibold'
+                    : 'bg-current/5 border-current/10 hover:border-current/25 opacity-80 hover:opacity-100'
+                    }`}
                 >
                   {textoChip}
                 </button>

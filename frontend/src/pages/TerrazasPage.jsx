@@ -57,7 +57,7 @@ export function TerrazasPage() {
           setBackendPlacesCount(places.length);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => { activo = false; };
   }, []);
 
@@ -241,11 +241,10 @@ export function TerrazasPage() {
                 type="button"
                 aria-pressed={filtroRuido === 'todos'}
                 onClick={() => setFiltroRuido('todos')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  filtroRuido === 'todos'
-                    ? 'bg-[#55152D] text-white shadow-xs'
-                    : 'text-[#94A3B8] hover:text-[#E8EDF5]'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filtroRuido === 'todos'
+                  ? 'bg-[#55152D] text-white shadow-xs'
+                  : 'text-[#94A3B8] hover:text-[#E8EDF5]'
+                  }`}
               >
                 {t('terrazas.todos')}
               </button>
@@ -253,11 +252,10 @@ export function TerrazasPage() {
                 type="button"
                 aria-pressed={filtroRuido === 'silencioso'}
                 onClick={() => setFiltroRuido('silencioso')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  filtroRuido === 'silencioso'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-[#94A3B8] hover:text-[#E8EDF5]'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filtroRuido === 'silencioso'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-[#94A3B8] hover:text-[#E8EDF5]'
+                  }`}
               >
                 {t('terrazas.silencioso')}
               </button>
@@ -265,11 +263,10 @@ export function TerrazasPage() {
                 type="button"
                 aria-pressed={filtroRuido === 'moderado'}
                 onClick={() => setFiltroRuido('moderado')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  filtroRuido === 'moderado'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'text-[#94A3B8] hover:text-[#E8EDF5]'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filtroRuido === 'moderado'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-[#94A3B8] hover:text-[#E8EDF5]'
+                  }`}
               >
                 {t('terrazasExt.moderado')}
               </button>
@@ -286,11 +283,10 @@ export function TerrazasPage() {
               <button
                 type="button"
                 onClick={() => setFiltroZona('todas')}
-                className={`px-2.5 py-1 rounded-lg transition-colors ${
-                  filtroZona === 'todas'
-                    ? 'bg-white/10 text-white font-bold border border-white/15'
-                    : 'text-[#94A3B8] hover:text-[#E8EDF5]'
-                }`}
+                className={`px-2.5 py-1 rounded-lg transition-colors ${filtroZona === 'todas'
+                  ? 'bg-white/10 text-white font-bold border border-white/15'
+                  : 'text-[#94A3B8] hover:text-[#E8EDF5]'
+                  }`}
               >
                 {t('terrazasExt.todasZonas')}
               </button>
@@ -299,11 +295,10 @@ export function TerrazasPage() {
                   key={z}
                   type="button"
                   onClick={() => setFiltroZona(z)}
-                  className={`px-2.5 py-1 rounded-lg transition-colors ${
-                    filtroZona === z
-                      ? 'bg-white/10 text-white font-bold border border-white/15'
-                      : 'text-[#94A3B8] hover:text-[#E8EDF5]'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg transition-colors ${filtroZona === z
+                    ? 'bg-white/10 text-white font-bold border border-white/15'
+                    : 'text-[#94A3B8] hover:text-[#E8EDF5]'
+                    }`}
                 >
                   {z}
                 </button>

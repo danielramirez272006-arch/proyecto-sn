@@ -567,7 +567,7 @@ class PetVisionTriageService {
     return {
       _provider_meta: aiResult._provider_meta || {
         provider: 'Google Gemini Vision Cloud',
-        model: geminiClient.model || 'gemini-2.0-flash',
+        model: geminiClient.model || 'gemini-3.1-flash-lite',
         fallback: false
       },
       is_pet_detected: aiResult.is_pet_detected !== undefined ? Boolean(aiResult.is_pet_detected) : true,
@@ -965,7 +965,7 @@ class PetVisionTriageService {
     return {
       _provider_meta: {
         provider: 'Google Gemini Vision (Heurística Resiliente)',
-        model: geminiClient.model || 'gemini-2.0-flash',
+        model: geminiClient.model || 'gemini-3.1-flash-lite',
         fallback: true
       },
       is_pet_detected: true,

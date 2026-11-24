@@ -6,7 +6,7 @@ const { execute } = require('./database');
 class GeminiSafeClient {
   constructor() {
     this.apiKey = env.gemini?.apiKey || process.env.GEMINI_API_KEY || '';
-    this.model = env.gemini?.model || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    this.model = env.gemini?.model || process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
     this.dailyLimit = env.gemini?.freeTierDailyQuota || 1500;
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
     this.currentDate = new Date().toISOString().slice(0, 10);
@@ -157,8 +157,8 @@ class GeminiSafeClient {
         body: JSON.stringify(bodyPayload)
       });
 
-      if ((response.status === 404 || response.status === 503 || response.status === 429) && activeModel !== 'gemini-flash-latest') {
-        activeModel = 'gemini-flash-latest';
+      if ((response.status === 404 || response.status === 503 || response.status === 429) && activeModel !== 'gemini-3-flash-preview') {
+        activeModel = 'gemini-3-flash-preview';
         endpoint = `${this.baseUrl}/models/${activeModel}:generateContent?key=${this.apiKey}`;
         response = await fetch(endpoint, {
           method: 'POST',

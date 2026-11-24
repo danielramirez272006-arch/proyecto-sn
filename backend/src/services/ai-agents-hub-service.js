@@ -29,7 +29,7 @@ const AGENT_REGISTRY = {
     title: 'Copiloto Argos (Concierge Bienestar Pet — Synodos)',
     authorized_roles: ['client', 'organizer', 'merchant', 'business_owner', 'admin'],
     provider: 'google_gemini',
-    model: geminiClient.model || 'gemini-2.0-flash',
+    model: geminiClient.model || 'gemini-3.1-flash-lite',
     objective: 'Orientar al tutor sobre cuidado animal, rutas pet-friendly y recomendaciones de salidas en el GAM.',
     async execute(input = {}) {
       const prompt = sanitizePiiForPrompt(input.message || input.prompt || 'Recomendación de paseo pet-friendly en San José');
@@ -48,7 +48,7 @@ const AGENT_REGISTRY = {
     title: 'Analizador de Videos Veterinarios (YouTube)',
     authorized_roles: ['admin'],
     provider: 'google_gemini',
-    model: geminiClient.model || 'gemini-2.0-flash',
+    model: geminiClient.model || 'gemini-3.1-flash-lite',
     objective: 'Extraer especie, tema veterinario, resumen y fragmentos verificables con marcas de tiempo.',
     async execute(input = {}) {
       const url = String(input.youtube_url || 'https://www.youtube.com/watch?v=4HFHEmtvoRg');

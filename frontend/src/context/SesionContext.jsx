@@ -199,11 +199,35 @@ export function SesionProvider({ children }) {
     }
   }, [aplicarUsuarioBackend]);
 
-  const registrarConBackend = useCallback(async ({ name, email, password, phone, zone, hasPet, pet }) => {
+  const registrarConBackend = useCallback(async ({
+    name,
+    email,
+    password,
+    phone,
+    zone,
+    hasPet,
+    pet,
+    acceptTerms = true,
+    acceptPrivacy = true,
+    termsVersion = '2026.11-CR-8968',
+    cookiesPreferences = null
+  }) => {
     setCargandoAuth(true);
     setErrorAuth(null);
     try {
-      const data = await authService.register({ name, email, password, phone, zone, hasPet, pet });
+      const data = await authService.register({
+        name,
+        email,
+        password,
+        phone,
+        zone,
+        hasPet,
+        pet,
+        acceptTerms,
+        acceptPrivacy,
+        termsVersion,
+        cookiesPreferences
+      });
       aplicarUsuarioBackend(data?.user);
       return data;
     } catch (err) {

@@ -12,6 +12,9 @@ import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
 import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
 import { useSesion } from '../hooks/useSesion';
 import { api } from '../shared/services/api-client';
+import { useIdioma } from '../context/IdiomaContext';
+import { authService } from '../shared/services/auth-service';
+import { abrirConfiguracionCookies } from '../shared/utils/cookie-consent';
 import { obtenerFavoritosIds, obtenerPlanes } from '../servicios/almacenamientoCliente';
 import {
   User,
@@ -30,7 +33,9 @@ import {
   AlertTriangle,
   Compass,
   ArrowRight,
-  Trash2
+  Trash2,
+  FileCheck2,
+  Cookie
 } from 'lucide-react';
 
 export function Perfil({ embebido = false }) {
@@ -46,6 +51,7 @@ export function Perfil({ embebido = false }) {
   } = useSesion();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t, idiomaActual } = useIdioma();
   const accesoDenegadoAdmin = Boolean(location.state?.accesoDenegadoAdmin);
 
   const [tabPerfil, setTabPerfil] = useState('cuenta'); // 'cuenta' | 'preferencias' | 'mascota' | 'privacidad'
@@ -154,6 +160,50 @@ export function Perfil({ embebido = false }) {
     navigate('/acceso');
   };
 
+  // Estados para Baja del Sistema y Eliminación de Datos Personales (Ley N.º 8968 CR)
+  const [mostrarFormBaja, setMostrarFormBaja] = useState(false);
+  const [passwordBaja, setPasswordBaja] = useState('');
+  const [motivoBaja, setMotivoBaja] = useState('Ejercicio de derecho de supresión (Art. 7 Ley N.º 8968)');
+  const [confirmaBajaIrreversible, setConfirmaBajaIrreversible] = useState(false);
+  const [procesandoBaja, setProcesandoBaja] = useState(false);
+  const [errorBaja, setErrorBaja] = useState('');
+  const [comprobanteBaja, setComprobanteBaja] = useState(null);
+
+  const handleSolicitarEliminacionCuenta = async (e) => {
+    e.preventDefault();
+    setErrorBaja('');
+
+    if (!passwordBaja || passwordBaja.trim().length < 4) {
+      setErrorBaja(t('perfil.errPassReq'));
+      return;
+    }
+    if (!confirmaBajaIrreversible) {
+      setErrorBaja(t('perfil.errChkReq'));
+      return;
+    }
+
+    setProcesandoBaja(true);
+    try {
+      const res = await authService.deleteAccount({
+        email: perfilUsuario.correo,
+        password: passwordBaja,
+        reason: motivoBaja
+      });
+      setComprobanteBaja(res);
+      setTimeout(() => {
+        cerrarSesion();
+        navigate('/acceso', {
+          replace: true,
+          state: { cuentaEliminadaRecibo: res.receiptId }
+        });
+      }, 3200);
+    } catch (err) {
+      setErrorBaja(err?.message || t('perfil.errBajaGen'));
+    } finally {
+      setProcesandoBaja(false);
+    }
+  };
+
   const handleGuardarCambios = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     setGuardando(true);
@@ -166,11 +216,11 @@ export function Perfil({ embebido = false }) {
           ? {
               nombre: formMascota.nombre.trim(),
               especie: formMascota.especie.trim() || 'Canino',
-              raza: formMascota.raza.trim() || 'Mestizo',
+              raza: formMascota.raza.trim() || t('carnet.mestizo'),
               pesoKg: formMascota.pesoKg ? Number(formMascota.pesoKg) : 15,
               edadAnos: formMascota.edadAnos ? Number(formMascota.edadAnos) : 2,
               microchipId: formMascota.microchipId.trim(),
-              colorManto: formMascota.colorManto.trim() || 'Variado',
+              colorManto: formMascota.colorManto.trim() || t('carnet.variado'),
               foto: formMascota.foto || null,
               alergias: formMascota.alergias
                 .split(',')
@@ -195,10 +245,10 @@ export function Perfil({ embebido = false }) {
         pet: petPayload
       });
 
-      setGuardadoExito('Tu información personal y preferencias se guardaron correctamente.');
+      setGuardadoExito(t('perfil.msgGuardadoOk'));
       setTimeout(() => setGuardadoExito(''), 3500);
     } catch (err) {
-      setErrorGuardado(err?.message || 'No se pudieron guardar los cambios en el servidor.');
+      setErrorGuardado(err?.message || t('perfil.msgGuardadoErr'));
     } finally {
       setGuardando(false);
     }
@@ -216,22 +266,40 @@ export function Perfil({ embebido = false }) {
 
   const mascotaActualVista = {
     ...mascota,
-    nombre: formMascota.nombre || mascota?.nombre || 'Mi Mascota',
+    nombre: formMascota.nombre || mascota?.nombre || t('comun.miMascotaDefault'),
     especie: formMascota.especie || 'Canino',
-    raza: formMascota.raza || 'Mestizo',
+    raza: formMascota.raza || t('carnet.mestizo'),
     pesoKg: formMascota.pesoKg ? Number(formMascota.pesoKg) : 15,
     edadAnos: formMascota.edadAnos ? Number(formMascota.edadAnos) : 2,
-    microchipId: formMascota.microchipId || 'En trámite',
-    colorManto: formMascota.colorManto || 'Variado',
+    microchipId: formMascota.microchipId || t('comun.enTramite'),
+    colorManto: formMascota.colorManto || t('carnet.variado'),
     foto: formMascota.foto || null,
     photoUrl: formMascota.foto || null,
     tutor: {
       ...mascota?.tutor,
       nombre: perfilUsuario.nombre,
       correo: perfilUsuario.correo,
-      telefono: perfilUsuario.telefono || 'Sin registrar'
+      telefono: perfilUsuario.telefono || t('comun.sinRegistrar')
     }
   };
+
+  const interesesTraducidos = t('perfil.interesesOpc');
+  const interesesCanonicos = [
+    'Gastronomía de autor',
+    'Cafeterías de especialidad',
+    'Parques y senderos',
+    'Terrazas al aire libre',
+    'Museos y cultura',
+    'Cervecerías artesanales',
+    'Heladerías artesanales',
+    'Miradores del GAM'
+  ];
+  const presupuestoLabel =
+    perfilUsuario.presupuestoHabitual === 'economico'
+      ? t('perfil.tierEconLabel')
+      : perfilUsuario.presupuestoHabitual === 'premium'
+      ? t('perfil.tierPremLabel')
+      : t('perfil.tierModLabel');
 
   return (
     <PageWrapper className={embebido ? 'py-2' : 'py-8 md:py-14'}>
@@ -253,7 +321,7 @@ export function Perfil({ embebido = false }) {
           <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-3">
             <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <span>
-              El Panel de Administración es exclusivo para cuentas administradoras autorizadas. Aquí puedes gestionar todas tus funciones de usuario.
+              <strong>{t('perfil.adminAvisoTitulo')}:</strong> {t('perfil.adminAvisoDesc')}
             </span>
           </div>
         )}
@@ -270,17 +338,17 @@ export function Perfil({ embebido = false }) {
                   {perfilUsuario.nombre}
                 </h1>
                 <Badge variant="burdeos">
-                  {esAdmin ? 'Cuenta Administrativa' : 'Usuario GoToX'}
+                  {esAdmin ? t('perfil.rolAdmin') : t('perfil.rolUsuario')}
                 </Badge>
                 {perfilUsuario.tieneMascota ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200/70 dark:border-emerald-800/40">
                     <Dog className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                    <span>{formMascota.nombre ? `Mascota: ${formMascota.nombre}` : 'Con mascota vinculada'}</span>
+                    <span>{formMascota.nombre ? t('perfil.badgeMascota', { nombre: formMascota.nombre }) : t('perfil.badgeConMascota')}</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-0.5 rounded-full border border-blue-200/70 dark:border-blue-800/40">
                     <User className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                    <span>Explorador Urbano</span>
+                    <span>{t('perfil.badgeExplorador')}</span>
                   </span>
                 )}
               </div>
@@ -303,7 +371,7 @@ export function Perfil({ embebido = false }) {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200/80 dark:border-rose-800/40 shadow-2xs transition-all active:scale-[0.98]"
               >
                 <LogOut className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                <span>Cerrar Sesión</span>
+                <span>{t('nav.cerrarSesion')}</span>
               </button>
             )}
           </div>
@@ -335,7 +403,7 @@ export function Perfil({ embebido = false }) {
             }`}
           >
             <User className="w-4 h-4" />
-            Mi Cuenta
+            {t('perfil.tabCuenta')}
           </button>
           <button
             type="button"
@@ -347,7 +415,7 @@ export function Perfil({ embebido = false }) {
             }`}
           >
             <Sliders className="w-4 h-4" />
-            Preferencias de Salida
+            {t('perfil.tabPreferencias')}
           </button>
           <button
             type="button"
@@ -359,7 +427,7 @@ export function Perfil({ embebido = false }) {
             }`}
           >
             <Dog className="w-4 h-4" />
-            Mi Mascota (Opcional)
+            {t('perfil.tabMascota')}
           </button>
           <button
             type="button"
@@ -371,7 +439,7 @@ export function Perfil({ embebido = false }) {
             }`}
           >
             <Lock className="w-4 h-4" />
-            Privacidad & Alertas
+            {t('perfil.tabPrivacidad')}
           </button>
         </div>
 
@@ -383,11 +451,11 @@ export function Perfil({ embebido = false }) {
             <div className="lg:col-span-7 space-y-6">
               <Card className="p-6 border-slate-200/80 dark:border-white/10 space-y-4">
                 <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white pb-2 border-b border-slate-100 dark:border-white/10">
-                  Información del Usuario
+                  {t('perfil.infoUsuarioTitulo')}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
-                    <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Nombre Completo</label>
+                    <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblNombre')}</label>
                     <input
                       type="text"
                       value={perfilUsuario.nombre}
@@ -396,7 +464,7 @@ export function Perfil({ embebido = false }) {
                     />
                   </div>
                   <div>
-                    <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Correo Electrónico</label>
+                    <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblCorreo')}</label>
                     <input
                       type="email"
                       value={perfilUsuario.correo}
@@ -405,22 +473,22 @@ export function Perfil({ embebido = false }) {
                     />
                   </div>
                   <div>
-                    <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Teléfono de Contacto</label>
+                    <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblTelefono')}</label>
                     <input
                       type="text"
                       value={perfilUsuario.telefono}
                       onChange={(e) => setPerfilUsuario({ ...perfilUsuario, telefono: e.target.value })}
-                      placeholder="+506 8800-0000"
+                      placeholder={t('accesoExt.telefonoPlaceholder')}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#162032] text-slate-800 dark:text-white text-xs"
                     />
                   </div>
                   <div>
-                    <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Zona Habitual (GAM)</label>
+                    <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblZona')}</label>
                     <input
                       type="text"
                       value={perfilUsuario.ubicacionHabitual}
                       onChange={(e) => setPerfilUsuario({ ...perfilUsuario, ubicacionHabitual: e.target.value })}
-                      placeholder="Barrio Escalante, San José"
+                      placeholder={t('accesoExt.zonaPlaceholder')}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#162032] text-slate-800 dark:text-white text-xs"
                     />
                   </div>
@@ -429,7 +497,7 @@ export function Perfil({ embebido = false }) {
                 <div className="pt-2">
                   <Button type="submit" variant="primary" size="sm" disabled={guardando} className="gap-2">
                     <Save className="w-3.5 h-3.5" />
-                    <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
+                    <span>{guardando ? t('comun.guardando') : t('perfil.guardarCambiosBtn')}</span>
                   </Button>
                 </div>
               </Card>
@@ -437,14 +505,14 @@ export function Perfil({ embebido = false }) {
               <Card className="p-6 border-slate-200/80 dark:border-white/10 space-y-4">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
                   <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white">
-                    Modalidad de Salida
+                    {t('perfil.modalidadTitulo')}
                   </h3>
                   <Badge variant={perfilUsuario.tieneMascota ? 'burdeos' : 'outline'}>
-                    {perfilUsuario.tieneMascota ? 'Con Mascota' : 'Sin Mascota'}
+                    {perfilUsuario.tieneMascota ? t('perfil.conMascotaEstado') : t('perfil.sinMascotaEstado')}
                   </Badge>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300">
-                  Elige si deseas usar las herramientas para mascotas o explorar GoToX únicamente para tus salidas urbanas y gastronomía.
+                  {t('perfil.modalidadDesc')}
                 </p>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   <button
@@ -456,7 +524,7 @@ export function Perfil({ embebido = false }) {
                         : 'bg-white dark:bg-[#162032] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10'
                     }`}
                   >
-                    Tengo mascota
+                    {t('perfil.btnTengoMascota')}
                   </button>
                   <button
                     type="button"
@@ -467,7 +535,7 @@ export function Perfil({ embebido = false }) {
                         : 'bg-white dark:bg-[#162032] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10'
                     }`}
                   >
-                    Solo para mí / Amigos
+                    {t('perfil.btnSoloAmigos')}
                   </button>
                 </div>
               </Card>
@@ -477,7 +545,7 @@ export function Perfil({ embebido = false }) {
             <div className="lg:col-span-5 space-y-6">
               <Card className="p-6 border-slate-200/80 dark:border-white/10 space-y-4">
                 <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white pb-2 border-b border-slate-100 dark:border-white/10">
-                  Mi Actividad Personal
+                  {t('perfil.actividadTitulo')}
                 </h3>
                 <div className="space-y-3 text-xs">
                   <Link
@@ -486,10 +554,10 @@ export function Perfil({ embebido = false }) {
                   >
                     <span className="text-slate-600 dark:text-slate-300 flex items-center gap-2">
                       <Heart className="w-3.5 h-3.5 text-rose-500" />
-                      Lugares en Favoritos
+                      {t('perfil.lugaresFavoritos')}
                     </span>
                     <strong className="text-slate-800 dark:text-white flex items-center gap-1">
-                      {favoritosCount} guardados <ArrowRight className="w-3 h-3" />
+                      {t('perfil.guardadosCount', { n: favoritosCount })} <ArrowRight className="w-3 h-3" />
                     </strong>
                   </Link>
                   <Link
@@ -498,10 +566,10 @@ export function Perfil({ embebido = false }) {
                   >
                     <span className="text-slate-600 dark:text-slate-300 flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5 text-[#F27B91]" />
-                      Mis Planes e Itinerarios
+                      {t('perfil.misPlanesItin')}
                     </span>
                     <strong className="text-slate-800 dark:text-white flex items-center gap-1">
-                      {planesCount} activos <ArrowRight className="w-3 h-3" />
+                      {t('perfil.activosCount', { n: planesCount })} <ArrowRight className="w-3 h-3" />
                     </strong>
                   </Link>
                   <Link
@@ -510,10 +578,10 @@ export function Perfil({ embebido = false }) {
                   >
                     <span className="text-slate-600 dark:text-slate-300 flex items-center gap-2">
                       <Compass className="w-3.5 h-3.5 text-emerald-500" />
-                      Explorar Catálogo GAM
+                      {t('perfil.explorarCatalogo')}
                     </span>
                     <strong className="text-[#501228] dark:text-[#F27B91] flex items-center gap-1">
-                      Abrir <ArrowRight className="w-3 h-3" />
+                      {t('perfil.abrirBtn')} <ArrowRight className="w-3 h-3" />
                     </strong>
                   </Link>
                 </div>
@@ -576,18 +644,18 @@ export function Perfil({ embebido = false }) {
               <Card className="p-6 border-slate-200/80 dark:border-white/10 space-y-5">
                 <div>
                   <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white">
-                    Nivel de Presupuesto Habitual
+                    {t('perfil.presupuestoTitulo')}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Priorizaremos recomendaciones dentro de tu rango estimado en colones.
+                    {t('perfil.presupuestoDesc')}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
-                    { id: 'economico', label: 'Económico', desc: 'Menos de ₡5,000 por persona' },
-                    { id: 'medio', label: 'Moderado', desc: '₡5,000 a ₡12,000 por persona' },
-                    { id: 'premium', label: 'Gourmet', desc: 'Más de ₡12,000 por persona' }
+                    { id: 'economico', label: t('perfil.tierEconLabel'), desc: t('perfil.tierEconDesc') },
+                    { id: 'medio', label: t('perfil.tierModLabel'), desc: t('perfil.tierModDesc') },
+                    { id: 'premium', label: t('perfil.tierPremLabel'), desc: t('perfil.tierPremDesc') }
                   ].map((p) => (
                     <button
                       key={p.id}
@@ -607,20 +675,12 @@ export function Perfil({ embebido = false }) {
 
                 <div className="pt-4 border-t border-slate-100 dark:border-white/10">
                   <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white mb-2">
-                    Intereses Favoritos
+                    {t('perfil.interesesTitulo')}
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {[
-                      'Gastronomía de autor',
-                      'Cafeterías de especialidad',
-                      'Parques y senderos',
-                      'Terrazas al aire libre',
-                      'Museos y cultura',
-                      'Cervecerías artesanales',
-                      'Heladerías artesanales',
-                      'Miradores del GAM'
-                    ].map((interes) => {
+                    {interesesCanonicos.map((interes, idx) => {
                       const activo = perfilUsuario.intereses.includes(interes);
+                      const etiqueta = (Array.isArray(interesesTraducidos) && interesesTraducidos[idx]) || interes;
                       return (
                         <button
                           key={interes}
@@ -632,7 +692,7 @@ export function Perfil({ embebido = false }) {
                               : 'bg-white dark:bg-[#162032] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-slate-300'
                           }`}
                         >
-                          {activo && '✓ '} {interes}
+                          {activo && '✓ '} {etiqueta}
                         </button>
                       );
                     })}
@@ -641,7 +701,7 @@ export function Perfil({ embebido = false }) {
 
                 <div className="pt-3">
                   <Button variant="primary" size="sm" disabled={guardando} onClick={handleGuardarCambios}>
-                    {guardando ? 'Guardando...' : 'Guardar Preferencias'}
+                    {guardando ? t('comun.guardando') : t('perfil.guardarPrefsBtn')}
                   </Button>
                 </div>
               </Card>
@@ -651,10 +711,10 @@ export function Perfil({ embebido = false }) {
               <Card className="p-6 border-slate-200/80 dark:border-white/10 space-y-3">
                 <div className="flex items-center gap-2 text-[#501228] dark:text-[#F27B91]">
                   <Sparkles className="w-4 h-4" />
-                  <h4 className="font-serif font-bold text-sm text-[#111827] dark:text-white">Sugerencia de Salida</h4>
+                  <h4 className="font-serif font-bold text-sm text-[#111827] dark:text-white">{t('perfil.sugerenciaTitulo')}</h4>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  De acuerdo con tu presupuesto {perfilUsuario.presupuestoHabitual} y zona ({perfilUsuario.ubicacionHabitual}), puedes usar Explorar o Copiloto Bruno para planear tu salida de hoy.
+                  {t('perfil.sugerenciaCuerpo', { presupuesto: presupuestoLabel, zona: perfilUsuario.ubicacionHabitual })}
                 </p>
               </Card>
             </div>
@@ -672,10 +732,10 @@ export function Perfil({ embebido = false }) {
                   <Dog className="w-6 h-6" />
                 </div>
                 <h3 className="font-serif font-bold text-xl text-[#111827] dark:text-white">
-                  Aún no tienes una mascota vinculada
+                  {t('perfil.sinMascotaPerfilTitulo')}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Puedes seguir usando GoToX sin mascota, o agregar una ahora para activar su carnet digital, medalla QR y recomendaciones personalizadas.
+                  {t('perfil.sinMascotaPerfilDesc')}
                 </p>
                 <div className="pt-2">
                   <Button
@@ -684,7 +744,7 @@ export function Perfil({ embebido = false }) {
                     size="sm"
                     onClick={() => setPerfilUsuario({ ...perfilUsuario, tieneMascota: true })}
                   >
-                    Agregar Información de Mi Mascota
+                    {t('perfil.sinMascotaPerfilBtn')}
                   </Button>
                 </div>
               </Card>
@@ -700,7 +760,7 @@ export function Perfil({ embebido = false }) {
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#162032]'
                     }`}
                   >
-                    Ficha & Carnet Digital
+                    {t('perfil.subtabCarnet')}
                   </button>
                   <button
                     type="button"
@@ -711,7 +771,7 @@ export function Perfil({ embebido = false }) {
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#162032]'
                     }`}
                   >
-                    Collar Inteligente QR
+                    {t('perfil.subtabQr')}
                   </button>
                   <button
                     type="button"
@@ -722,7 +782,7 @@ export function Perfil({ embebido = false }) {
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#162032]'
                     }`}
                   >
-                    Cartilla de Referencia
+                    {t('perfil.subtabCartilla')}
                   </button>
                 </div>
 
@@ -731,45 +791,55 @@ export function Perfil({ embebido = false }) {
                     <div className="lg:col-span-5 space-y-4">
                       <CarnetDigital mascota={mascotaActualVista} interactivo={true} />
                       <p className="text-[11px] text-center text-slate-400">
-                        Vista interactiva del carnet con los datos de tu mascota
+                        {t('perfil.vistaCarnetHint')}
                       </p>
                     </div>
 
                     <div className="lg:col-span-7">
                       <Card className="p-6 border-slate-200/80 dark:border-white/10 space-y-4">
                         <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white pb-2 border-b border-slate-100 dark:border-white/10">
-                          Editar Datos de Mi Mascota
+                          {t('perfil.editarMascotaTitulo')}
                         </h3>
                         <form onSubmit={handleGuardarCambios} className="space-y-4 text-xs">
                           <SelectorFotoMascota
                             valor={formMascota.foto}
-                            onChange={(foto) => setFormMascota({ ...formMascota, foto })}
-                            nombreMascota={formMascota.nombre || 'tu perro'}
+                            onChange={(foto) => setFormMascota((prev) => ({ ...prev, foto }))}
+                            nombreMascota={formMascota.nombre || t('accesoExt.tuPerroDefault')}
+                            razaActual={formMascota.raza}
+                            onSeleccionarPerfilRaza={({ raza, pesoKg, colorManto, foto }) => {
+                              setFormMascota((prev) => ({
+                                ...prev,
+                                raza: raza || prev.raza,
+                                pesoKg: pesoKg ? String(pesoKg) : prev.pesoKg,
+                                colorManto: colorManto || prev.colorManto,
+                                foto: foto || prev.foto
+                              }));
+                            }}
                           />
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Nombre de la Mascota</label>
+                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblNombreMascota')}</label>
                               <input
                                 type="text"
                                 value={formMascota.nombre}
                                 onChange={(e) => setFormMascota({ ...formMascota, nombre: e.target.value })}
-                                placeholder="Ej. Max"
+                                placeholder={t('mascotaPage.phNombre')}
                                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#162032] text-slate-800 dark:text-white"
                               />
                             </div>
                             <div>
-                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Raza / Especie</label>
+                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblRazaMascota')}</label>
                               <input
                                 type="text"
                                 value={formMascota.raza}
                                 onChange={(e) => setFormMascota({ ...formMascota, raza: e.target.value })}
-                                placeholder="Ej. Beagle"
+                                placeholder={t('mascotaPage.phRaza')}
                                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#162032] text-slate-800 dark:text-white"
                               />
                             </div>
                             <div>
-                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Peso (kg)</label>
+                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblPesoMascota')}</label>
                               <input
                                 type="number"
                                 step="0.1"
@@ -780,7 +850,7 @@ export function Perfil({ embebido = false }) {
                               />
                             </div>
                             <div>
-                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Edad (años)</label>
+                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblEdadMascota')}</label>
                               <input
                                 type="number"
                                 value={formMascota.edadAnos}
@@ -790,7 +860,7 @@ export function Perfil({ embebido = false }) {
                               />
                             </div>
                             <div>
-                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">N° Microchip (Opcional)</label>
+                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('accesoExt.microchipOpc')}</label>
                               <input
                                 type="text"
                                 value={formMascota.microchipId}
@@ -800,12 +870,12 @@ export function Perfil({ embebido = false }) {
                               />
                             </div>
                             <div>
-                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">Alergias o Cuidados</label>
+                              <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblAlergiasMascota')}</label>
                               <input
                                 type="text"
                                 value={formMascota.alergias}
                                 onChange={(e) => setFormMascota({ ...formMascota, alergias: e.target.value })}
-                                placeholder="Separadas por coma (Opcional)"
+                                placeholder={t('mascotaPage.phAlergias')}
                                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#162032] text-slate-800 dark:text-white"
                               />
                             </div>
@@ -814,7 +884,7 @@ export function Perfil({ embebido = false }) {
                           <div className="pt-2">
                             <Button type="submit" variant="primary" size="sm" disabled={guardando} className="gap-2">
                               <Save className="w-3.5 h-3.5" />
-                              <span>{guardando ? 'Guardando...' : 'Guardar Datos de Mascota'}</span>
+                              <span>{guardando ? t('comun.guardando') : t('perfil.guardarMascotaBtn')}</span>
                             </Button>
                           </div>
                         </form>
@@ -833,33 +903,49 @@ export function Perfil({ embebido = false }) {
                   <div className="space-y-4">
                     <div>
                       <h2 className="font-serif font-bold text-2xl text-[#111827] dark:text-white">
-                        Esquema de Vacunación de Referencia
+                        {t('perfil.esquemaTitulo')}
                       </h2>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Calendario guía de cuidados preventivos; consulta siempre con tu médico veterinario.
+                        {t('perfil.esquemaSub')}
                       </p>
                     </div>
 
-                    <Tabla headers={['Vacuna o Tratamiento', 'Última Aplicación', 'Próxima Dosis', 'Estado']}>
-                      {(mascota?.vacunacion || []).map((v, i) => (
-                        <Tr key={i}>
-                          <Td>
-                            <div className="flex items-center gap-2">
-                              <Syringe className="w-4 h-4 text-[#501228] dark:text-[#F27B91]" />
-                              <span className="font-semibold text-slate-800 dark:text-white">{v.nombre}</span>
-                            </div>
-                          </Td>
-                          <Td>
-                            <span className="text-xs text-slate-600 dark:text-slate-300">{v.fecha}</span>
-                          </Td>
-                          <Td>
-                            <span className="text-xs font-semibold text-slate-800 dark:text-white">{v.proxima}</span>
-                          </Td>
-                          <Td>
-                            <Badge variant="success">{v.estado}</Badge>
-                          </Td>
-                        </Tr>
-                      ))}
+                    <Tabla headers={[t('perfil.thVacuna'), t('perfil.thUltima'), t('perfil.thProxima'), t('perfil.thEstado')]}>
+                      {(mascota?.vacunacion || []).map((v, i) => {
+                        const vacunaNombre =
+                          i === 0
+                            ? t('perfil.vacuna1Nombre')
+                            : i === 1
+                            ? t('perfil.vacuna2Nombre')
+                            : i === 2
+                            ? t('perfil.vacuna3Nombre')
+                            : i === 3
+                            ? t('perfil.vacuna4Nombre')
+                            : v.nombre;
+                        const estadoVac =
+                          v.estado && v.estado.toLowerCase().includes('al d')
+                            ? t('perfil.vacunaAlDia')
+                            : t('perfil.vacunaProxima');
+                        return (
+                          <Tr key={i}>
+                            <Td>
+                              <div className="flex items-center gap-2">
+                                <Syringe className="w-4 h-4 text-[#501228] dark:text-[#F27B91]" />
+                                <span className="font-semibold text-slate-800 dark:text-white">{vacunaNombre}</span>
+                              </div>
+                            </Td>
+                            <Td>
+                              <span className="text-xs text-slate-600 dark:text-slate-300">{v.fecha}</span>
+                            </Td>
+                            <Td>
+                              <span className="text-xs font-semibold text-slate-800 dark:text-white">{v.proxima}</span>
+                            </Td>
+                            <Td>
+                              <Badge variant="success">{estadoVac}</Badge>
+                            </Td>
+                          </Tr>
+                        );
+                      })}
                     </Tabla>
                   </div>
                 )}
@@ -876,13 +962,13 @@ export function Perfil({ embebido = false }) {
             <div className="lg:col-span-8 space-y-6">
               <Card className="p-6 border-slate-200/80 dark:border-white/10 space-y-4">
                 <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white pb-2 border-b border-slate-100 dark:border-white/10">
-                  Alertas y Privacidad de Cuenta
+                  {t('perfil.privacidadTitulo')}
                 </h3>
                 <div className="space-y-4">
                   <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-[#162032] cursor-pointer">
                     <div>
-                      <span className="text-xs font-semibold block text-slate-800 dark:text-white">Alertas de Lluvia y Clima en Vivo</span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Avisarme antes de lluvias en mi zona habitual</span>
+                      <span className="text-xs font-semibold block text-slate-800 dark:text-white">{t('perfil.priv1Titulo')}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('perfil.priv1Desc')}</span>
                     </div>
                     <input
                       type="checkbox"
@@ -894,8 +980,8 @@ export function Perfil({ embebido = false }) {
 
                   <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-[#162032] cursor-pointer">
                     <div>
-                      <span className="text-xs font-semibold block text-slate-800 dark:text-white">Alertas de Confort Acústico</span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Notificar si hay niveles de ruido superiores a 65 dB</span>
+                      <span className="text-xs font-semibold block text-slate-800 dark:text-white">{t('perfil.priv2Titulo')}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('perfil.priv2Desc')}</span>
                     </div>
                     <input
                       type="checkbox"
@@ -907,8 +993,8 @@ export function Perfil({ embebido = false }) {
 
                   <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-[#162032] cursor-pointer">
                     <div>
-                      <span className="text-xs font-semibold block text-slate-800 dark:text-white">Ubicación para Rutas y Recomendaciones</span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">Usar tu zona aproximada para sugerir lugares cercanos</span>
+                      <span className="text-xs font-semibold block text-slate-800 dark:text-white">{t('perfil.priv3Titulo')}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">{t('perfil.priv3Desc')}</span>
                     </div>
                     <input
                       type="checkbox"
@@ -921,9 +1007,172 @@ export function Perfil({ embebido = false }) {
 
                 <div className="pt-2">
                   <Button variant="primary" size="sm" disabled={guardando} onClick={handleGuardarCambios}>
-                    {guardando ? 'Guardando...' : 'Guardar Configuración'}
+                    {guardando ? t('comun.guardando') : t('perfil.guardarConfigBtn')}
                   </Button>
                 </div>
+              </Card>
+
+              {/* BAJA DEL SISTEMA Y ELIMINACIÓN DE DATOS PERSONALES (LEY N.º 8968 CR) */}
+              <Card className="p-6 border-rose-300/80 dark:border-rose-800/50 bg-rose-50/30 dark:bg-rose-950/15 space-y-4">
+                <div className="flex items-start justify-between gap-3 pb-3 border-b border-rose-200/70 dark:border-rose-800/40">
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300/60 dark:border-rose-800/50 mb-1.5">
+                      <Trash2 className="w-3 h-3" />
+                      <span>{t('perfil.arcoTag')}</span>
+                    </span>
+                    <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white">
+                      {t('perfil.arcoTitulo')}
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
+                      {t('perfil.arcoDesc')}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#162032] border border-slate-200/80 dark:border-white/10 space-y-1">
+                    <span className="font-bold text-rose-700 dark:text-rose-300 block">
+                      {t('perfil.arcoQueEliminaTitulo')}
+                    </span>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {t('perfil.arcoQueEliminaDesc')}
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#162032] border border-slate-200/80 dark:border-white/10 space-y-1">
+                    <span className="font-bold text-slate-800 dark:text-white block">
+                      {t('perfil.arcoQueConservaTitulo')}
+                    </span>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {t('perfil.arcoQueConservaDesc')}
+                    </p>
+                  </div>
+                </div>
+
+                {comprobanteBaja ? (
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 space-y-2 text-xs">
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <span>{t('perfil.arcoProcesadaBadge', { id: comprobanteBaja.receiptId })}</span>
+                    </div>
+                    <p className="leading-relaxed">{comprobanteBaja.message}</p>
+                    <p className="text-[11px] opacity-80">
+                      {t('perfil.arcoProcesadaDesc', {
+                        email: `${perfilUsuario.correo} (${new Date(comprobanteBaja.processedAt).toLocaleString(idiomaActual.ttsLang)})`
+                      })}
+                    </p>
+                  </div>
+                ) : !mostrarFormBaja ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {t('perfil.arcoRequeriraId')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMostrarFormBaja(true);
+                        setErrorBaja('');
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 transition-colors shadow-sm"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{t('perfil.arcoSolicitarBtn')}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={handleSolicitarEliminacionCuenta}
+                    className="p-4 rounded-2xl bg-white dark:bg-[#111827] border border-rose-300 dark:border-rose-800/60 space-y-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>{t('perfil.arcoConfirmTitulo')}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setMostrarFormBaja(false)}
+                        className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                      >
+                        {t('comun.cancelar')}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                          {t('perfil.lblPassBaja')}
+                        </label>
+                        <input
+                          type="password"
+                          value={passwordBaja}
+                          onChange={(e) => setPasswordBaja(e.target.value)}
+                          placeholder={t('perfil.phPassBaja')}
+                          required
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-[#162032] text-slate-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                          {t('perfil.lblMotivoBaja')}
+                        </label>
+                        <select
+                          value={motivoBaja}
+                          onChange={(e) => setMotivoBaja(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-[#162032] text-slate-900 dark:text-white"
+                        >
+                          <option value="Ejercicio de derecho de supresión (Art. 7 Ley N.º 8968)">
+                            {t('perfil.motivoOpt1')}
+                          </option>
+                          <option value="Ya no utilizo la plataforma Synodos">
+                            {t('perfil.motivoOpt2')}
+                          </option>
+                          <option value="Deseo revocar mi consentimiento y anonimizar mi historial">
+                            {t('perfil.motivoOpt3')}
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <label className="flex items-start gap-2.5 text-xs cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={confirmaBajaIrreversible}
+                        onChange={(e) => setConfirmaBajaIrreversible(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded accent-rose-700 shrink-0"
+                      />
+                      <span className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                        {t('perfil.chkConfirmBaja')} ({perfilUsuario.correo})
+                      </span>
+                    </label>
+
+                    {errorBaja && (
+                      <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-300 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>{errorBaja}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setMostrarFormBaja(false)}
+                        className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-white/15"
+                      >
+                        {t('perfil.btnConservar')}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={procesandoBaja}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-700 hover:bg-rose-800 disabled:opacity-50 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>
+                          {procesandoBaja ? t('perfil.btnProcesando') : t('perfil.btnConfirmarBaja')}
+                        </span>
+                      </button>
+                    </div>
+                  </form>
+                )}
               </Card>
             </div>
 
@@ -931,11 +1180,36 @@ export function Perfil({ embebido = false }) {
               <Card className="p-6 border-slate-200/80 dark:border-white/10 space-y-3">
                 <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                   <ShieldCheck className="w-5 h-5" />
-                  <h4 className="font-serif font-bold text-sm text-[#111827] dark:text-white">Privacidad de Datos</h4>
+                  <h4 className="font-serif font-bold text-sm text-[#111827] dark:text-white">
+                    {t('perfil.govTitulo')}
+                  </h4>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Tu cuenta personal únicamente almacena tu perfil, tus preferencias y los datos de tu mascota que decidas registrar.
+                  {t('perfil.govDesc')} (2026.11-CR-8968)
                 </p>
+                <div className="pt-2 space-y-2 border-t border-slate-100 dark:border-white/10 text-xs">
+                  <Link
+                    to="/terminos"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-[#162032] hover:bg-[#FDF2F4] dark:hover:bg-[#55152D]/30 font-semibold text-[#501228] dark:text-[#F27B91] transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileCheck2 className="w-4 h-4" />
+                      <span>{t('perfil.verTerminosBtn')}</span>
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={abrirConfiguracionCookies}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-[#162032] hover:bg-slate-100 dark:hover:bg-white/10 font-medium text-slate-700 dark:text-slate-200 transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Cookie className="w-4 h-4 text-[#F27B91]" />
+                      <span>{t('perfil.gestionarCookiesBtn')}</span>
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </Card>
             </div>
           </div>

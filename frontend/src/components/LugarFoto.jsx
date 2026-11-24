@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, ExternalLink, Loader2, Utensils, Sparkles } from 'lucide-react';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 
 function etiquetaProveedor(provider) {
   if (provider === 'wikimedia_commons') return 'Wikimedia Commons';
@@ -21,6 +22,7 @@ export function LugarFoto({
   compacto = false
 }) {
   const { esClaro, esMorado } = useTema();
+  const { t } = useIdioma();
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export function LugarFoto({
         className={`w-full h-full flex flex-col items-center justify-center gap-1.5 p-3 text-center ${fondoEditorial}`}
       >
         <Loader2 className="w-5 h-5 motion-safe:animate-spin text-[#F27B91]" aria-hidden="true" />
-        {!compacto && <span className="text-[11px] font-medium">Consultando fotografía...</span>}
+        {!compacto && <span className="text-[11px] font-medium">{t('fotoLugar.consultando')}</span>}
       </div>
     );
   }
@@ -56,13 +58,13 @@ export function LugarFoto({
   if (!src || imgError) {
     const mensajeEstado =
       photoMeta?.status === 'ambiguous'
-        ? 'Vinculación de sucursal pendiente'
-        : 'Sin fotografía disponible';
+        ? t('fotoLugar.vinculacionPendiente')
+        : t('fotoLugar.sinFoto');
 
     return (
       <div
         role="img"
-        aria-label={`${alt || 'Establecimiento'}: ${mensajeEstado}`}
+        aria-label={`${alt || t('fotoLugar.establecimientoDefault')}: ${mensajeEstado}`}
         style={{ color: colorTextoInline }}
         className={`relative w-full h-full flex flex-col items-center justify-center gap-2 p-4 text-center overflow-hidden ${fondoEditorial}`}
       >
@@ -95,7 +97,7 @@ export function LugarFoto({
   const nombreProveedor = etiquetaProveedor(photoMeta?.provider);
   const textoCredito = primerAutor?.displayName
     ? `${primerAutor.displayName} · ${nombreProveedor}`
-    : `Foto: ${nombreProveedor}`;
+    : t('fotoLugar.creditoFoto', { proveedor: nombreProveedor });
 
   return (
     <div className="relative w-full h-full">
@@ -117,8 +119,8 @@ export function LugarFoto({
             target="_blank"
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
-            aria-label={`Ver fuente en ${nombreProveedor}`}
-            title={`Ver en ${nombreProveedor}`}
+            aria-label={t('fotoLugar.verFuente', { proveedor: nombreProveedor })}
+            title={t('fotoLugar.verEn', { proveedor: nombreProveedor })}
             className="text-sky-300 hover:text-white shrink-0"
           >
             <ExternalLink className="w-3 h-3" aria-hidden="true" />

@@ -18,17 +18,12 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { etiquetaEstadoMascota } from './adaptadorLugares';
+import { useIdioma } from '../../context/IdiomaContext';
 
 function IconoEstadoMascota({ estado }) {
   if (estado === 'permitido') return <CheckCircle2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
   if (estado === 'no_permitido') return <XCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
   return <HelpCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />;
-}
-
-function etiquetaProcedenciaCorta(lugar) {
-  if (lugar.confirmadoPorEstablecimiento) return 'Confirmado por el local';
-  if (lugar.esDemo) return 'Demo editorial';
-  return 'Señal externa (pendiente)';
 }
 
 export function ListaLugaresMapa({
@@ -46,7 +41,14 @@ export function ListaLugaresMapa({
   onSeleccionarLugar,
   compacto = false
 }) {
+  const { t } = useIdioma();
   const [masFiltrosAbierto, setMasFiltrosAbierto] = useState(false);
+
+  const etiquetaProcedenciaCorta = (lugar) => {
+    if (lugar.confirmadoPorEstablecimiento) return t('mapaExt.confirmadoLocal');
+    if (lugar.esDemo) return t('mapaExt.demoEditorial');
+    return t('mapaExt.senalExternaPend');
+  };
 
   const cantidadFiltrosActivos =
     (filtros.soloPermitidos ? 1 : 0) +
@@ -73,20 +75,20 @@ export function ListaLugaresMapa({
             aria-hidden="true"
           />
           <label htmlFor="mapa-buscador" className="sr-only">
-            Busca un lugar o barrio
+            {t('mapaExt.buscarPh')}
           </label>
           <input
             id="mapa-buscador"
             type="search"
             value={busqueda}
             onChange={(e) => onBusquedaChange(e.target.value)}
-            placeholder="Busca un lugar o barrio"
+            placeholder={t('mapaExt.buscarPh')}
             className={`w-full pl-10 pr-16 py-2.5 rounded-2xl border text-xs sm:text-[13px] transition-colors ${tokens.inputClase}`}
           />
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {cargandoBusqueda && (
               <span
-                aria-label="Buscando lugares"
+                aria-label={t('mapaExt.buscandoLugares')}
                 className={`p-1 ${tokens.textoMuted}`}
               >
                 <Loader2 className="w-3.5 h-3.5 motion-safe:animate-spin" aria-hidden="true" />
@@ -96,7 +98,7 @@ export function ListaLugaresMapa({
               <button
                 type="button"
                 onClick={() => onBusquedaChange('')}
-                aria-label="Borrar búsqueda"
+                aria-label={t('mapaExt.borrarBusqueda')}
                 className={`p-1 rounded-lg transition-transform active:scale-95 ${tokens.textoMuted} hover:opacity-80 ${tokens.focusRing}`}
               >
                 <X className="w-4 h-4" />
@@ -107,7 +109,7 @@ export function ListaLugaresMapa({
 
         {/* Filtros Principales + Más filtros */}
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtros principales">
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t('mapaExt.filtrosAria')}>
             <button
               type="button"
               aria-pressed={filtros.soloPermitidos}
@@ -119,7 +121,7 @@ export function ListaLugaresMapa({
               }`}
             >
               <PawPrint className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Mascotas</span>
+              <span>{t('mapaExt.mascotasChip')}</span>
               {filtros.soloPermitidos && <Check className="w-3 h-3 shrink-0" aria-hidden="true" />}
             </button>
 
@@ -132,7 +134,7 @@ export function ListaLugaresMapa({
               }`}
             >
               <Navigation className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Cercanos</span>
+              <span>{t('mapaExt.cercanosChip')}</span>
               {orden === 'distancia' && <Check className="w-3 h-3 shrink-0" aria-hidden="true" />}
             </button>
 
@@ -147,7 +149,7 @@ export function ListaLugaresMapa({
               }`}
             >
               <Trees className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Terraza</span>
+              <span>{t('mapaExt.terrazaChip')}</span>
               {filtros.conTerraza && <Check className="w-3 h-3 shrink-0" aria-hidden="true" />}
             </button>
 
@@ -162,7 +164,7 @@ export function ListaLugaresMapa({
               }`}
             >
               <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Más filtros</span>
+              <span>{t('mapaExt.masFiltros')}</span>
               {masFiltrosAbierto ? (
                 <ChevronUp className="w-3 h-3 shrink-0" aria-hidden="true" />
               ) : (
@@ -186,7 +188,7 @@ export function ListaLugaresMapa({
                   }`}
                 >
                   <Volume2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  <span>Tranquilos</span>
+                  <span>{t('mapaExt.tranquilosChip')}</span>
                   {filtros.soloTranquilos && <Check className="w-3 h-3 shrink-0" aria-hidden="true" />}
                 </button>
 
@@ -204,14 +206,14 @@ export function ListaLugaresMapa({
                   }`}
                 >
                   <HelpCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  <span>Incluir desconocidos</span>
+                  <span>{t('mapaExt.incluirDesconocidos')}</span>
                   {filtros.incluirDesconocidos && <Check className="w-3 h-3 shrink-0" aria-hidden="true" />}
                 </button>
               </div>
 
               <div className="flex items-center gap-2">
                 <label htmlFor="mapa-orden" className={`text-[11px] font-semibold shrink-0 ${tokens.textoCuerpo}`}>
-                  Ordenar por:
+                  {t('mapaExt.ordenarPor')}
                 </label>
                 <select
                   id="mapa-orden"
@@ -219,10 +221,10 @@ export function ListaLugaresMapa({
                   onChange={(e) => onOrdenChange(e.target.value)}
                   className={`flex-1 min-w-0 px-2.5 py-1.5 rounded-xl border text-xs font-medium ${tokens.inputClase}`}
                 >
-                  <option value="relevancia">Compatibilidad y distancia</option>
-                  <option value="distancia">Más cercanos</option>
-                  <option value="tranquilidad">Más tranquilos</option>
-                  <option value="nombre">Nombre (A-Z)</option>
+                  <option value="relevancia">{t('mapaExt.ordRelevancia')}</option>
+                  <option value="distancia">{t('mapaExt.ordDistancia')}</option>
+                  <option value="tranquilidad">{t('mapaExt.ordTranquilidad')}</option>
+                  <option value="nombre">{t('mapaExt.ordNombre')}</option>
                 </select>
               </div>
             </div>
@@ -232,15 +234,15 @@ export function ListaLugaresMapa({
           {hayBusquedaOFiltros && (
             <div className="flex items-center justify-between gap-2 text-[11px] px-0.5">
               <span className={tokens.textoMuted}>
-                {lugares.length} {lugares.length === 1 ? 'resultado' : 'resultados'}
-                {cantidadFiltrosActivos > 0 ? ` · ${cantidadFiltrosActivos} filtro(s)` : ''}
+                {lugares.length} {lugares.length === 1 ? t('mapaExt.resultadoSing') : t('mapaExt.resultadoPlur')}
+                {cantidadFiltrosActivos > 0 ? ` ${t('mapaExt.filtrosCount', { n: cantidadFiltrosActivos })}` : ''}
               </span>
               <button
                 type="button"
                 onClick={onLimpiarFiltros}
                 className={`font-semibold underline underline-offset-2 ${tokens.textoTitulo} hover:opacity-80 ${tokens.focusRing}`}
               >
-                Limpiar filtros
+                {t('mapaExt.limpiarFiltros')}
               </button>
             </div>
           )}
@@ -257,10 +259,10 @@ export function ListaLugaresMapa({
           <div className={`p-5 rounded-2xl border text-center space-y-2 ${tokens.superficieSecundaria}`}>
             <ShieldAlert className={`w-6 h-6 mx-auto ${tokens.textoMuted}`} aria-hidden="true" />
             <p className={`text-xs font-semibold ${tokens.textoTitulo}`}>
-              No hay lugares que coincidan con tu búsqueda.
+              {t('mapaExt.sinCoincidencias')}
             </p>
             <p className={`text-[11px] ${tokens.textoMuted}`}>
-              Ajusta los filtros o limpia la búsqueda para explorar más opciones.
+              {t('mapaExt.sinCoincidenciasSub')}
             </p>
             {hayBusquedaOFiltros && (
               <button
@@ -268,7 +270,7 @@ export function ListaLugaresMapa({
                 onClick={onLimpiarFiltros}
                 className={`mt-1 inline-flex items-center px-3 py-1.5 rounded-xl border text-xs font-semibold ${tokens.botonSecundario} ${tokens.focusRing}`}
               >
-                Limpiar filtros
+                {t('mapaExt.limpiarFiltros')}
               </button>
             )}
           </div>
@@ -327,7 +329,7 @@ export function ListaLugaresMapa({
                       )}`}
                     >
                       <IconoEstadoMascota estado={lugar.petStatus} />
-                      <span>{etiquetaEstadoMascota(lugar.petStatus)}</span>
+                      <span>{etiquetaEstadoMascota(lugar.petStatus, t)}</span>
                     </span>
                     <span className={`text-[10px] font-medium ${tokens.textoMuted}`}>
                       {etiquetaProcedenciaCorta(lugar)}

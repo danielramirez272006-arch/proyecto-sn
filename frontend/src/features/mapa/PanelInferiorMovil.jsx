@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { ChevronUp, ChevronDown, GripHorizontal } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
+import { useIdioma } from '../../context/IdiomaContext';
 
 export const ALTURA_COLAPSADA_PX = 138;
 
@@ -11,6 +12,7 @@ export function PanelInferiorMovil({
   totalResultados,
   children
 }) {
+  const { t } = useIdioma();
   const prefersReducedMotion = useReducedMotion();
   const dragStartYRef = useRef(null);
   const [dragOffsetPx, setDragOffsetPx] = useState(0);
@@ -44,7 +46,7 @@ export function PanelInferiorMovil({
 
   return (
     <section
-      aria-label="Panel de lugares cercanos"
+      aria-label={t('mapaExt.panelCercanosAria')}
       style={{
         height: alturaEstilo,
         transform: dragOffsetPx !== 0 ? `translateY(${dragOffsetPx * 0.25}px)` : undefined,
@@ -68,10 +70,10 @@ export function PanelInferiorMovil({
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 text-left">
             <h2 className={`font-serif font-bold text-sm truncate ${tokens.textoTitulo}`}>
-              Lugares en esta vista ({totalResultados})
+              {t('mapaExt.lugaresEnVista', { n: totalResultados })}
             </h2>
             <p className={`text-[11px] truncate ${tokens.textoMuted}`}>
-              {expandido ? 'Desliza las tarjetas para explorar' : 'Toca Expandir o arrastra este tirador'}
+              {expandido ? t('mapaExt.deslizaExplorar') : t('mapaExt.tocaExpandir')}
             </p>
           </div>
 
@@ -84,12 +86,12 @@ export function PanelInferiorMovil({
             {expandido ? (
               <>
                 <ChevronDown className="w-4 h-4" aria-hidden="true" />
-                <span>Contraer</span>
+                <span>{t('mapaExt.contraer')}</span>
               </>
             ) : (
               <>
                 <ChevronUp className="w-4 h-4" aria-hidden="true" />
-                <span>Expandir</span>
+                <span>{t('mapaExt.expandir')}</span>
               </>
             )}
           </button>

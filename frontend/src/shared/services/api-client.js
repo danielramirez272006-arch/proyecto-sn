@@ -77,7 +77,7 @@ class ApiClient {
     }
   }
 
-  async request(endpoint, { method = 'GET', body = null, headers = {}, _retried = false } = {}) {
+  async request(endpoint, { method = 'GET', body = null, headers = {}, silent = false, _retried = false } = {}) {
     const defaultHeaders = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -113,7 +113,7 @@ class ApiClient {
       ) {
         const newToken = await this._tryRefreshToken();
         if (newToken) {
-          return this.request(endpoint, { method, body, headers, _retried: true });
+          return this.request(endpoint, { method, body, headers, silent, _retried: true });
         }
       }
 
@@ -130,7 +130,9 @@ class ApiClient {
 
       return data?.data !== undefined ? data.data : data;
     } catch (err) {
-      console.error(`[API Error] ${method} ${endpoint}:`, err);
+      if (!silent) {
+        console.error(`[API Error] ${method} ${endpoint}:`, err);
+      }
       throw err;
     }
   }

@@ -2,17 +2,30 @@ const app = require('./app');
 const env = require('./shared/config/env-config');
 const { initDatabase, closeDatabase, runMigrations, runSeeds } = require('./shared/config/database');
 const { authService } = require('./modules/auth');
+const { hydrateRevokedTokensFromDb } = require('./shared/middlewares/auth-role-guard');
 const { emailWorker } = require('./modules/notifications');
 const { orchestrator } = require('./autonomous-agents');
 
 async function bootstrap() {
   try {
-    console.log('[Server] Inicializando Sistema de Sinergia Urbana Costa Rica...');
+    console.log('[Server] Inicializando Synodos API — Costa Rica...');
 
-    // 1. Inicializar base de datos
+    // 1. Inicializar servidor HTTP primero para que el proxy de Vite no reciba ECONNREFUSED durante migraciones en nube
+    const server = app.listen(env.port, () => {
+      console.log(`[Server] Backend Express escuchando en http://localhost:${env.port}`);
+      console.log(`[Server] Documentación y salud en http://localhost:${env.port}/api/health`);
+    });
+
+    // Timeouts HTTP defensivos contra sockets colgados / Slowloris (OWASP A10:2025)
+    server.requestTimeout = 30000;
+    server.headersTimeout = 15000;
+    server.keepAliveTimeout = 65000;
+
+    // 2. Inicializar base de datos e hidratar tokens JWT revocados (OWASP A07:2025)
     await initDatabase();
+    await hydrateRevokedTokensFromDb();
 
-    // 2. Si es desarrollo y la base está limpia, correr migraciones y seeds automáticamente
+    // 3. Si es desarrollo y la base está limpia, correr migraciones y seeds automáticamente
     if (env.nodeEnv !== 'production') {
       try {
         await runMigrations();
@@ -23,7 +36,7 @@ async function bootstrap() {
       }
     }
 
-    // 2.1 Bootstrap opcional de administrador inicial desde variables ADMIN_EMAIL / ADMIN_PASSWORD
+    // 3.1 Bootstrap opcional de administrador inicial desde variables ADMIN_EMAIL / ADMIN_PASSWORD
     try {
       const bootstrapResult = await authService.ensureBootstrapAdmin();
       if (bootstrapResult.created || bootstrapResult.updated) {
@@ -33,30 +46,42 @@ async function bootstrap() {
       console.warn('[Server] Aviso al verificar admin bootstrap:', adminErr.message);
     }
 
-    // 3. Iniciar Worker de Correo y Orquestador de Agentes
+    // 4. Iniciar Worker de Correo y Orquestador de Agentes
     emailWorker.start();
     orchestrator.init();
 
-    // 4. Iniciar servidor HTTP
-    const server = app.listen(env.port, () => {
-      console.log(`[Server] Backend Express escuchando en http://localhost:${env.port}`);
-      console.log(`[Server] Documentación y salud en http://localhost:${env.port}/api/health`);
-    });
-
-    // 5. Cierre limpio (Graceful shutdown)
-    const shutdown = async () => {
-      console.log('[Server] Deteniendo servicios, workers y pool de base de datos...');
+    // 5. Cierre limpio (Graceful shutdown) y manejo de excepciones no capturadas (OWASP A10:2025)
+    let isShuttingDown = false;
+    const shutdown = async (signal = 'SIGTERM', exitCode = 0) => {
+      if (isShuttingDown) return;
+      isShuttingDown = true;
+      console.log(`[Server] Señal ${signal} recibida. Deteniendo servicios, workers y pool de base de datos...`);
       emailWorker.stop();
       orchestrator.stop();
+
+      const forceExitTimer = setTimeout(() => {
+        console.error('[Server] Cierre forzado tras agotar tiempo de espera de 10s.');
+        process.exit(exitCode || 1);
+      }, 10000);
+      if (typeof forceExitTimer.unref === 'function') forceExitTimer.unref();
+
       server.close(async () => {
-        await closeDatabase();
+        await closeDatabase().catch(() => {});
+        clearTimeout(forceExitTimer);
         console.log('[Server] Servidor HTTP y conexiones BD cerrados correctamente.');
-        process.exit(0);
+        process.exit(exitCode);
       });
     };
 
-    process.on('SIGINT', shutdown);
-    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', () => shutdown('SIGINT', 0));
+    process.on('SIGTERM', () => shutdown('SIGTERM', 0));
+    process.on('unhandledRejection', (reason) => {
+      console.error('[Server] Unhandled Promise Rejection interceptada de forma segura:', reason?.message || reason);
+    });
+    process.on('uncaughtException', (uncaughtErr) => {
+      console.error('[Server] Uncaught Exception crítica:', uncaughtErr?.message || uncaughtErr);
+      shutdown('uncaughtException', 1);
+    });
 
     return server;
   } catch (err) {

@@ -284,3 +284,229 @@ test('Seguridad: bloqueo Anti-SSRF en photo_url y webhooks, Anti-Prompt Injectio
     assert.equal(afterLogout.status, 401);
   });
 });
+
+test('ORM Seguro (BaseModel + Entidades 3FN) y Firewall SQL en Tiempo de Ejecución', async () => {
+  const { query } = require('../src/shared/config/database');
+  const {
+    UserModel,
+    RoleModel,
+    UserRoleModel,
+    UserConsentModel,
+    AiInteractionLogModel
+  } = require('../src/models');
+
+  await runMigrations();
+
+  // 1. Firewall SQL debe bloquear sentencias destructivas apiladas o acceso a pg_shadow
+  await assert.rejects(
+    async () => {
+      await query('SELECT * FROM users WHERE id = 1; DROP TABLE users;');
+    },
+    (err) => err.code === 'DB_FIREWALL_BLOCKED'
+  );
+
+  // 2. ORM debe bloquear columnas inexistentes o inyección en nombres de columna (WHERE / ORDER BY)
+  await assert.rejects(
+    async () => {
+      await UserModel.findAll({ where: { "email = 'a' OR 1=1 --": 'test' } });
+    },
+    (err) => err.code === 'ORM_INVALID_COLUMN_BLOCKED'
+  );
+
+  await assert.rejects(
+    async () => {
+      await UserModel.findAll({ orderBy: 'created_at; DROP TABLE users' });
+    },
+    (err) => err.code === 'ORM_INVALID_COLUMN_BLOCKED'
+  );
+
+  // 3. ORM debe bloquear operadores no autorizados ($where / $regex)
+  await assert.rejects(
+    async () => {
+      await UserModel.findAll({ where: { email: { $where: '1=1' } } });
+    },
+    (err) => err.code === 'ORM_INVALID_OPERATOR_BLOCKED'
+  );
+
+  // 4. Creación segura, redacción automática de password_hash y bloqueo de Mass-Assignment en role
+  const uid = `usr_orm_${Date.now()}`;
+  const createdUser = await UserModel.create({
+    id: uid,
+    name: 'Valeria ORM',
+    email: `${uid}@gotox.cr`,
+    password_hash: '$2b$10$secret_hash_should_be_hidden',
+    role: 'client',
+    gps_trust_score: 90
+  });
+
+  // password_hash NUNCA debe exponerse por defecto
+  assert.equal(createdUser.id, uid);
+  assert.equal(createdUser.password_hash, undefined);
+
+  // Intentar elevar privilegios modificando la columna protegida 'role' con update() debe ser bloqueado
+  await assert.rejects(
+    async () => {
+      await UserModel.update(uid, { role: 'admin' });
+    },
+    (err) => err.code === 'ORM_MASS_ASSIGNMENT_BLOCKED'
+  );
+
+  // Actualizar una columna permitida funciona y preserva el rol original
+  const updatedUser = await UserModel.update(uid, { name: 'Valeria ORM Actualizada' });
+  assert.equal(updatedUser.name, 'Valeria ORM Actualizada');
+  assert.equal(updatedUser.role, 'client');
+
+  // 5. Relaciones 3FN con UserModel.findWithRelations(), Cifrado AES-256-GCM en columnas sensibles y Sello HMAC
+  const clientRole = await RoleModel.findOne({ where: { name: 'client' } });
+  if (clientRole) {
+    await UserRoleModel.create({
+      user_id: uid,
+      role_id: clientRole.id
+    });
+  }
+  await UserConsentModel.create({
+    user_id: uid,
+    terms_version: '2026-11-v2',
+    privacy_accepted: 1,
+    ip_address: '186.176.12.45',
+    cookies_preferences_json: { essential: true, preferences: true, analytics: false }
+  });
+
+  const { UserPetModel } = require('../src/models');
+  const createdPet = await UserPetModel.create({
+    user_id: uid,
+    name: 'Toby Seguro',
+    species: 'Canino',
+    breed: 'Mestizo',
+    weight_kg: 14.5,
+    age_years: 3,
+    microchip_id: 'CR-MICROCHIP-998877'
+  });
+  // Al leer a través del ORM, microchip_id se descifra transparentemente
+  assert.equal(createdPet.microchip_id, 'CR-MICROCHIP-998877');
+
+  // Pero en la tabla SQL cruda está cifrado con AES-256-GCM (prefijo enc:v1:)
+  const rawPetRows = await query('SELECT microchip_id FROM user_pets WHERE id = ?', [createdPet.id]);
+  assert.ok(rawPetRows[0].microchip_id.startsWith('enc:v1:'), 'microchip_id debe guardarse cifrado con AES-256-GCM en BD');
+
+  const rawConsentRows = await query('SELECT ip_address FROM user_consents WHERE user_id = ?', [uid]);
+  assert.ok(rawConsentRows[0].ip_address.startsWith('enc:v1:'), 'ip_address debe guardarse cifrado con AES-256-GCM en BD');
+
+  const userWithRelations = await UserModel.findWithRelations(uid);
+  assert.equal(userWithRelations.id, uid);
+  assert.equal(userWithRelations.password_hash, undefined);
+  assert.ok(userWithRelations._integrity_hmac, 'Debe incluir sello criptográfico HMAC de integridad');
+  assert.equal(UserModel.verifyRowIntegrity(userWithRelations, userWithRelations._integrity_hmac), true);
+  // Si alguien adultera el rol en memoria/BD sin recalcular el HMAC, la verificación falla
+  assert.equal(UserModel.verifyRowIntegrity({ ...userWithRelations, role: 'admin' }, userWithRelations._integrity_hmac), false);
+
+  assert.ok(Array.isArray(userWithRelations.roles));
+  assert.equal(userWithRelations.roles.length, 1);
+  assert.equal(userWithRelations.roles[0].name, 'client');
+  assert.equal(userWithRelations.consents.length, 1);
+  assert.equal(userWithRelations.consents[0].ip_address, '186.176.12.45');
+  assert.equal(userWithRelations.consents[0].cookies_preferences_json.preferences, true);
+  assert.equal(userWithRelations.pets.length, 1);
+  assert.equal(userWithRelations.pets[0].microchip_id, 'CR-MICROCHIP-998877');
+
+  // 6. Validación declarativa de esquema en ORM (rechaza correo inválido o peso negativo)
+  await assert.rejects(
+    async () => {
+      await UserModel.create({
+        name: 'Correo Malo',
+        email: 'no-es-un-correo',
+        password_hash: 'hash'
+      });
+    },
+    (err) => err.code === 'ORM_VALIDATION_FAILED'
+  );
+
+  await assert.rejects(
+    async () => {
+      await UserPetModel.create({
+        user_id: uid,
+        name: 'Perro Peso Inválido',
+        weight_kg: -10
+      });
+    },
+    (err) => err.code === 'ORM_VALIDATION_FAILED'
+  );
+
+  // 7. Paginación segura con findPaginated()
+  const paginatedUsers = await UserModel.findPaginated({ page: 1, limit: 5, orderBy: 'created_at', orderDir: 'DESC' });
+  assert.ok(Array.isArray(paginatedUsers.items));
+  assert.ok(paginatedUsers.pagination.total >= 1);
+  assert.equal(paginatedUsers.pagination.page, 1);
+
+  // 8. Bloqueo de DELETE masivo sin cláusula WHERE y endpoint administrativo /api/admin/db/security-status
+  await assert.rejects(
+    async () => {
+      await AiInteractionLogModel.destroyWhere({});
+    },
+    (err) => err.code === 'ORM_UNSAFE_DELETE_BLOCKED'
+  );
+
+  await conServidor(async (base) => {
+    const adminToken = generateToken({ id: 'usr_admin_orm', role: 'admin', name: 'Admin ORM' });
+    const statusRes = await pedir(base, 'GET', '/api/admin/db/security-status', { token: adminToken });
+    assert.equal(statusRes.status, 200);
+    const statusJson = await statusRes.json();
+    assert.equal(statusJson.ok, true);
+    assert.equal(statusJson.data.security_telemetry.sql_firewall_active, true);
+    assert.ok(statusJson.data.security_telemetry.firewall_blocked_count >= 1);
+    assert.equal(statusJson.data.supply_chain_integrity.ok, true);
+    assert.ok(statusJson.data.supply_chain_integrity.verified_integrity_hashes >= 5);
+    assert.equal(statusJson.data.orm_models_count, 11);
+  });
+});
+
+test('OWASP A03:2025 (Supply Chain) y A10:2025 (Condiciones Excepcionales: enmascarado SQL y sanitización de logs)', () => {
+  const { inspectSupplyChain } = require('../src/shared/security/supply-chain-audit');
+  const errorHandler = require('../src/shared/middlewares/error-handler');
+
+  // 1. A03:2025 — Verificar integridad SHA-512 de dependencias en package-lock.json
+  const supplyReport = inspectSupplyChain();
+  assert.equal(supplyReport.ok, true);
+  assert.equal(supplyReport.findings.length, 0);
+  assert.equal(supplyReport.verified_integrity_hashes, supplyReport.production_dependencies_count);
+
+  // 2. A10:2025 — El manejador global debe enmascarar mensajes internos SQL/BD en respuestas 500
+  let capturedStatus = null;
+  let capturedJson = null;
+  const fakeRes = {
+    headersSent: false,
+    status(code) { capturedStatus = code; return this; },
+    json(body) { capturedJson = body; return this; }
+  };
+  const fakeReq = { method: 'GET', originalUrl: '/api/test?token=secreto123', id: 'req_owasp_a10' };
+  const sqlErr = new Error('SQLITE_ERROR: syntax error at or near SELECT * FROM users');
+
+  errorHandler(sqlErr, fakeReq, fakeRes, () => {});
+  assert.equal(capturedStatus, 500);
+  assert.equal(capturedJson.ok, false);
+  assert.equal(capturedJson.error.message.includes('SQLITE_ERROR'), false);
+  assert.equal(capturedJson.error.message.includes('SELECT'), false);
+  assert.equal(errorHandler.sanitizeErrorLogText('GET /x?api_key=abc123 Bearer eyJ.tok.sig'), 'GET /x?api_key=*** Bearer ***');
+});
+
+test('OWASP Report en vivo (/api/admin/security/owasp-report) y compresión HTTP gzip nativa', async () => {
+  await conServidor(async (base) => {
+    const adminToken = generateToken({ id: 'usr_admin_owasp', role: 'admin', name: 'Admin OWASP' });
+
+    const res = await fetch(`${base}/api/admin/security/owasp-report`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        'Accept-Encoding': 'gzip'
+      }
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-encoding'), 'gzip');
+    const json = await res.json();
+    assert.equal(json.ok, true);
+    assert.equal(json.data.score, '10/10');
+    assert.equal(json.data.all_controls_compliant, true);
+    assert.equal(json.data.controls.length, 10);
+  });
+});

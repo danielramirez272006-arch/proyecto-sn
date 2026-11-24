@@ -11,12 +11,13 @@ const {
   revokeAllUserAccessTokens
 } = require('../../shared/middlewares/auth-role-guard');
 const auditService = require('../../shared/audit/audit-service');
+const { encryptColumnValue, decryptColumnValue } = require('../../models');
 
 // Cuentas exclusivas administrativas y usuarios demo de desarrollo
 const DEFAULT_ACCOUNTS = [
   {
     id: 'usr_admin_gotox',
-    name: 'Administrador GoToX',
+    name: 'Administrador Synodos',
     email: process.env.ADMIN_EMAIL || 'admin@gotox.cr',
     password: process.env.ADMIN_PASSWORD || 'AdminGoToX2026!',
     role: 'admin',
@@ -166,9 +167,18 @@ class AuthService {
 
   async _ensurePetPhotoColumn() {
     if (this._photoColChecked) return;
-    try {
-      await execute('ALTER TABLE user_pets ADD COLUMN photo_url TEXT').catch(() => {});
-    } catch (_) {}
+    const alterStatements = [
+      'ALTER TABLE user_pets ADD COLUMN photo_url TEXT',
+      'ALTER TABLE user_vaults ADD COLUMN phone VARCHAR(64)',
+      'ALTER TABLE user_vaults ADD COLUMN zone VARCHAR(120)',
+      'ALTER TABLE user_vaults ADD COLUMN has_pet INTEGER DEFAULT 1',
+      "ALTER TABLE user_vaults ADD COLUMN budget_level VARCHAR(32) DEFAULT 'medio'",
+      'ALTER TABLE user_vaults ADD COLUMN interests_json TEXT',
+      'ALTER TABLE user_vaults ADD COLUMN preferences_json TEXT'
+    ];
+    for (const sql of alterStatements) {
+      await execute(sql).catch(() => {});
+    }
     this._photoColChecked = true;
   }
 
@@ -210,7 +220,7 @@ class AuthService {
             pet.breed || pet.raza || 'Mestizo',
             Number(pet.weight_kg || pet.pesoKg || 15),
             Number(pet.age_years || pet.edadAnos || 2),
-            pet.microchip_id || pet.microchipId || null,
+            encryptColumnValue(pet.microchip_id || pet.microchipId || null),
             pet.color_coat || pet.colorManto || 'Variado',
             Array.isArray(pet.alergias) ? pet.alergias.join(', ') : (pet.allergies_text || pet.alergias || null),
             photoUrl
@@ -243,7 +253,7 @@ class AuthService {
               raza: primaryPet.breed || 'Mestizo',
               pesoKg: Number(primaryPet.weight_kg || 15),
               edadAnos: Number(primaryPet.age_years || 2),
-              microchipId: primaryPet.microchip_id || '',
+              microchipId: decryptColumnValue(primaryPet.microchip_id) || '',
               colorManto: primaryPet.color_coat || 'Variado',
               foto: primaryPet.photo_url || null,
               photoUrl: primaryPet.photo_url || null,
@@ -555,7 +565,7 @@ class AuthService {
       [
         outboxId,
         user.email,
-        'Recuperación de contraseña — GoToX Pet OS',
+        'Recuperación de contraseña — Synodos',
         `Solicitaste restablecer tu contraseña. Tu código temporal (válido 15 minutos) es: ${rawToken}`
       ]
     ).catch(() => {});
@@ -694,7 +704,7 @@ class AuthService {
       [
         outboxId,
         originalEmail,
-        'Confirmación de eliminación de datos personales (Ley N.º 8968) — GoToX',
+        'Confirmación de eliminación de datos personales (Ley N.º 8968) — Synodos',
         `Tu solicitud (${reqId}) fue procesada. Tus datos personales y sesiones fueron eliminados/anonimizados.`
       ]
     ).catch(() => {});
@@ -736,7 +746,7 @@ class AuthService {
       const rawToken = authHeader.replace(/^Bearer\s+/, '');
       const decoded = verifyToken(rawToken);
       if (decoded && !decoded.is_refresh) {
-        let userInfo = {
+        let userRecord = {
           id: decoded.id,
           name: decoded.name,
           email: decoded.email,
@@ -749,20 +759,20 @@ class AuthService {
             [decoded.id]
           );
           if (rows && rows.length > 0) {
-            userInfo = rows[0];
+            userRecord = rows[0];
           }
         } catch (dbErr) {
           // Mantener datos del JWT si la consulta no aplica en este contexto
         }
 
-        const profileDetails = await this._loadUserProfileDetails(userInfo.id);
+        const profileDetails = await this._loadUserProfileDetails(userRecord.id);
 
         return {
           authenticated: true,
           type: 'registered_user',
           user: {
-            ...userInfo,
-            permissions: getPermissionsForRole(userInfo.role),
+            ...userRecord,
+            permissions: getPermissionsForRole(userRecord.role),
             ...profileDetails
           }
         };

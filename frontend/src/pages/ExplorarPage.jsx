@@ -6,6 +6,7 @@ import { useResolvedPlacePhotos } from '../shared/services/place-photos-service'
 import { LugarFoto } from '../components/LugarFoto';
 import { esFavorito, alternarFavorito } from '../servicios/almacenamientoCliente';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 import {
   Search,
   Filter,
@@ -32,6 +33,7 @@ import { geolocalizacionPermitida } from '../shared/utils/cookie-consent';
 
 export function ExplorarPage() {
   const { esClaro, esMorado, esOscuro } = useTema();
+  const { t } = useIdioma();
 
   // Estados de filtros
   const [busqueda, setBusqueda] = useState('');
@@ -175,13 +177,13 @@ export function ExplorarPage() {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#501228] text-white border border-[#F27B91]/30 mb-2">
             <Compass className="w-3.5 h-3.5 text-[#F27B91]" />
-            <span>Catálogo Urbano GAM</span>
+            <span>{t('explorar.tag')}</span>
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight">
-            Explora Lugares & Experiencias
+            {t('explorar.titulo')}
           </h1>
           <p className="text-sm opacity-75 mt-1 font-sans">
-            Encuentra tu próximo plan gastronómico, cultural o al aire libre en el Gran Área Metropolitana.
+            {t('explorar.subtitulo')}
           </p>
         </div>
 
@@ -197,7 +199,7 @@ export function ExplorarPage() {
             }`}
           >
             <MapIcon className="w-4 h-4" />
-            <span>{mostrarMapaComplementario ? 'Ocultar Mapa' : 'Ver Mapa Complementario'}</span>
+            <span>{mostrarMapaComplementario ? t('explorar.ocultarMapa') : t('explorar.verMapa')}</span>
           </button>
         </div>
       </div>
@@ -208,24 +210,24 @@ export function ExplorarPage() {
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-rose-500" />
-              <span>Mapa complementario de ubicaciones en el GAM</span>
+              <span>{t('explorar.mapaCompSub')}</span>
             </span>
             <Link to="/mapa" className="text-[#F27B91] hover:underline font-semibold">
-              Abrir Radar 3D Interactivo &rarr;
+              {t('explorar.mapaCompBtn')} &rarr;
             </Link>
           </div>
           <div className="h-64 sm:h-80 rounded-2xl overflow-hidden bg-slate-900 relative flex items-center justify-center text-center p-6 text-white">
             <div className="space-y-3 max-w-md">
               <Compass className="w-10 h-10 text-[#F27B91] mx-auto animate-spin" style={{ animationDuration: '20s' }} />
-              <h3 className="font-serif font-bold text-lg">Visualización Cartográfica GAM</h3>
+              <h3 className="font-serif font-bold text-lg">{t('explorar.mapaRadarLabel')}</h3>
               <p className="text-xs text-slate-300">
-                Mostrando {lugaresFiltrados.length} establecimientos sincronizados con telemetría de pavimento y niveles acústicos.
+                {t('explorar.mapaMostrando', { n: lugaresFiltrados.length })}
               </p>
               <Link
                 to="/mapa"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/40"
               >
-                <span>Explorar en Pantalla Completa</span>
+                <span>{t('explorar.mapaPantallaCompleta')}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -240,8 +242,8 @@ export function ExplorarPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-current/10">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-[#F27B91]" />
-            <span className="font-bold text-sm">Filtros de Búsqueda</span>
-            <span className="text-xs opacity-60">({lugaresFiltrados.length} resultados)</span>
+            <span className="font-bold text-sm">{t('explorar.filtrosTitulo')}</span>
+            <span className="text-xs opacity-60">{t('explorar.resultadosBadge', { n: lugaresFiltrados.length })}</span>
           </div>
 
           {hayFiltrosActivos && (
@@ -250,7 +252,7 @@ export function ExplorarPage() {
               onClick={limpiarFiltros}
               className="text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors"
             >
-              Limpiar todos los filtros &times;
+              {t('explorar.limpiarFiltros')}
             </button>
           )}
         </div>
@@ -262,7 +264,7 @@ export function ExplorarPage() {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, zona (Escalante, Amón...), cocina o especialidad..."
+            placeholder={t('explorar.buscarPlaceholder')}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-current/15 bg-transparent text-xs sm:text-sm outline-none focus:border-[#F27B91]"
           />
         </div>
@@ -271,13 +273,13 @@ export function ExplorarPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           {/* Zona */}
           <div className="space-y-1">
-            <label className="font-semibold opacity-70 block">Ubicación / Barrio</label>
+            <label className="font-semibold opacity-70 block">{t('explorar.lblUbicacion')}</label>
             <select
               value={filtroZona}
               onChange={(e) => setFiltroZona(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-current/15 bg-transparent outline-none"
             >
-              <option value="todas">Todas las Zonas</option>
+              <option value="todas">{t('explorar.todasZonas')}</option>
               {zonasDisponibles.filter(z => z !== 'todas').map(z => (
                 <option key={z} value={z}>{z}</option>
               ))}
@@ -286,81 +288,81 @@ export function ExplorarPage() {
 
           {/* Presupuesto */}
           <div className="space-y-1">
-            <label className="font-semibold opacity-70 block">Presupuesto</label>
+            <label className="font-semibold opacity-70 block">{t('explorar.lblPresupuesto')}</label>
             <select
               value={filtroPrecio}
               onChange={(e) => setFiltroPrecio(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-current/15 bg-transparent outline-none"
             >
-              <option value="todos">Cualquier Presupuesto</option>
-              <option value="$">Económico ($)</option>
-              <option value="$$">Moderado ($$)</option>
-              <option value="$$$">Premium ($$$)</option>
+              <option value="todos">{t('explorar.cualquierPresupuesto')}</option>
+              <option value="$">{t('explorar.presupuestoEcon')}</option>
+              <option value="$$">{t('explorar.presupuestoMod')}</option>
+              <option value="$$$">{t('explorar.presupuestoPrem')}</option>
             </select>
           </div>
 
           {/* Tipo de Actividad */}
           <div className="space-y-1">
-            <label className="font-semibold opacity-70 block">Tipo de Actividad</label>
+            <label className="font-semibold opacity-70 block">{t('explorar.lblActividad')}</label>
             <select
               value={filtroTipo}
               onChange={(e) => setFiltroTipo(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-current/15 bg-transparent outline-none"
             >
-              <option value="todos">Todas las Actividades</option>
-              <option value="gastronomia">Gastronomía & Bistro</option>
-              <option value="cafe">Café & Brunch</option>
-              <option value="aire-libre">Parques & Aire Libre</option>
-              <option value="cultural">Cultura & Museos</option>
+              <option value="todos">{t('explorar.todasActividades')}</option>
+              <option value="gastronomia">{t('explorar.actGastronomia')}</option>
+              <option value="cafe">{t('explorar.actCafe')}</option>
+              <option value="aire-libre">{t('explorar.actParques')}</option>
+              <option value="cultural">{t('explorar.actCultura')}</option>
             </select>
           </div>
 
           {/* Tiempo Disponible */}
           <div className="space-y-1">
-            <label className="font-semibold opacity-70 block">Tiempo Disponible</label>
+            <label className="font-semibold opacity-70 block">{t('explorar.lblTiempo')}</label>
             <select
               value={filtroTiempo}
               onChange={(e) => setFiltroTiempo(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-current/15 bg-transparent outline-none"
             >
-              <option value="todos">Cualquier Duración</option>
-              <option value="corto">Menos de 1 hora</option>
-              <option value="medio">1 - 2 horas</option>
-              <option value="largo">Tarde completa (3h+)</option>
+              <option value="todos">{t('explorar.cualquierDuracion')}</option>
+              <option value="corto">{t('explorar.tiempoCorto')}</option>
+              <option value="medio">{t('explorar.tiempoMedio')}</option>
+              <option value="largo">{t('explorar.tiempoLargo')}</option>
             </select>
           </div>
 
           {/* Clima */}
           <div className="space-y-1">
-            <label className="font-semibold opacity-70 block">Condición Climática</label>
+            <label className="font-semibold opacity-70 block">{t('explorar.lblClima')}</label>
             <select
               value={filtroClima}
               onChange={(e) => setFiltroClima(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-current/15 bg-transparent outline-none"
             >
-              <option value="todos">Cualquier Clima</option>
-              <option value="techo">Bajo Techo (Protección de Lluvia)</option>
-              <option value="aire-libre">Al Aire Libre (Soleado)</option>
+              <option value="todos">{t('explorar.cualquierClima')}</option>
+              <option value="techo">{t('explorar.climaTecho')}</option>
+              <option value="aire-libre">{t('explorar.climaAire')}</option>
             </select>
           </div>
 
           {/* Compañía / Pet-Friendly */}
           <div className="space-y-1">
-            <label className="font-semibold opacity-70 block">Compañía / Mascotas</label>
+            <label className="font-semibold opacity-70 block">{t('explorar.lblMascotas')}</label>
             <select
               value={filtroPet}
               onChange={(e) => setFiltroPet(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-current/15 bg-transparent outline-none"
             >
-              <option value="todos">Todos (Con y sin mascota)</option>
-              <option value="si">Solo Lugares Pet-Friendly</option>
-              <option value="solo-humanos">Solo para Humanos (Sin mascotas)</option>
+              <option value="todos">{t('explorar.todosMascotas')}</option>
+              <option value="si">{t('explorar.soloPetFriendly')}</option>
+              <option value="solo-humanos">{t('explorar.soloHumanos')}</option>
             </select>
           </div>
 
           {/* Accesibilidad Confirmada Checkboxes */}
           <div className="sm:col-span-2 space-y-1">
-            <label className="font-semibold opacity-70 block">Accesibilidad Confirmada</label>
+            <label className="font-semibold opacity-70 block">{t('explorar.lblA11y')}</label>
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
@@ -369,7 +371,7 @@ export function ExplorarPage() {
                   onChange={(e) => setFiltroAccesibilidad({ ...filtroAccesibilidad, rampa: e.target.checked })}
                   className="rounded accent-[#501228]"
                 />
-                <span>Rampa</span>
+                <span>{t('explorar.a11yRampa')}</span>
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
@@ -378,7 +380,7 @@ export function ExplorarPage() {
                   onChange={(e) => setFiltroAccesibilidad({ ...filtroAccesibilidad, sillaRuedas: e.target.checked })}
                   className="rounded accent-[#501228]"
                 />
-                <span>Silla de Ruedas</span>
+                <span>{t('explorar.a11ySilla')}</span>
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
@@ -387,7 +389,7 @@ export function ExplorarPage() {
                   onChange={(e) => setFiltroAccesibilidad({ ...filtroAccesibilidad, acusticaTranquila: e.target.checked })}
                   className="rounded accent-[#501228]"
                 />
-                <span>Ambiente Tranquilo (&le;50 dB)</span>
+                <span>{t('explorar.a11ySilencioso')}</span>
               </label>
             </div>
           </div>
@@ -399,14 +401,14 @@ export function ExplorarPage() {
         {lugaresFiltrados.length === 0 ? (
           <div className="p-12 text-center rounded-3xl border border-current/10 space-y-3">
             <Compass className="w-12 h-12 opacity-30 mx-auto" />
-            <h3 className="font-serif font-bold text-lg">No encontramos lugares con esos filtros</h3>
-            <p className="text-xs opacity-60">Intenta reiniciar los filtros para ver todo el catálogo disponible.</p>
+            <h3 className="font-serif font-bold text-lg">{t('explorar.vacioTitulo')}</h3>
+            <p className="text-xs opacity-60">{t('explorar.vacioSub')}</p>
             <button
               type="button"
               onClick={limpiarFiltros}
               className="px-4 py-2 rounded-xl text-xs font-bold bg-[#501228] text-white"
             >
-              Ver todos los lugares
+              {t('explorar.vacioBtn')}
             </button>
           </div>
         ) : (
@@ -441,7 +443,7 @@ export function ExplorarPage() {
                       {lugar.verificado && (
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600 text-white shadow-md flex items-center gap-1">
                           <ShieldCheck className="w-3 h-3" />
-                          <span>Verificado</span>
+                          <span>{t('explorar.verificado')}</span>
                         </span>
                       )}
                     </div>
@@ -453,7 +455,7 @@ export function ExplorarPage() {
                         alternarFavorito(lugar.id);
                         setFavoritosTrigger(v => v + 1);
                       }}
-                      title={fav ? "Quitar de favoritos" : "Guardar en favoritos"}
+                      title={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
                       className="absolute top-3 right-3 p-2.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md transition-all active:scale-90 z-10"
                     >
                       <Heart className={`w-4 h-4 ${fav ? 'fill-rose-500 text-rose-500' : ''}`} />
@@ -496,10 +498,10 @@ export function ExplorarPage() {
                           {lugar.petFriendly === 'si' ? (
                             <span className="text-[11px] text-emerald-500 font-bold flex items-center gap-1">
                               <Dog className="w-3.5 h-3.5" />
-                              <span>Pet-friendly</span>
+                              <span>{t('homeExt.petFriendly')}</span>
                             </span>
                           ) : (
-                            <span className="text-[11px] opacity-60">Solo para humanos</span>
+                            <span className="text-[11px] opacity-60">{t('explorar.soloHumanosBadge')}</span>
                           )}
                         </div>
 
@@ -508,7 +510,7 @@ export function ExplorarPage() {
                           onClick={() => setLugarSeleccionado(lugar)}
                           className="px-3 py-1.5 rounded-xl font-bold text-xs bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/30 transition-all shadow-xs"
                         >
-                          Ver Ficha Completa
+                          {t('explorar.verFichaCompleta')}
                         </button>
                       </div>
                     </div>
@@ -526,36 +528,36 @@ export function ExplorarPage() {
           <div>
             <h2 className="font-serif text-2xl font-bold tracking-tight flex items-center gap-2">
               <Utensils className="w-5 h-5 text-orange-400" />
-              <span>Restaurantes Reales cerca de ti ({restaurantesReales.length})</span>
+              <span>{t('explorar.osmTitulo', { n: restaurantesReales.length })}</span>
             </h2>
             <p className="text-xs opacity-70">
-              Lugares reales consultados en OpenStreetMap según tu ubicación actual.
+              {t('explorar.osmSub')}
             </p>
           </div>
           <Link
             to="/mapa"
             className="text-xs font-bold text-[#F27B91] hover:underline flex items-center gap-1"
           >
-            <span>Ver todos en el Mapa Interactivo</span>
+            <span>{t('explorar.osmVerTodos')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         {cargandoReales && restaurantesReales.length === 0 ? (
           <div className="p-6 rounded-2xl border border-current/10 text-center text-xs opacity-70">
-            Cargando restaurantes reales cercanos...
+            {t('explorar.osmCargando')}
           </div>
         ) : restaurantesReales.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {restaurantesReales.slice(0, 9).map((rest) => {
               const etiquetaPet =
                 rest.access_status === 'allowed'
-                  ? 'Mascotas: Permitido'
+                  ? t('mapaExt.petPermitido')
                   : rest.access_status === 'not_allowed'
-                  ? 'Mascotas: No permitido'
+                  ? t('mapaExt.petNoPermitido')
                   : rest.access_status === 'conflicting'
-                  ? 'Mascotas: Contradictorio'
-                  : 'Mascotas: Desconocido';
+                  ? t('explorar.osmContradictorio')
+                  : t('mapaExt.petDesconocido');
               const fotoMeta = rest.photo
                 ? {
                     status: 'resolved',
@@ -565,7 +567,7 @@ export function ExplorarPage() {
                       : [],
                     sourceUrl: rest.photo.source_page_url || null
                   }
-                : { status: 'no_photos', reason: rest.photo_reason || 'Sin fotografía disponible.' };
+                : { status: 'no_photos', reason: rest.photo_reason || t('fotoLugar.sinFoto') };
 
               return (
                 <div
@@ -589,12 +591,12 @@ export function ExplorarPage() {
                   <div className="p-4 flex-1 flex flex-col justify-between gap-3">
                     <div className="space-y-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 block">
-                        {rest.category === 'cafe' ? 'Cafetería Real' : 'Restaurante Real'}
+                        {rest.category === 'cafe' ? t('explorar.osmCafeReal') : t('explorar.osmRestauranteReal')}
                       </span>
                       <h3 className="font-serif font-bold text-base leading-snug">{rest.name}</h3>
                       <p className="text-[11px] opacity-75 flex items-start gap-1">
                         <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
-                        <span className="line-clamp-2">{rest.address || 'Dirección no especificada'}</span>
+                        <span className="line-clamp-2">{rest.address || t('explorar.osmSinDireccion')}</span>
                       </p>
                     </div>
 
@@ -606,7 +608,7 @@ export function ExplorarPage() {
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-semibold transition-colors"
                       >
-                        <span>Ver mapa</span>
+                        <span>{t('explorar.osmVerMapa')}</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>

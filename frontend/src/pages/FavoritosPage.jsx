@@ -4,6 +4,7 @@ import { LUGARES_GOTOX } from '../data/lugaresGoToX';
 import { obtenerFavoritosIds, alternarFavorito } from '../servicios/almacenamientoCliente';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 import {
   Heart,
   Compass,
@@ -19,6 +20,7 @@ import { Link } from 'react-router-dom';
 
 export function FavoritosPage() {
   const { esClaro, esMorado, esOscuro } = useTema();
+  const { t } = useIdioma();
   const [favoritosIds, setFavoritosIds] = useState(obtenerFavoritosIds);
   const [lugarSeleccionado, setLugarSeleccionado] = useState(null);
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
@@ -51,13 +53,13 @@ export function FavoritosPage() {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#501228] text-white border border-[#F27B91]/30 mb-2">
             <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-            <span>Colección Personal</span>
+            <span>{t('favoritos.tag')}</span>
           </div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight">
-            Mis Favoritos
+            {t('favoritos.titulo')}
           </h1>
           <p className="text-sm opacity-75 mt-1 font-sans">
-            Tus establecimientos, terrazas y actividades guardadas para consultar en cualquier momento.
+            {t('favoritos.subtitulo')}
           </p>
         </div>
 
@@ -66,7 +68,7 @@ export function FavoritosPage() {
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-current/20 hover:bg-current/5 transition-all self-start sm:self-auto"
         >
           <Compass className="w-4 h-4" />
-          <span>Explorar Más Lugares</span>
+          <span>{t('favoritos.explorarMas')}</span>
         </Link>
       </div>
 
@@ -82,7 +84,7 @@ export function FavoritosPage() {
                 : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100'
             }`}
           >
-            Todos ({lugaresFavoritos.length})
+            {t('favoritos.catTodos', { n: lugaresFavoritos.length })}
           </button>
           <button
             type="button"
@@ -93,7 +95,7 @@ export function FavoritosPage() {
                 : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100'
             }`}
           >
-            Gastronomía
+            {t('favoritos.catGastronomia')}
           </button>
           <button
             type="button"
@@ -104,7 +106,7 @@ export function FavoritosPage() {
                 : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100'
             }`}
           >
-            Cafés
+            {t('favoritos.catCafes')}
           </button>
           <button
             type="button"
@@ -115,7 +117,7 @@ export function FavoritosPage() {
                 : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100'
             }`}
           >
-            Aire Libre
+            {t('favoritos.catAireLibre')}
           </button>
           <button
             type="button"
@@ -126,7 +128,7 @@ export function FavoritosPage() {
                 : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100'
             }`}
           >
-            Cultura
+            {t('favoritos.catCultura')}
           </button>
         </div>
       )}
@@ -135,15 +137,15 @@ export function FavoritosPage() {
       {lugaresFiltrados.length === 0 ? (
         <div className="p-12 text-center rounded-3xl border border-current/10 space-y-4">
           <Heart className="w-12 h-12 opacity-30 mx-auto" />
-          <h3 className="font-serif font-bold text-lg">No tienes lugares guardados en esta categoría</h3>
+          <h3 className="font-serif font-bold text-lg">{t('favoritos.vacioTitulo')}</h3>
           <p className="text-xs opacity-60 max-w-sm mx-auto">
-            Explora el catálogo urbano y haz clic en el icono de corazón para tenerlos a mano.
+            {t('favoritos.vacioSub')}
           </p>
           <Link
             to="/explorar"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A]"
           >
-            <span>Ir al Catálogo de Lugares</span>
+            <span>{t('favoritos.irCatalogo')}</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -176,7 +178,8 @@ export function FavoritosPage() {
                 <button
                   type="button"
                   onClick={(e) => handleEliminar(lugar.id, e)}
-                  title="Quitar de favoritos"
+                  title={t('favoritos.quitarFavoritoAria')}
+                  aria-label={t('favoritos.quitarFavoritoAria')}
                   className="absolute top-3 right-3 p-2.5 rounded-full bg-rose-600/80 hover:bg-rose-700 text-white backdrop-blur-md transition-all active:scale-90 z-10"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -209,10 +212,10 @@ export function FavoritosPage() {
                     {lugar.petFriendly === 'si' ? (
                       <span className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
                         <Dog className="w-3.5 h-3.5" />
-                        <span>Pet-friendly</span>
+                        <span>{t('homeExt.petFriendly')}</span>
                       </span>
                     ) : (
-                      <span className="text-[11px] opacity-60">Solo humanos</span>
+                      <span className="text-[11px] opacity-60">{t('explorar.soloHumanosBadge')}</span>
                     )}
                   </div>
 
@@ -221,7 +224,7 @@ export function FavoritosPage() {
                     onClick={() => setLugarSeleccionado(lugar)}
                     className="px-3 py-1.5 rounded-xl font-bold text-xs bg-[#501228] text-white hover:bg-[#6E1E3A] border border-[#F27B91]/30 transition-all shadow-xs"
                   >
-                    Ver Ficha
+                    {t('favoritos.verFicha')}
                   </button>
                 </div>
               </div>

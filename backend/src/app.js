@@ -9,6 +9,7 @@ const securityHeaders = require('./shared/middlewares/security-headers');
 const requestTracer = require('./shared/middlewares/request-tracer');
 const { i18nMiddleware } = require('./shared/i18n/i18n-config');
 const { payloadSanitizer } = require('./shared/middlewares/payload-sanitizer');
+const responseCompressor = require('./shared/middlewares/response-compressor');
 const errorHandler = require('./shared/middlewares/error-handler');
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/vet/analyze-photo', express.json({ limit: '12mb' }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(payloadSanitizer);
+app.use(responseCompressor);
 
 // 4. Escudo anti-spam / Rate limiting
 app.use(rateLimiter(300, 60000));

@@ -15,6 +15,8 @@
     "photos:reconcile": "node src/modules/places/photo-import-cli.js reconcile",
     "photos:report": "node src/modules/places/photo-import-cli.js report",
     "photos:draft-csv": "node src/modules/places/photo-ai-draft-cli.js",
+    "security:supply-chain": "node src/shared/security/supply-chain-audit.js",
+    "security:audit": "npm audit --omit=dev",
     "test": "node --test test/**/*.test.js"
   },
   "keywords": [

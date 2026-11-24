@@ -18,7 +18,7 @@ export function RutaPrivada({ children, modulo }) {
         replace
         state={{
           from: location.pathname,
-          modulo: modulo || 'esta función'
+          modulo: modulo || 'navExt.rutaPrivadaFallback'
         }}
       />
     );

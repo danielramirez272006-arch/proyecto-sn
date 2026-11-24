@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useSesion } from '../hooks/useSesion';
+import { useIdioma } from '../context/IdiomaContext';
 import { api } from '../shared/services/api-client';
 import {
   hablarComoBruno,
@@ -58,6 +59,8 @@ const PREGUNTAS_SUGERIDAS = [
 export function CopilotoBruno() {
   const telemetria = useTelemetria();
   const { mascota } = useSesion();
+  const { idioma, idiomaActual, t } = useIdioma();
+  const ttsLang = idiomaActual?.ttsLang || 'es-CR';
   const [vistaActiva, setVistaActiva] = useState('asistente'); // 'asistente' | 'calculador'
   const [consultaTexto, setConsultaTexto] = useState('');
   const [escribiendo, setEscribiendo] = useState(false);
@@ -71,6 +74,13 @@ export function CopilotoBruno() {
   const finHistorialRef = useRef(null);
   const recognitionRef = useRef(null);
 
+  const preguntasSugeridas = [
+    t('copilotoExt.preg1'),
+    t('copilotoExt.preg2'),
+    t('copilotoExt.preg3'),
+    t('copilotoExt.preg4')
+  ];
+
   useEffect(() => {
     return () => {
       detenerVozBruno();
@@ -79,47 +89,81 @@ export function CopilotoBruno() {
   }, []);
 
   // Historial de conversación inicial
-  const [mensajes, setMensajes] = useState([
+  const [mensajes, setMensajes] = useState(() => [
     {
       id: 'bienvenida',
       remitente: 'bruno',
-      texto: `¡Pura vida! Soy Bruno, tu copiloto urbano en GoToX Pet OS. Monitoreo en tiempo real el asfalto (${telemetria.temperaturaAsfalto} °C), las lluvias (${telemetria.ventanaSecaMinutos} min de ventana seca) y el confort acústico del GAM para proteger a tu perro. ¿En qué te puedo asesorar hoy?`,
-      hora: 'Ahora',
+      texto: t('copilotoExt.bienvenidaTexto', {
+        asfalto: telemetria.temperaturaAsfalto,
+        ventana: telemetria.ventanaSecaMinutos
+      }),
+      hora: t('copilotoExt.ahora'),
       recomendaciones: [
-        { tipo: 'asfalto', texto: `Pavimento seguro en ${telemetria.temperaturaAsfalto} °C` },
-        { tipo: 'clima', texto: `${telemetria.ventanaSecaMinutos} min de ventana seca` }
+        { tipo: 'asfalto', texto: t('copilotoExt.recPavimento', { asfalto: telemetria.temperaturaAsfalto }) },
+        { tipo: 'clima', texto: t('copilotoExt.recVentana', { ventana: telemetria.ventanaSecaMinutos }) }
       ]
     }
   ]);
+
+  // Mantener la tarjeta de bienvenida actualizada al cambiar de idioma
+  useEffect(() => {
+    setMensajes((prev) =>
+      prev.map((m) =>
+        m.id === 'bienvenida'
+          ? {
+              ...m,
+              texto: t('copilotoExt.bienvenidaTexto', {
+                asfalto: telemetria.temperaturaAsfalto,
+                ventana: telemetria.ventanaSecaMinutos
+              }),
+              hora: t('copilotoExt.ahora'),
+              recomendaciones: [
+                { tipo: 'asfalto', texto: t('copilotoExt.recPavimento', { asfalto: telemetria.temperaturaAsfalto }) },
+                { tipo: 'clima', texto: t('copilotoExt.recVentana', { ventana: telemetria.ventanaSecaMinutos }) }
+              ]
+            }
+          : m
+      )
+    );
+  }, [idioma, t, telemetria.temperaturaAsfalto, telemetria.ventanaSecaMinutos]);
 
   // Estado del Calculador Fisiológico
   const [razaSeleccionada, setRazaSeleccionada] = useState(RAZAS[0]);
   const [duracionMinutos, setDuracionMinutos] = useState(30);
   const [terreno, setTerreno] = useState('asfalto-mixto'); // 'asfalto-mixto' | 'parque-cesped' | 'sombra-completa'
 
-  // Cálculos dinámicos del Copiloto Bruno
+  // Cálculos dinámicos del Copiloto Argos
   const factorTerreno = terreno === 'parque-cesped' ? 0.7 : terreno === 'sombra-completa' ? 0.8 : 1.2;
   const riesgoPuntuacion = Math.round(
     (telemetria.temperaturaAsfalto / 20) * razaSeleccionada.factorTermico * factorTerreno * (duracionMinutos / 25) * 10
   );
 
-  let estadoRiesgo = 'Bajo & Seguro';
+  let estadoRiesgo = t('copilotoExt.riesgoBajo');
   let badgeVariant = 'success';
-  let consejoBruno = 'Condiciones idóneas para caminata continua. El pavimento está a temperatura fresca para las almohadillas.';
+  let consejoBruno = t('copilotoExt.consejoBajo');
 
   if (riesgoPuntuacion >= 22) {
-    estadoRiesgo = 'Riesgo Térmico Elevado';
+    estadoRiesgo = t('copilotoExt.riesgoElevado');
     badgeVariant = 'danger';
-    consejoBruno = `¡Atención! Para un ${razaSeleccionada.nombre}, la combinación de tiempo y calzada puede inducir fatiga térmica. Reduce el paseo a máximo 15-20 min y busca arboledas sombreadas.`;
+    consejoBruno = t('copilotoExt.consejoElevado', { raza: razaSeleccionada.nombre });
   } else if (riesgoPuntuacion >= 14) {
-    estadoRiesgo = 'Precaución Moderada';
+    estadoRiesgo = t('copilotoExt.riesgoModerado');
     badgeVariant = 'warning';
-    consejoBruno = `Camina por tramos arbolados de Barrio Escalante o Parque Francia. Haz pausas de hidratación cada 10 minutos.`;
+    consejoBruno = t('copilotoExt.consejoModerado');
   }
 
   const cuotaAguaMl = Math.round(
     razaSeleccionada.pesoPromedio * (duracionMinutos / 30) * 12 * (telemetria.temperaturaAmbiente / 20)
   );
+
+  const traducirSensibilidad = (nivel) => {
+    if (nivel === 'Baja') return t('copilotoExt.sensBaja');
+    if (nivel === 'Media') return t('copilotoExt.sensMedia');
+    if (nivel === 'Alta') return t('copilotoExt.sensAlta');
+    if (nivel === 'Muy Alta') return t('copilotoExt.sensMuyAlta');
+    if (nivel === 'Extrema') return t('copilotoExt.sensExtrema');
+    return nivel;
+  };
 
   // Auto-scroll en el historial de mensajes
   useEffect(() => {
@@ -128,12 +172,12 @@ export function CopilotoBruno() {
     }
   }, [mensajes, escribiendo, vistaActiva]);
 
-  // Manejador de envío de consulta al asistente Bruno
+  // Manejador de envío de consulta al asistente Argos
   const handleEnviarConsulta = async (textoAEnviar) => {
     const texto = (textoAEnviar || consultaTexto).trim();
     if (!texto) return;
 
-    const horaActual = new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' });
+    const horaActual = new Date().toLocaleTimeString(ttsLang, { hour: '2-digit', minute: '2-digit' });
 
     // Agregar mensaje del usuario
     const nuevoMensajeUsuario = {
@@ -155,6 +199,7 @@ export function CopilotoBruno() {
       const data = await api.post('/concierge/chat', {
         session_id: 'gotox_bruno_web',
         message: texto,
+        language: idioma,
         pet_profile: {
           nombre: mascota?.nombre,
           raza: mascota?.raza,
@@ -181,7 +226,7 @@ export function CopilotoBruno() {
         throw new Error('Formato no reconocido');
       }
     } catch {
-      const fallback = generarRespuestaFallbackBruno(texto, { telemetria, mascota });
+      const fallback = generarRespuestaFallbackBruno(texto, { telemetria, mascota, idioma });
       respuestaTexto = fallback.respuestaTexto;
       recomendaciones = fallback.recomendaciones;
     }
@@ -193,13 +238,14 @@ export function CopilotoBruno() {
         id: 'bruno_' + Date.now(),
         remitente: 'bruno',
         texto: respuestaTexto,
-        hora: new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' }),
+        hora: new Date().toLocaleTimeString(ttsLang, { hour: '2-digit', minute: '2-digit' }),
         recomendaciones
       }
     ]);
 
     if (vozActiva && soportaVozSalida()) {
       hablarComoBruno(respuestaTexto, {
+        ttsLang,
         onStart: () => setHablando(true),
         onEnd: () => setHablando(false),
         onError: () => setHablando(false)
@@ -216,6 +262,7 @@ export function CopilotoBruno() {
     detenerVozBruno();
     setHablando(false);
     recognitionRef.current = iniciarEscuchaVoz({
+      ttsLang,
       onStart: () => setEscuchando(true),
       onEnd: () => setEscuchando(false),
       onError: () => setEscuchando(false),
@@ -227,10 +274,18 @@ export function CopilotoBruno() {
   };
 
   const enviarChequeoMascota = () => {
-    const prompt = construirConsultaChequeo({ energia, apetito, hidratacion }, mascota);
+    const mapaE = { Activo: t('copilotoExt.energiaActivo'), Cansado: t('copilotoExt.energiaCansado'), Decaído: t('copilotoExt.energiaDecaido') };
+    const mapaA = { Normal: t('copilotoExt.apetitoNormal'), 'Poco apetito': t('copilotoExt.apetitoPoco'), 'No quiere comer': t('copilotoExt.apetitoNoCome') };
+    const mapaH = { Hidratado: t('copilotoExt.aguaHidratado'), Sediento: t('copilotoExt.aguaSediento'), 'Toma poca agua': t('copilotoExt.aguaPoca') };
+    const prompt = construirConsultaChequeo(
+      { energia: mapaE[energia] || energia, apetito: mapaA[apetito] || apetito, hidratacion: mapaH[hidratacion] || hidratacion, idioma },
+      mascota
+    );
     setChequeoAbierto(false);
     handleEnviarConsulta(prompt);
   };
+
+  const nombreMascotaVisible = mascota?.nombre || t('comun.tuMascotaDefault');
 
   return (
     <section id="copiloto" className="py-16 md:py-24 relative overflow-hidden">
@@ -246,13 +301,13 @@ export function CopilotoBruno() {
           <div className="space-y-2 max-w-2xl text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111827] border border-white/10 text-xs font-semibold text-[#F27B91]">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Asistente Inteligente de Paseo y Bienestar</span>
+              <span>{t('copilotoExt.subBadge')}</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#E8EDF5] tracking-tight">
-              Copiloto Bruno
+              {t('copilotoExt.titulo')}
             </h2>
             <p className="text-sm sm:text-base text-[#94A3B8] leading-relaxed">
-              Consulta en lenguaje natural sobre condiciones de salida o calcula la tolerancia fisiológica exacta de tu mascota cruzando su raza con la telemetría del GAM.
+              {t('copilotoExt.desc')}
             </p>
           </div>
 
@@ -268,7 +323,7 @@ export function CopilotoBruno() {
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span>Conversación con Bruno</span>
+              <span>{t('copilotoExt.tabChat')}</span>
             </button>
             <button
               type="button"
@@ -280,46 +335,46 @@ export function CopilotoBruno() {
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>Calculador por Raza</span>
+              <span>{t('copilotoExt.tabCalculador')}</span>
             </button>
           </div>
         </div>
 
         {/* ============================================================
-            VISTA 1: ASISTENTE CONVERSACIONAL BRUNO
+            VISTA 1: ASISTENTE CONVERSACIONAL ARGOS
             ============================================================ */}
         {vistaActiva === 'asistente' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Tarjeta de Identidad de Bruno y Sugerencias */}
+            {/* Tarjeta de Identidad de Argos y Sugerencias */}
             <div className="lg:col-span-4 space-y-5">
               <Card className="p-6 bg-[#111827] border-white/10 rounded-3xl space-y-5 text-left shadow-md">
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     <img
                       src="/imagenes/copiloto-bruno.jpg"
-                      alt="Avatar de Bruno"
+                      alt={t('copilotoExt.avatarAlt')}
                       className="w-16 h-16 rounded-2xl object-cover ring-2 ring-[#F27B91]/30 shadow-md"
                     />
                     <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#111827]" />
                   </div>
                   <div>
-                    <h3 className="font-serif font-bold text-xl text-[#E8EDF5]">Bruno</h3>
-                    <p className="text-xs text-[#F27B91] font-semibold">Zaguate Experto GAM</p>
-                    <p className="text-[11px] text-[#94A3B8]">Sensor collar: CRC-BRUNO-01</p>
+                    <h3 className="font-serif font-bold text-xl text-[#E8EDF5]">Argos</h3>
+                    <p className="text-xs text-[#F27B91] font-semibold">{t('copilotoExt.guardianSub')}</p>
+                    <p className="text-[11px] text-[#94A3B8]">{t('copilotoExt.nodo')}</p>
                   </div>
                 </div>
 
                 <p className="text-xs text-[#94A3B8] leading-relaxed">
-                  Bruno procesa en vivo los sensores meteorológicos y acústicos de San José para darte recomendaciones preventivas de paseo.
+                  {t('copilotoExt.cardDesc')}
                 </p>
 
                 {/* Preguntas sugeridas */}
                 <div className="space-y-2 pt-2 border-t border-white/5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                    Preguntas Sugeridas
+                    {t('copilotoExt.preguntasSugeridas')}
                   </span>
                   <div className="space-y-1.5">
-                    {PREGUNTAS_SUGERIDAS.map((pregunta, idx) => (
+                    {preguntasSugeridas.map((pregunta, idx) => (
                       <button
                         key={idx}
                         type="button"
@@ -344,17 +399,17 @@ export function CopilotoBruno() {
                     <div className="w-9 h-9 rounded-xl overflow-hidden bg-[#55152D] flex items-center justify-center">
                       <img
                         src="/imagenes/copiloto-bruno.jpg"
-                        alt="Bruno"
+                        alt={t('copilotoExt.avatarAlt')}
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-[#E8EDF5] flex items-center gap-1.5">
-                        Canal Asistido de Paseo & Bienestar
+                        {t('copilotoExt.canalTitulo')}
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       </h4>
                       <p className="text-[11px] text-[#94A3B8]">
-                        Mascota: {mascota?.nombre || 'Tu mascota'} &bull; No reemplaza a un veterinario
+                        {t('copilotoExt.mascotaLine', { nombre: nombreMascotaVisible })}
                       </p>
                     </div>
                   </div>
@@ -370,7 +425,7 @@ export function CopilotoBruno() {
                       }`}
                     >
                       <Heart className="w-3.5 h-3.5" />
-                      <span>Chequeo {mascota?.nombre || 'Mascota'}</span>
+                      <span>{t('copilotoExt.chequeoBtn', { nombre: mascota?.nombre || t('copilotoExt.chequeoMascotaDefault') })}</span>
                     </button>
 
                     {soportaVozSalida() && (
@@ -384,7 +439,7 @@ export function CopilotoBruno() {
                             setVozActiva((v) => !v);
                           }
                         }}
-                        title={hablando ? 'Detener voz' : vozActiva ? 'Silenciar voz de Bruno' : 'Activar voz de Bruno'}
+                        title={hablando ? t('copilotoExt.detenerVozTitle') : vozActiva ? t('copilotoExt.silenciarVozTitle') : t('copilotoExt.activarVozTitle')}
                         className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition-colors flex items-center gap-1 ${
                           hablando
                             ? 'bg-emerald-600 text-white border-emerald-400'
@@ -396,17 +451,17 @@ export function CopilotoBruno() {
                         {hablando ? (
                           <>
                             <Square className="w-3 h-3 fill-current" />
-                            <span>Detener</span>
+                            <span>{t('copilotoExt.detener')}</span>
                           </>
                         ) : vozActiva ? (
                           <>
                             <Volume2 className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Voz activa</span>
+                            <span className="hidden sm:inline">{t('copilotoExt.vozActiva')}</span>
                           </>
                         ) : (
                           <>
                             <VolumeX className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Sin voz</span>
+                            <span className="hidden sm:inline">{t('copilotoExt.sinVoz')}</span>
                           </>
                         )}
                       </button>
@@ -419,40 +474,40 @@ export function CopilotoBruno() {
                   <div className="p-3.5 sm:px-5 border-b border-white/10 bg-[#162032]/90 space-y-2.5 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-[#E8EDF5]">
-                        ¿Cómo está {mascota?.nombre || 'tu mascota'} hoy?
+                        {t('copilotoExt.comoEstaHoy', { nombre: nombreMascotaVisible })}
                       </span>
-                      <span className="text-[10px] text-[#94A3B8]">Orientación informativa (no veterinaria)</span>
+                      <span className="text-[10px] text-[#94A3B8]">{t('copilotoExt.orientacionInfo')}</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <select
                         value={energia}
                         onChange={(e) => setEnergia(e.target.value)}
-                        aria-label="Nivel de energía"
+                        aria-label={t('copilotoExt.energiaAria')}
                         className="px-2.5 py-1.5 rounded-xl bg-[#111827] border border-white/10 text-[#E8EDF5]"
                       >
-                        <option value="Activo">Energía: Activo</option>
-                        <option value="Cansado">Energía: Cansado</option>
-                        <option value="Decaído">Energía: Decaído</option>
+                        <option value="Activo">{t('copilotoExt.energiaActivo')}</option>
+                        <option value="Cansado">{t('copilotoExt.energiaCansado')}</option>
+                        <option value="Decaído">{t('copilotoExt.energiaDecaido')}</option>
                       </select>
                       <select
                         value={apetito}
                         onChange={(e) => setApetito(e.target.value)}
-                        aria-label="Apetito"
+                        aria-label={t('copilotoExt.apetitoAria')}
                         className="px-2.5 py-1.5 rounded-xl bg-[#111827] border border-white/10 text-[#E8EDF5]"
                       >
-                        <option value="Normal">Apetito: Normal</option>
-                        <option value="Poco apetito">Apetito: Poco</option>
-                        <option value="No quiere comer">Apetito: No come</option>
+                        <option value="Normal">{t('copilotoExt.apetitoNormal')}</option>
+                        <option value="Poco apetito">{t('copilotoExt.apetitoPoco')}</option>
+                        <option value="No quiere comer">{t('copilotoExt.apetitoNoCome')}</option>
                       </select>
                       <select
                         value={hidratacion}
                         onChange={(e) => setHidratacion(e.target.value)}
-                        aria-label="Hidratación"
+                        aria-label={t('copilotoExt.hidratacionAria')}
                         className="px-2.5 py-1.5 rounded-xl bg-[#111827] border border-white/10 text-[#E8EDF5]"
                       >
-                        <option value="Hidratado">Agua: Hidratado</option>
-                        <option value="Sediento">Agua: Sediento</option>
-                        <option value="Toma poca agua">Agua: Toma poca</option>
+                        <option value="Hidratado">{t('copilotoExt.aguaHidratado')}</option>
+                        <option value="Sediento">{t('copilotoExt.aguaSediento')}</option>
+                        <option value="Toma poca agua">{t('copilotoExt.aguaPoca')}</option>
                       </select>
                     </div>
                     <div className="flex justify-end">
@@ -461,7 +516,7 @@ export function CopilotoBruno() {
                         onClick={enviarChequeoMascota}
                         className="px-3.5 py-1.5 rounded-xl bg-[#55152D] hover:bg-[#6E1E3A] text-white font-semibold border border-[#F27B91]/40"
                       >
-                        Consultar estado con Bruno
+                        {t('copilotoExt.consultarEstado')}
                       </button>
                     </div>
                   </div>
@@ -472,23 +527,16 @@ export function CopilotoBruno() {
                   {mensajes.map((msg) => {
                     const esBruno = msg.remitente === 'bruno';
                     return (
-                      <div
+                      <motion.div
                         key={msg.id}
-                        className={`flex gap-3 max-w-[88%] sm:max-w-[80%] ${
-                          esBruno ? 'mr-auto items-start' : 'ml-auto flex-row-reverse items-end'
-                        }`}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className={`flex gap-3 text-left ${esBruno ? 'justify-start' : 'justify-end'}`}
                       >
-                        {esBruno ? (
-                          <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0 ring-1 ring-[#F27B91]/30">
-                            <img
-                              src="/imagenes/copiloto-bruno.jpg"
-                              alt="Bruno"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-8 h-8 rounded-xl bg-[#55152D] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                            <User className="w-4 h-4 text-[#F27B91]" />
+                        {esBruno && (
+                          <div className="w-8 h-8 rounded-xl bg-[#55152D] text-[#F27B91] border border-[#F27B91]/30 flex items-center justify-center shrink-0 shadow-xs">
+                            <Bot className="w-4 h-4" />
                           </div>
                         )}
 
@@ -518,12 +566,13 @@ export function CopilotoBruno() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 px-1">
-                            <span className="text-[10px] text-slate-500">{msg.hora}</span>
+                            <span className="text-[10px] text-[#94A3B8]">{msg.hora}</span>
                             {esBruno && soportaVozSalida() && (
                               <button
                                 type="button"
                                 onClick={() =>
                                   hablarComoBruno(msg.texto, {
+                                    ttsLang,
                                     onStart: () => setHablando(true),
                                     onEnd: () => setHablando(false),
                                     onError: () => setHablando(false)
@@ -532,12 +581,18 @@ export function CopilotoBruno() {
                                 className="inline-flex items-center gap-1 text-[10px] text-[#F27B91] hover:underline"
                               >
                                 <Volume2 className="w-3 h-3" />
-                                <span>Escuchar</span>
+                                <span>{t('copilotoExt.escuchar')}</span>
                               </button>
                             )}
                           </div>
                         </div>
-                      </div>
+
+                        {!esBruno && (
+                          <div className="w-8 h-8 rounded-xl bg-slate-800 text-slate-200 flex items-center justify-center shrink-0 shadow-xs">
+                            <User className="w-4 h-4" />
+                          </div>
+                        )}
+                      </motion.div>
                     );
                   })}
 
@@ -547,7 +602,7 @@ export function CopilotoBruno() {
                       <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0 ring-1 ring-[#F27B91]/30">
                         <img
                           src="/imagenes/copiloto-bruno.jpg"
-                          alt="Bruno"
+                          alt={t('copilotoExt.avatarAlt')}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -555,7 +610,7 @@ export function CopilotoBruno() {
                         <span className="w-2 h-2 rounded-full bg-[#F27B91] animate-bounce" />
                         <span className="w-2 h-2 rounded-full bg-[#F27B91] animate-bounce [animation-delay:0.2s]" />
                         <span className="w-2 h-2 rounded-full bg-[#F27B91] animate-bounce [animation-delay:0.4s]" />
-                        <span className="ml-1 text-[11px]">Bruno está evaluando datos...</span>
+                        <span className="ml-1 text-[11px]">{t('copilotoExt.evaluando')}</span>
                       </div>
                     </div>
                   )}
@@ -575,7 +630,11 @@ export function CopilotoBruno() {
                     type="text"
                     value={consultaTexto}
                     onChange={(e) => setConsultaTexto(e.target.value)}
-                    placeholder={escuchando ? 'Escuchando tu voz...' : `Pregunta por el clima o cómo está ${mascota?.nombre || 'tu mascota'}...`}
+                    placeholder={
+                      escuchando
+                        ? t('copilotoExt.escuchandoVoz')
+                        : t('copilotoExt.placeholderChat', { nombre: nombreMascotaVisible })
+                    }
                     className="flex-1 bg-[#111827] text-xs sm:text-sm text-[#E8EDF5] placeholder-[#94A3B8]/60 px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-[#F27B91] transition-colors"
                   />
                   {soportaVozEntrada() && (
@@ -583,7 +642,8 @@ export function CopilotoBruno() {
                       type="button"
                       onClick={toggleMicrofono}
                       disabled={escribiendo}
-                      title={escuchando ? 'Detener micrófono' : 'Hablar con Bruno'}
+                      title={escuchando ? t('copilotoExt.detenerMic') : t('copilotoExt.hablarConArgos')}
+                      aria-label={escuchando ? t('copilotoExt.detenerMic') : t('copilotoExt.hablarConArgos')}
                       className={`shrink-0 px-3 py-3 rounded-xl border transition-colors ${
                         escuchando
                           ? 'bg-rose-600 text-white border-rose-400 animate-pulse'
@@ -600,7 +660,7 @@ export function CopilotoBruno() {
                     icon={Send}
                     className="shrink-0 bg-[#55152D] hover:bg-[#6E1E3A] text-white px-4 py-3 rounded-xl"
                   >
-                    <span className="hidden sm:inline">Preguntar</span>
+                    <span className="hidden sm:inline">{t('copilotoExt.preguntar')}</span>
                   </Button>
                 </form>
               </Card>
@@ -618,7 +678,7 @@ export function CopilotoBruno() {
               <Card className="p-6 bg-[#111827] border-white/10 rounded-3xl space-y-5 text-left shadow-md">
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
-                    1. Raza o Morfología Canina
+                    {t('copilotoExt.paso1Raza')}
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {RAZAS.map((r) => {
@@ -636,7 +696,7 @@ export function CopilotoBruno() {
                         >
                           <span className="font-semibold">{r.nombre}</span>
                           <span className={`text-[10px] mt-1 ${activa ? 'text-pink-200' : 'text-[#94A3B8]'}`}>
-                            {r.pesoPromedio} kg aprox.
+                            {t('copilotoExt.pesoAprox', { peso: r.pesoPromedio })}
                           </span>
                         </button>
                       );
@@ -648,14 +708,15 @@ export function CopilotoBruno() {
                 <div className="space-y-2 pt-2 border-t border-white/5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold uppercase tracking-wider text-[#94A3B8]">
-                      2. Duración del Paseo
+                      {t('copilotoExt.paso2Duracion')}
                     </span>
                     <span className="font-bold text-[#F27B91] tabular-nums text-sm">
-                      {duracionMinutos} minutos
+                      {t('copilotoExt.minutosLabel', { min: duracionMinutos })}
                     </span>
                   </div>
                   <input
                     type="range"
+                    aria-label={t('copilotoExt.paso2Duracion')}
                     min="10"
                     max="90"
                     step="5"
@@ -664,16 +725,16 @@ export function CopilotoBruno() {
                     className="w-full accent-[#55152D] cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-[#94A3B8]">
-                    <span>10 min (Rápido)</span>
-                    <span>45 min (Estándar)</span>
-                    <span>90 min (Aventura)</span>
+                    <span>{t('copilotoExt.rango10')}</span>
+                    <span>{t('copilotoExt.rango45')}</span>
+                    <span>{t('copilotoExt.rango90')}</span>
                   </div>
                 </div>
 
                 {/* Tipo de Superficie */}
                 <div className="space-y-2 pt-2 border-t border-white/5">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
-                    3. Tipo de Terreno
+                    {t('copilotoExt.paso3Terreno')}
                   </label>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <button
@@ -685,7 +746,7 @@ export function CopilotoBruno() {
                           : 'bg-[#162032] text-[#E8EDF5] border-white/5 hover:border-white/20'
                       }`}
                     >
-                      Aceras GAM
+                      {t('copilotoExt.acerasGam')}
                     </button>
                     <button
                       type="button"
@@ -696,7 +757,7 @@ export function CopilotoBruno() {
                           : 'bg-[#162032] text-[#E8EDF5] border-white/5 hover:border-white/20'
                       }`}
                     >
-                      Parque / Césped
+                      {t('copilotoExt.parqueCesped')}
                     </button>
                     <button
                       type="button"
@@ -707,7 +768,7 @@ export function CopilotoBruno() {
                           : 'bg-[#162032] text-[#E8EDF5] border-white/5 hover:border-white/20'
                       }`}
                     >
-                      Arboleda
+                      {t('copilotoExt.arboleda')}
                     </button>
                   </div>
                 </div>
@@ -722,17 +783,17 @@ export function CopilotoBruno() {
                     <div className="relative">
                       <img
                         src="/imagenes/copiloto-bruno.jpg"
-                        alt="Copiloto Bruno"
+                        alt={t('copilotoExt.avatarAlt')}
                         className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl object-cover shadow-sm ring-2 ring-[#F27B91]/30"
                       />
                       <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#111827]" />
                     </div>
                     <div>
                       <h3 className="font-serif text-xl font-bold text-[#E8EDF5]">
-                        Veredicto Bioclimático para {razaSeleccionada.nombre}
+                        {t('copilotoExt.veredictoTitle', { raza: razaSeleccionada.nombre })}
                       </h3>
                       <p className="text-xs text-[#94A3B8]">
-                        Cálculo con asfalto a {telemetria.temperaturaAsfalto} °C en San José Este
+                        {t('copilotoExt.calculoAsfalto', { asfalto: telemetria.temperaturaAsfalto })}
                       </p>
                     </div>
                   </div>
@@ -749,48 +810,48 @@ export function CopilotoBruno() {
                   <div className="p-3.5 bg-[#162032] rounded-xl border border-white/5 space-y-1">
                     <div className="flex items-center gap-1.5 text-xs text-[#94A3B8]">
                       <Droplets className="w-4 h-4 text-blue-400" />
-                      <span>Hidratación Mínima</span>
+                      <span>{t('copilotoExt.hidratacionMin')}</span>
                     </div>
                     <div className="font-serif font-bold text-2xl text-[#E8EDF5] tabular-nums">
                       {cuotaAguaMl} ml
                     </div>
                     <span className="text-[10px] text-[#94A3B8] block">
-                      Llevar botella portátil
+                      {t('copilotoExt.llevarBotella')}
                     </span>
                   </div>
 
                   <div className="p-3.5 bg-[#162032] rounded-xl border border-white/5 space-y-1">
                     <div className="flex items-center gap-1.5 text-xs text-[#94A3B8]">
                       <Thermometer className="w-4 h-4 text-[#F27B91]" />
-                      <span>Carga en Almohadillas</span>
+                      <span>{t('copilotoExt.cargaAlmohadillas')}</span>
                     </div>
                     <div className="font-serif font-bold text-2xl text-[#E8EDF5]">
-                      {razaSeleccionada.sensibilidadAsfalto}
+                      {traducirSensibilidad(razaSeleccionada.sensibilidadAsfalto)}
                     </div>
                     <span className="text-[10px] text-[#94A3B8] block">
-                      Calzada en {telemetria.temperaturaAsfalto} °C
+                      {t('copilotoExt.calzadaEn', { asfalto: telemetria.temperaturaAsfalto })}
                     </span>
                   </div>
 
                   <div className="p-3.5 bg-[#162032] rounded-xl border border-white/5 space-y-1">
                     <div className="flex items-center gap-1.5 text-xs text-[#94A3B8]">
                       <Clock className="w-4 h-4 text-amber-400" />
-                      <span>Límite Seguro</span>
+                      <span>{t('copilotoExt.limiteSeguro')}</span>
                     </div>
                     <div className="font-serif font-bold text-2xl text-[#E8EDF5] tabular-nums">
                       {duracionMinutos > 45 && razaSeleccionada.id === 'frenchie' ? '20 min max' : `${duracionMinutos} min`}
                     </div>
                     <span className="text-[10px] text-[#94A3B8] block">
-                      Ventana seca: {telemetria.ventanaSecaMinutos} min
+                      {t('copilotoExt.ventanaSecaLabel', { min: telemetria.ventanaSecaMinutos })}
                     </span>
                   </div>
                 </div>
 
-                {/* Recomendación de Bruno */}
+                {/* Recomendación de Argos */}
                 <div className="p-4 rounded-2xl bg-[#55152D]/25 border border-[#F27B91]/25 space-y-2 text-xs">
                   <div className="flex items-center gap-2 font-semibold text-[#F27B91]">
                     <Sparkles className="w-4 h-4" />
-                    <span>Recomendación Personalizada de Bruno:</span>
+                    <span>{t('copilotoExt.recPersonalizada')}</span>
                   </div>
                   <p className="text-[#E8EDF5] leading-relaxed">
                     {consejoBruno}
@@ -801,11 +862,14 @@ export function CopilotoBruno() {
                 <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-[#94A3B8] gap-3">
                   <div className="flex items-center gap-2">
                     <Navigation className="w-4 h-4 text-[#F27B91]" />
-                    <span>Ruta óptima sugerida: <strong className="text-[#E8EDF5]">Circuito Parque Francia hacia El Árbol de Seda</strong></span>
+                    <span>
+                      {t('copilotoExt.rutaOptimaLabel')}{' '}
+                      <strong className="text-[#E8EDF5]">{t('copilotoExt.rutaOptimaNombre')}</strong>
+                    </span>
                   </div>
                   <a href="#terrazas">
                     <Button size="sm" variant="secondary" className="bg-[#162032] text-[#E8EDF5] border-white/10 hover:border-[#F27B91]/30">
-                      Ver Terrazas del Circuito
+                      {t('copilotoExt.verTerrazasCircuito')}
                     </Button>
                   </a>
                 </div>
@@ -821,7 +885,7 @@ export function CopilotoBruno() {
               size="lg"
               className="bg-[#111827] text-[#E8EDF5] hover:text-[#F27B91] border-white/10 hover:border-[#F27B91]/30 shadow-md font-semibold"
             >
-              Abrir Copiloto Bruno en Pantalla Completa &rarr;
+              {t('copilotoExt.abrirPantallaCompleta')}
             </Button>
           </Link>
         </div>

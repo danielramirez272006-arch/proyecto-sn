@@ -94,7 +94,7 @@ export function useTelemetria() {
           hayDatos: true
         };
       });
-    }, 3600);
+    }, 12000);
 
     return () => clearInterval(timer);
   }, [sincronizarConBackend]);

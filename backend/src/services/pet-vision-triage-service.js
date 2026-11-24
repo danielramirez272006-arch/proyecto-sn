@@ -6,7 +6,7 @@ const multichannelService = require('../modules/notifications/multichannel-notif
 const { inspectAndSanitizeImage } = require('../modules/places/photo-security-validator');
 const { sanitizePromptInjection, assertSafeOutboundUrl } = require('../shared/middlewares/payload-sanitizer');
 const { generateNavigationLinks } = require('../shared/utils/navigation-links');
-const { execute, query } = require('../shared/config/database');
+const { AiInteractionLogModel } = require('../models');
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB límite decodificado
 
@@ -167,7 +167,7 @@ class PetVisionTriageService {
       }));
 
     const systemInstruction = [
-      'Eres un asistente experto en pre-triaje visual veterinario y bienestar animal para GoToX Costa Rica (Gran Área Metropolitana - GAM).',
+      'Eres un asistente experto en pre-triaje visual veterinario y bienestar animal para Synodos Costa Rica (Gran Área Metropolitana - GAM).',
       'Tu objetivo es analizar la(s) fotografía(s) de una mascota y entregar SIEMPRE una orientación APROXIMADA en español claro, empático y responsable.',
       'REGLAS CRÍTICAS:',
       '1. NUNCA afirmes que tu respuesta es un diagnóstico clínico definitivo; aclara siempre que es una estimación visual aproximada.',
@@ -245,7 +245,7 @@ class PetVisionTriageService {
           channel: 'email',
           recipient: String(notify_emergency_email).trim(),
           type: 'PET_VISION_URGENT_TRIAGE',
-          title: `🚨 Alerta Veterinaria Urgente GoToX: ${pet_context?.nombre || 'Tu mascota'}`,
+          title: `🚨 Alerta Veterinaria Urgente Synodos: ${pet_context?.nombre || 'Tu mascota'}`,
           priority: 'high',
           payload: {
             analysis_id: analysisId,
@@ -1175,45 +1175,33 @@ class PetVisionTriageService {
       this.recentAnalysesMemory.length = 50;
     }
 
-    await execute(
-      `INSERT INTO ai_interaction_logs
-       (id, agent_name, invoked_by, invoked_role, input_summary, output_summary, provider, model, latency_ms, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        logEntry.id,
-        logEntry.agent_name,
-        logEntry.invoked_by,
-        logEntry.invoked_role,
-        logEntry.input_summary,
-        logEntry.output_summary,
-        logEntry.provider,
-        logEntry.model,
-        logEntry.latency_ms,
-        logEntry.status
-      ]
-    ).catch(() => {});
+    await AiInteractionLogModel.create({
+      id: logEntry.id,
+      agent_name: logEntry.agent_name,
+      invoked_by: logEntry.invoked_by,
+      invoked_role: logEntry.invoked_role,
+      input_summary: logEntry.input_summary,
+      output_summary: logEntry.output_summary,
+      provider: logEntry.provider,
+      model: logEntry.model,
+      latency_ms: logEntry.latency_ms,
+      status: logEntry.status
+    }).catch(() => {});
   }
 
   async getRecentAnalyses({ actor = null, limit = 10 } = {}) {
     const safeLimit = Math.max(1, Math.min(50, Number(limit) || 10));
-    let dbRows = [];
+    const where = { agent_name: 'pet-vision-triage' };
     if (actor?.id && actor.role !== 'admin') {
-      dbRows = await query(
-        `SELECT id, agent_name, invoked_by, invoked_role, input_summary, output_summary, provider, model, latency_ms, status, created_at
-         FROM ai_interaction_logs
-         WHERE agent_name = 'pet-vision-triage' AND invoked_by = ?
-         ORDER BY created_at DESC LIMIT ?`,
-        [actor.id, safeLimit]
-      ).catch(() => []);
-    } else {
-      dbRows = await query(
-        `SELECT id, agent_name, invoked_by, invoked_role, input_summary, output_summary, provider, model, latency_ms, status, created_at
-         FROM ai_interaction_logs
-         WHERE agent_name = 'pet-vision-triage'
-         ORDER BY created_at DESC LIMIT ?`,
-        [safeLimit]
-      ).catch(() => []);
+      where.invoked_by = actor.id;
     }
+
+    const dbRows = await AiInteractionLogModel.findAll({
+      where,
+      orderBy: 'created_at',
+      orderDir: 'DESC',
+      limit: safeLimit
+    }).catch(() => []);
 
     if (Array.isArray(dbRows) && dbRows.length > 0) {
       return dbRows;

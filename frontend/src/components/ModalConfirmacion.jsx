@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Trash2, HelpCircle } from 'lucide-react';
 import { useTema } from '../context/TemaContext';
+import { useIdioma } from '../context/IdiomaContext';
 
 /**
  * Diálogo de confirmación propio (reemplaza window.confirm del navegador).
@@ -13,13 +14,16 @@ export function ModalConfirmacion({
   titulo,
   mensaje,
   detalles = [],
-  textoConfirmar = 'Confirmar',
-  textoCancelar = 'Cancelar',
+  textoConfirmar,
+  textoCancelar,
   peligroso = false,
   onConfirmar,
   onCancelar
 }) {
   const { esClaro, esMorado } = useTema();
+  const { t } = useIdioma();
+  const etiquetaConfirmar = textoConfirmar || t('confirmModal.confirmar');
+  const etiquetaCancelar = textoCancelar || t('confirmModal.cancelar');
   const cancelarRef = useRef(null);
   const panelRef = useRef(null);
   const previoRef = useRef(null);
@@ -120,7 +124,7 @@ export function ModalConfirmacion({
             onClick={onCancelar}
             className="px-4 py-2.5 rounded-xl border border-current/20 text-sm font-semibold hover:bg-current/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F27B91]"
           >
-            {textoCancelar}
+            {etiquetaCancelar}
           </button>
           <button
             type="button"
@@ -132,7 +136,7 @@ export function ModalConfirmacion({
             }`}
           >
             {peligroso && <Trash2 className="w-4 h-4" aria-hidden="true" />}
-            <span>{textoConfirmar}</span>
+            <span>{etiquetaConfirmar}</span>
           </button>
         </div>
       </div>

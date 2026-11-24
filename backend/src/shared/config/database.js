@@ -124,32 +124,73 @@ async function initDatabase() {
   return initializationPromise;
 }
 
+// Firewall SQL en tiempo de ejecución y telemetría de seguridad de base de datos
+const DANGEROUS_RUNTIME_SQL_REGEX = /;\s*(?:DROP\s+TABLE|DROP\s+DATABASE|TRUNCATE\s+TABLE|ALTER\s+SYSTEM|COPY\s+.*\s+TO\s+PROGRAM)|pg_shadow|pg_authid/i;
+
+const dbSecurityStats = {
+  total_queries: 0,
+  slow_queries_count: 0,
+  firewall_blocked_count: 0,
+  failed_queries_count: 0,
+  last_blocked_at: null
+};
+
+function assertSafeRuntimeSql(sql) {
+  const text = String(sql || '');
+  if (DANGEROUS_RUNTIME_SQL_REGEX.test(text)) {
+    dbSecurityStats.firewall_blocked_count += 1;
+    dbSecurityStats.last_blocked_at = new Date().toISOString();
+    const err = new Error('Consulta SQL bloqueada por el firewall de seguridad de base de datos.');
+    err.code = 'DB_FIREWALL_BLOCKED';
+    err.status = 400;
+    throw err;
+  }
+}
+
+function getDatabaseSecurityStats() {
+  return {
+    dialect: activeDialect,
+    connected: Boolean(dbClient),
+    encryption_engine: 'AES-256-GCM (Field-Level) + HMAC-SHA256 (Row Integrity)',
+    sql_firewall_active: true,
+    ...dbSecurityStats
+  };
+}
+
 async function query(sql, rawParams = []) {
+  assertSafeRuntimeSql(sql);
+  dbSecurityStats.total_queries += 1;
+  const t0 = Date.now();
   const params = rawParams.map(p => p === undefined ? null : p);
   try {
     const { client, dialect } = await initDatabase();
     metricsCollector.recordDbQuery(true);
 
+    let result;
     if (dialect === 'postgres') {
       let paramIdx = 1;
       const pgSql = sql.replace(/\?/g, () => `$${paramIdx++}`);
       const res = await client.query(pgSql, params);
-      return res.rows;
-    }
-
-    if (dialect === 'mysql') {
+      result = res.rows;
+    } else if (dialect === 'mysql') {
       const [rows] = await client.execute(sql, params);
-      return rows;
+      result = rows;
+    } else {
+      const stmt = client.prepare(sql);
+      const trimmed = sql.trim().toUpperCase();
+      if (trimmed.startsWith('SELECT') || trimmed.startsWith('PRAGMA')) {
+        result = stmt.all(...params);
+      } else {
+        result = stmt.run(...params);
+      }
     }
 
-    const stmt = client.prepare(sql);
-    const trimmed = sql.trim().toUpperCase();
-    if (trimmed.startsWith('SELECT') || trimmed.startsWith('PRAGMA')) {
-      return stmt.all(...params);
-    } else {
-      return stmt.run(...params);
+    if (Date.now() - t0 > 250) {
+      dbSecurityStats.slow_queries_count += 1;
     }
+    return result;
   } catch (err) {
+    dbSecurityStats.failed_queries_count += 1;
     metricsCollector.recordDbQuery(false);
     throw err;
   }
@@ -392,6 +433,7 @@ module.exports = {
   transaction,
   withTransaction: transaction,
   checkHealth,
+  getDatabaseSecurityStats,
   runMigrations,
   runSeeds,
   getDialect: () => activeDialect,

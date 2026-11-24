@@ -14,6 +14,7 @@ import { LugarFoto } from '../components/LugarFoto';
 import { esFavorito, alternarFavorito } from '../servicios/almacenamientoCliente';
 import { useTema } from '../context/TemaContext';
 import { useSesion } from '../hooks/useSesion';
+import { useIdioma } from '../context/IdiomaContext';
 import {
   ShieldCheck,
   Navigation,
@@ -44,20 +45,27 @@ export function Home() {
   const navigate = useNavigate();
   const { esClaro, esMorado, esOscuro } = useTema();
   const { isLoggedIn } = useSesion();
+  const { idioma, idiomaActual, t } = useIdioma();
 
   // Estados del Buscador Inteligente
   const [consulta, setConsulta] = useState('');
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('todas');
   const [escuchandoVoz, setEscuchandoVoz] = useState(false);
-  const [ubicacionUsuario, setUbicacionUsuario] = useState('San José Este (Escalante / San Pedro)');
+  const [ubicacionUsuario, setUbicacionUsuario] = useState(null);
   const [detectandoGps, setDetectandoGps] = useState(false);
   const [lugarSeleccionado, setLugarSeleccionado] = useState(null);
   const [favoritosVersion, setFavoritosVersion] = useState(0);
 
+  const textoUbicacionVisible = ubicacionUsuario
+    ? ubicacionUsuario.tipo === 'detectada'
+      ? t('homeExt.ubicacionDetectada', { metros: ubicacionUsuario.metros })
+      : t('homeExt.ubicacionFallback')
+    : t('homeExt.ubicacionDefault');
+
   // Reconocimiento de Voz nativo del navegador (Web Speech API)
   const alternarVoz = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Tu navegador no soporta entrada de voz por Speech API. Puedes escribir tu consulta en el buscador.');
+      alert(t('homeExt.alertNoVoz'));
       return;
     }
 
@@ -68,7 +76,7 @@ export function Home() {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognizer = new SpeechRecognition();
-    recognizer.lang = 'es-CR';
+    recognizer.lang = idiomaActual?.ttsLang || 'es-CR';
     recognizer.continuous = false;
     recognizer.interimResults = false;
 
@@ -96,21 +104,21 @@ export function Home() {
   // Geolocalización del navegador
   const detectarUbicacionReal = () => {
     if (!navigator.geolocation) {
-      alert('Tu navegador no permite geolocalización.');
+      alert(t('homeExt.alertNoGps'));
       return;
     }
     if (!geolocalizacionPermitida({ accionExplicita: true })) {
-      alert('Desactivaste la geolocalización en «Preferencias de Cookies». Actívala allí para usar tu ubicación.');
+      alert(t('homeExt.alertGeoDesactivada'));
       return;
     }
     setDetectandoGps(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setUbicacionUsuario(`Ubicación GPS detectada (±${Math.round(pos.coords.accuracy)}m)`);
+        setUbicacionUsuario({ tipo: 'detectada', metros: Math.round(pos.coords.accuracy) });
         setDetectandoGps(false);
       },
       () => {
-        setUbicacionUsuario('San José Centro, Costa Rica');
+        setUbicacionUsuario({ tipo: 'fallback' });
         setDetectandoGps(false);
       },
       { timeout: 7000 }
@@ -149,18 +157,23 @@ export function Home() {
       }
     }
 
-    // Filtro por consulta en lenguaje natural
+    // Filtro por consulta en lenguaje natural (compatible con chips traducidos)
     if (q) {
-      if (q.includes('comer') || q.includes('almuerzo') || q.includes('cena')) {
+      const chipsIdx = [1, 2, 3, 4, 5, 6].findIndex(
+        (n) => t(`homeExt.chipExtra${n}`).toLowerCase().trim() === q
+      );
+      if (chipsIdx === 0 || q.includes('comer') || q.includes('almuerzo') || q.includes('cena') || q.includes('eat') || q.includes('food')) {
         res = res.filter(l => l.tipoActividad === 'gastronomia' || l.categoria.toLowerCase().includes('comida'));
-      } else if (q.includes('econ') || q.includes('barato')) {
+      } else if (chipsIdx === 1 || q.includes('econ') || q.includes('barato') || q.includes('cheap') || q.includes('budget')) {
         res = res.filter(l => l.precioNivel === '$');
-      } else if (q.includes('perro') || q.includes('mascota')) {
+      } else if (chipsIdx === 2 || q.includes('perro') || q.includes('mascota') || q.includes('dog') || q.includes('pet')) {
         res = res.filter(l => l.petFriendly === 'si');
-      } else if (q.includes('techo') || q.includes('lluvia') || q.includes('aguacero')) {
+      } else if (chipsIdx === 3 || q.includes('techo') || q.includes('lluvia') || q.includes('aguacero') || q.includes('indoor') || q.includes('rain')) {
         res = res.filter(l => l.condicionClima === 'bajo-techo' || l.condicionClima === 'terraza-techada');
-      } else if (q.includes('dos horas') || q.includes('2 horas') || q.includes('rapido') || q.includes('tiempo')) {
+      } else if (chipsIdx === 4 || q.includes('dos horas') || q.includes('2 horas') || q.includes('rapido') || q.includes('tiempo') || q.includes('2 hours') || q.includes('two hours')) {
         res = res.filter(l => l.tiempoEstimado.includes('1') || l.tiempoEstimado.includes('Menos'));
+      } else if (chipsIdx === 5 || q.includes('café') || q.includes('cafe') || q.includes('coffee') || q.includes('trabaj') || q.includes('work')) {
+        res = res.filter(l => l.categoria.toLowerCase().includes('caf') || l.descripcion.toLowerCase().includes('trabaj'));
       } else {
         res = res.filter(l =>
           l.nombre.toLowerCase().includes(q) ||
@@ -177,7 +190,7 @@ export function Home() {
       if (bFoto !== aFoto) return bFoto - aFoto;
       return (b.puntuacion || 0) - (a.puntuacion || 0);
     });
-  }, [lugaresCombinados, consulta, categoriaSeleccionada]);
+  }, [lugaresCombinados, consulta, categoriaSeleccionada, t]);
 
   const mapIconoCategoria = (icono) => {
     switch (icono) {
@@ -199,16 +212,16 @@ export function Home() {
       <section className="relative overflow-hidden rounded-3xl p-6 sm:p-10 border border-current/10 bg-gradient-to-b from-[#55152D]/15 via-transparent to-transparent text-left space-y-6">
         <div className="max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-xs font-semibold bg-[#501228] text-white border border-[#F27B91]/30 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-[#F27B91]" />
-            <span>Descubrimiento Inteligente GAM &bull; Personas & Mascotas</span>
+            <Sparkles className="w-3.5 h-3.5 text-[#F27B91]" aria-hidden="true" />
+            <span>{t('home.badge')}</span>
           </div>
 
           <h1 className="font-serif text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-            ¿Qué puedo hacer hoy cerca de mí?
+            {t('home.titulo')}
           </h1>
 
           <p className="text-sm sm:text-base opacity-75 font-sans leading-relaxed">
-            Explora restaurantes, cafeterías de especialidad, actividades culturales bajo techo y espacios verdes en el GAM según tu presupuesto, tiempo disponible y compañía.
+            {t('home.subtitulo')}
           </p>
 
           {/* Barra de Ubicación Activa con Geodetección */}
@@ -219,28 +232,28 @@ export function Home() {
               disabled={detectandoGps}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-current/15 hover:border-[#F27B91] hover:bg-current/5 transition-all"
             >
-              <MapPin className={`w-3.5 h-3.5 text-rose-500 ${detectandoGps ? 'animate-bounce' : ''}`} />
-              <span>{detectandoGps ? 'Calculando GPS...' : ubicacionUsuario}</span>
+              <MapPin className={`w-3.5 h-3.5 text-rose-500 ${detectandoGps ? 'animate-bounce' : ''}`} aria-hidden="true" />
+              <span>{detectandoGps ? t('home.gpsCalculando') : textoUbicacionVisible}</span>
             </button>
-            <span className="text-[11px] opacity-50">&bull; Haz clic para actualizar</span>
+            <span className="text-[11px] opacity-50">&bull; {t('home.gpsClic')}</span>
           </div>
         </div>
 
         {/* Barra de Búsqueda Inteligente */}
         <div className="space-y-3">
-          <div className={`flex items-center gap-2 p-2 rounded-2xl border shadow-lg transition-all ${
-            esClaro
-              ? 'bg-white border-slate-200 focus-within:ring-2 focus-within:ring-[#501228]/20'
-              : esMorado
+          <div className={`flex items-center gap-2 p-2 rounded-2xl border shadow-lg transition-all ${esClaro
+            ? 'bg-white border-slate-200 focus-within:ring-2 focus-within:ring-[#501228]/20'
+            : esMorado
               ? 'bg-[#1F0C18] border-[#F27B91]/30 focus-within:ring-2 focus-within:ring-[#F27B91]/30'
               : 'bg-[#162032] border-white/10 focus-within:ring-2 focus-within:ring-white/20'
-          }`}>
-            <Search className="w-5 h-5 opacity-40 ml-2 shrink-0" />
+            }`}>
+            <Search className="w-5 h-5 opacity-40 ml-2 shrink-0" aria-hidden="true" />
             <input
               type="text"
               value={consulta}
               onChange={(e) => setConsulta(e.target.value)}
-              placeholder="Consulta natural (ej. Quiero salir con mi perro, algo económico, dos horas libres)..."
+              aria-label={t('home.buscadorPlaceholder')}
+              placeholder={t('home.buscadorPlaceholder')}
               className="w-full bg-transparent text-sm sm:text-base outline-none px-2 py-1 placeholder:opacity-40"
             />
             {consulta && (
@@ -249,40 +262,42 @@ export function Home() {
                 onClick={() => setConsulta('')}
                 className="text-xs px-2 py-1 rounded-md opacity-60 hover:opacity-100"
               >
-                Limpiar
+                {t('home.limpiar')}
               </button>
             )}
             <button
               type="button"
               onClick={alternarVoz}
-              title={escuchandoVoz ? 'Detener voz' : 'Hablar por micrófono'}
-              className={`p-2.5 rounded-xl transition-all shrink-0 ${
-                escuchandoVoz
-                  ? 'bg-rose-600 text-white animate-pulse'
-                  : 'bg-current/5 hover:bg-current/10 border border-current/10'
-              }`}
+              aria-label={escuchandoVoz ? t('home.microfonoDetener') : t('home.microfonoHablar')}
+              title={escuchandoVoz ? t('home.microfonoDetener') : t('home.microfonoHablar')}
+              className={`p-2.5 rounded-xl transition-all shrink-0 ${escuchandoVoz
+                ? 'bg-rose-600 text-white animate-pulse'
+                : 'bg-current/5 hover:bg-current/10 border border-current/10'
+                }`}
             >
-              {escuchandoVoz ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              {escuchandoVoz ? <MicOff className="w-4 h-4" aria-hidden="true" /> : <Mic className="w-4 h-4" aria-hidden="true" />}
             </button>
           </div>
 
           {/* Chips de Consultas Naturales Sugeridas */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] uppercase font-bold opacity-60 mr-1">Prueba rápida:</span>
-            {CONSULTAS_RAPIDAS_SUGERIDAS.map((sug, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setConsulta(sug.texto)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                  consulta === sug.texto
+            <span className="text-[11px] uppercase font-bold opacity-60 mr-1">{t('home.pruebaRapida')}</span>
+            {CONSULTAS_RAPIDAS_SUGERIDAS.map((sug, i) => {
+              const textoChip = t(`homeExt.chipExtra${i + 1}`, sug.texto);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setConsulta(textoChip)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-all ${consulta === textoChip
                     ? 'bg-[#501228] text-white border-[#F27B91]/40 font-semibold'
                     : 'bg-current/5 border-current/10 hover:border-current/25 opacity-80 hover:opacity-100'
-                }`}
-              >
-                {sug.texto}
-              </button>
-            ))}
+                    }`}
+                >
+                  {textoChip}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -292,19 +307,29 @@ export function Home() {
             {CATEGORIAS_DESCUBRIMIENTO.map((cat) => {
               const Icono = mapIconoCategoria(cat.icon);
               const activa = categoriaSeleccionada === cat.id;
+              const mapaCat = {
+                todas: 'home.catTodas',
+                gastronomia: 'home.catRestaurantes',
+                cafe: 'home.catRestaurantes',
+                'aire-libre': 'home.catParques',
+                cultural: 'home.catCultura',
+                'pet-friendly': 'home.catPetFriendly',
+                'bajo-techo': 'home.catBajoTecho'
+              };
+              const etiquetaCat = idioma === 'es' ? cat.label : t(mapaCat[cat.id] || 'home.catTodas', cat.label);
               return (
                 <button
                   key={cat.id}
                   type="button"
+                  aria-pressed={activa}
                   onClick={() => setCategoriaSeleccionada(cat.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${
-                    activa
-                      ? 'bg-[#501228] text-white border-[#F27B91]/40 shadow-sm'
-                      : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100 hover:bg-current/10'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${activa
+                    ? 'bg-[#501228] text-white border-[#F27B91]/40 shadow-sm'
+                    : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100 hover:bg-current/10'
+                    }`}
                 >
-                  <Icono className="w-4 h-4" />
-                  <span>{cat.label}</span>
+                  <Icono className="w-4 h-4" aria-hidden="true" />
+                  <span>{etiquetaCat}</span>
                 </button>
               );
             })}
@@ -316,9 +341,9 @@ export function Home() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-serif font-bold text-lg">
-                Recomendaciones ({lugaresFiltrados.length})
+                {t('home.recomendaciones')} ({lugaresFiltrados.length})
               </span>
-              <span className="text-xs opacity-60">lugares reales y verificables</span>
+              <span className="text-xs opacity-60">{t('home.lugaresReales')}</span>
               <button
                 type="button"
                 onClick={refrescarReales}
@@ -326,15 +351,15 @@ export function Home() {
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-current/15 text-[11px] font-semibold hover:bg-current/5 transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-3 h-3 ${cargandoReales ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />
-                <span>{cargandoReales ? 'Actualizando...' : 'Actualizar en vivo'}</span>
+                <span>{cargandoReales ? t('home.actualizando') : t('home.actualizarVivo')}</span>
               </button>
             </div>
             <Link
               to={isLoggedIn ? "/explorar" : "/terrazas"}
               className="text-xs font-bold text-[#F27B91] hover:underline flex items-center gap-1"
             >
-              <span>{isLoggedIn ? 'Ver catálogo completo con filtros' : 'Ver terrazas verificadas'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>{isLoggedIn ? t('home.verCatalogo') : t('home.verTerrazas')}</span>
+              <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
             </Link>
           </div>
 
@@ -344,20 +369,18 @@ export function Home() {
               return (
                 <div
                   key={lugar.id}
-                  className={`group rounded-3xl border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${
-                    esClaro
-                      ? 'bg-white border-slate-200'
-                      : esMorado
+                  className={`group rounded-3xl border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${esClaro
+                    ? 'bg-white border-slate-200'
+                    : esMorado
                       ? 'bg-[#1F0C18] border-[#F27B91]/20 hover:border-[#F27B91]/40'
                       : 'bg-[#162032] border-white/10 hover:border-white/20'
-                  }`}
+                    }`}
                 >
                   {/* Foto de Portada */}
                   <div
                     onClick={() => setLugarSeleccionado(lugar)}
-                    className={`relative h-44 w-full overflow-hidden cursor-pointer ${
-                      esClaro ? 'bg-[#FAF5F8]' : esMorado ? 'bg-[#251420]' : 'bg-[#162032]'
-                    }`}
+                    className={`relative h-44 w-full overflow-hidden cursor-pointer ${esClaro ? 'bg-[#FAF5F8]' : esMorado ? 'bg-[#251420]' : 'bg-[#162032]'
+                      }`}
                   >
                     <LugarFoto
                       src={lugar.imagen}
@@ -382,7 +405,8 @@ export function Home() {
                           alternarFavorito(lugar.id);
                           setFavoritosVersion(v => v + 1);
                         }}
-                        title={fav ? "Quitar de favoritos" : "Guardar en favoritos"}
+                        aria-label={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
+                        title={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
                         className="absolute top-3 right-3 p-2 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md transition-all active:scale-90"
                       >
                         <Heart className={`w-4 h-4 ${fav ? 'fill-rose-500 text-rose-500' : ''}`} />
@@ -416,10 +440,10 @@ export function Home() {
                         {lugar.petFriendly === 'si' ? (
                           <span className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1">
                             <Dog className="w-3.5 h-3.5" />
-                            <span>Pet-friendly</span>
+                            <span>{t('homeExt.petFriendly')}</span>
                           </span>
                         ) : (
-                          <span className="text-[11px] opacity-60">Solo humanos</span>
+                          <span className="text-[11px] opacity-60">{t('homeExt.soloHumanos')}</span>
                         )}
                       </div>
 
@@ -428,7 +452,7 @@ export function Home() {
                         onClick={() => setLugarSeleccionado(lugar)}
                         className="text-xs font-bold text-[#F27B91] hover:underline"
                       >
-                        Ver detalles &rarr;
+                        {t('homeExt.verDetalles')}
                       </button>
                     </div>
                   </div>
@@ -464,44 +488,41 @@ export function Home() {
       <section className="py-10 border-y border-current/10">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${
-              esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
-            }`}>
+            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
+              }`}>
               <div className="w-11 h-11 rounded-2xl bg-[#55152D] text-[#F27B91] border border-[#F27B91]/25 flex items-center justify-center shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="font-serif font-bold text-lg">Protección Podal Canina</h3>
+                <h3 className="font-serif font-bold text-lg">{t('homeExt.pilar1Titulo')}</h3>
                 <p className="text-xs opacity-75 leading-relaxed">
-                  El asfalto oscuro en San José supera los 50 °C al mediodía. Alertamos cuando excede el umbral seguro de 26 °C.
+                  {t('homeExt.pilar1Desc')}
                 </p>
               </div>
             </div>
 
-            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${
-              esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
-            }`}>
+            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
+              }`}>
               <div className="w-11 h-11 rounded-2xl bg-[#55152D] text-[#F27B91] border border-[#F27B91]/25 flex items-center justify-center shrink-0 shadow-xs">
                 <Navigation className="w-5 h-5" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="font-serif font-bold text-lg">Rutas Acústicamente Limpias</h3>
+                <h3 className="font-serif font-bold text-lg">{t('homeExt.pilar2Titulo')}</h3>
                 <p className="text-xs opacity-75 leading-relaxed">
-                  Cartografía de decibelios para evitar escapes por pánico o estrés auditivo en zonas de alta congestión del GAM.
+                  {t('homeExt.pilar2Desc')}
                 </p>
               </div>
             </div>
 
-            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${
-              esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
-            }`}>
+            <div className={`flex items-start gap-4 p-5 rounded-3xl border transition-colors shadow-sm ${esClaro ? 'bg-white border-slate-200' : 'bg-[#162032] border-white/5'
+              }`}>
               <div className="w-11 h-11 rounded-2xl bg-[#55152D] text-[#F27B91] border border-[#F27B91]/25 flex items-center justify-center shrink-0 shadow-xs">
                 <Award className="w-5 h-5" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="font-serif font-bold text-lg">Certificación en Terrazas</h3>
+                <h3 className="font-serif font-bold text-lg">{t('homeExt.pilar3Titulo')}</h3>
                 <p className="text-xs opacity-75 leading-relaxed">
-                  Cada local auditado garantiza bowls higienizados, agua fría de recambio continuo y anclajes seguros en mesa.
+                  {t('homeExt.pilar3Desc')}
                 </p>
               </div>
             </div>
@@ -524,13 +545,13 @@ export function Home() {
             <div className="max-w-xl space-y-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold tracking-wide uppercase text-[#F27B91] border border-white/15">
                 <Sparkles className="w-3 h-3" />
-                Experiencia Integral GoToX
+                {t('homeExt.ctaBadge')}
               </span>
               <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-white">
-                Descubre planes y organiza tus salidas en el GAM
+                {t('homeExt.ctaTitulo')}
               </h2>
               <p className="text-slate-300 text-sm leading-relaxed">
-                Tanto si sales en solitario, con amigos o con tu compañero de cuatro patas, GoToX sincroniza mapas, clima y recomendaciones en tiempo real.
+                {t('homeExt.ctaSubtitulo')}
               </p>
             </div>
 
@@ -543,7 +564,7 @@ export function Home() {
                       size="lg"
                       className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
                     >
-                      Explorar Catálogo
+                      {t('homeExt.ctaExplorar')}
                     </Button>
                   </Link>
                   <Link to="/mis-planes" className="w-full sm:w-auto">
@@ -552,7 +573,7 @@ export function Home() {
                       size="lg"
                       className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
                     >
-                      Crear Mi Primer Plan
+                      {t('homeExt.ctaCrearPlan')}
                     </Button>
                   </Link>
                 </>
@@ -564,7 +585,7 @@ export function Home() {
                       size="lg"
                       className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
                     >
-                      Ver Mapa Interactivo
+                      {t('homeExt.ctaVerMapa')}
                     </Button>
                   </Link>
                   <Link to="/acceso" className="w-full sm:w-auto">
@@ -573,7 +594,7 @@ export function Home() {
                       size="lg"
                       className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
                     >
-                      Iniciar Sesión para Planes
+                      {t('homeExt.ctaLoginPlanes')}
                     </Button>
                   </Link>
                 </>

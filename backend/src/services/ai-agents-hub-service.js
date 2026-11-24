@@ -1,5 +1,5 @@
 const crypto = require('node:crypto');
-const { query, execute } = require('../shared/config/database');
+const { AiInteractionLogModel } = require('../models');
 const geminiClient = require('../shared/config/gemini-config');
 const deepSeekClient = require('../shared/config/deepseek-config');
 const autoTaggerAi = require('../autonomous-agents/cartographer-agent/auto-tagger-ai');
@@ -26,7 +26,7 @@ function sanitizePiiForPrompt(text) {
 const AGENT_REGISTRY = {
   'bruno-concierge': {
     name: 'bruno-concierge',
-    title: 'Copiloto Bruno (Concierge Bienestar Pet)',
+    title: 'Copiloto Argos (Concierge Bienestar Pet — Synodos)',
     authorized_roles: ['client', 'organizer', 'merchant', 'business_owner', 'admin'],
     provider: 'google_gemini',
     model: geminiClient.model || 'gemini-2.0-flash',
@@ -35,7 +35,7 @@ const AGENT_REGISTRY = {
       const prompt = sanitizePiiForPrompt(input.message || input.prompt || 'Recomendación de paseo pet-friendly en San José');
       const res = await geminiClient.generateJson({
         prompt,
-        systemInstruction: 'Eres Bruno, asistente de bienestar animal y rutas pet-friendly en Costa Rica. Responde en JSON breve.'
+        systemInstruction: 'Eres Argos, asistente de bienestar animal y rutas pet-friendly de Synodos en Costa Rica. Responde en JSON breve.'
       }).catch(() => null);
       return {
         reply: res?.reply || res?.summary || res?.recommendation || 'Para pasear con tu mascota en el GAM, verifica sombra en aceras y lleva hidratación.',
@@ -187,23 +187,18 @@ class AiAgentsHubService {
 
   async recordLog({ agentName, actor, inputSummary, outputSummary, provider, model, latencyMs, status }) {
     const id = `ailog_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-    await execute(
-      `INSERT INTO ai_interaction_logs
-       (id, agent_name, invoked_by, invoked_role, input_summary, output_summary, provider, model, latency_ms, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        agentName,
-        actor?.id || 'anonymous',
-        actor?.role || 'guest',
-        sanitizePiiForPrompt(typeof inputSummary === 'string' ? inputSummary : JSON.stringify(inputSummary || {})),
-        sanitizePiiForPrompt(typeof outputSummary === 'string' ? outputSummary : JSON.stringify(outputSummary || {})),
-        provider || 'local',
-        model || 'heuristic',
-        Math.max(0, Math.round(Number(latencyMs) || 0)),
-        status || 'success',
-      ]
-    );
+    await AiInteractionLogModel.create({
+      id,
+      agent_name: agentName,
+      invoked_by: actor?.id || 'anonymous',
+      invoked_role: actor?.role || 'guest',
+      input_summary: sanitizePiiForPrompt(typeof inputSummary === 'string' ? inputSummary : JSON.stringify(inputSummary || {})),
+      output_summary: sanitizePiiForPrompt(typeof outputSummary === 'string' ? outputSummary : JSON.stringify(outputSummary || {})),
+      provider: provider || 'local',
+      model: model || 'heuristic',
+      latency_ms: Math.max(0, Math.round(Number(latencyMs) || 0)),
+      status: status || 'success',
+    });
     return id;
   }
 
@@ -263,16 +258,13 @@ class AiAgentsHubService {
 
   async listLogs({ agentName = null, limit = 50 } = {}) {
     const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
-    if (agentName) {
-      return await query(
-        `SELECT * FROM ai_interaction_logs WHERE agent_name = ? ORDER BY created_at DESC LIMIT ?`,
-        [agentName, safeLimit]
-      );
-    }
-    return await query(
-      `SELECT * FROM ai_interaction_logs ORDER BY created_at DESC LIMIT ?`,
-      [safeLimit]
-    );
+    const where = agentName ? { agent_name: agentName } : {};
+    return await AiInteractionLogModel.findAll({
+      where,
+      orderBy: 'created_at',
+      orderDir: 'DESC',
+      limit: safeLimit
+    });
   }
 }
 

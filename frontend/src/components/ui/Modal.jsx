@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useIdioma } from '../../context/IdiomaContext';
 
 export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }) {
+  const { t } = useIdioma();
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -43,7 +45,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' 
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cerrar modal"
+            aria-label={t('detalleLugar.cerrarAria')}
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />

@@ -4,19 +4,19 @@
  */
 
 export const TRANSICION_SUAVE = {
-  duration: 0.4,
-  ease: [0.25, 0.1, 0.25, 1.0]
+  duration: 0.18,
+  ease: [0.22, 1, 0.36, 1.0]
 };
 
 export const TRANSICION_RAPIDA = {
-  duration: 0.25,
-  ease: [0.25, 0.1, 0.25, 1.0]
+  duration: 0.12,
+  ease: [0.22, 1, 0.36, 1.0]
 };
 
 export const SPRING_SUTIL = {
   type: "spring",
-  stiffness: 280,
-  damping: 24
+  stiffness: 380,
+  damping: 30
 };
 
 // 1. Fade In Sencillo
@@ -83,27 +83,25 @@ export const itemStagger = {
   }
 };
 
-// 6. Transición de Página Completa (PageWrapper)
+// 6. Transición de Página Completa (PageWrapper) — Instantánea y fluida sin lag
 export const pageVariants = {
   initial: {
     opacity: 0,
-    y: 16
+    y: 6
   },
   animate: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.35,
-      ease: [0.25, 0.1, 0.25, 1.0],
-      when: "beforeChildren"
+      duration: 0.15,
+      ease: [0.22, 1, 0.36, 1.0]
     }
   },
   exit: {
     opacity: 0,
-    y: -10,
     transition: {
-      duration: 0.2,
-      ease: "easeIn"
+      duration: 0.08,
+      ease: "easeOut"
     }
   }
 };

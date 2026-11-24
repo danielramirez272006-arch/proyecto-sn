@@ -115,19 +115,29 @@
 /* Excepciones de Texto Blanco en Elementos con Fondo de Marca Oscuro */
 :root[data-tema='claro'] .bg-\[\#501228\],
 :root[data-tema='claro'] .bg-\[\#55152D\],
+:root[data-tema='claro'] .bg-\[\#55152D\]\/90,
 :root[data-tema='claro'] .bg-\[\#6E1E3A\],
 :root[data-tema='claro'] .bg-emerald-600,
 :root[data-tema='claro'] .bg-amber-600,
-:root[data-tema='claro'] .bg-slate-800 {
+:root[data-tema='claro'] .bg-slate-800,
+:root[data-tema='claro'] .bg-slate-900,
+:root[data-tema='claro'] .bg-black\/75,
+:root[data-tema='claro'] .bg-black\/70,
+:root[data-tema='claro'] .bg-black\/60,
+:root[data-tema='claro'] [role='tooltip'].bg-slate-900 {
   color: #FFFFFF !important;
 }
 
 :root[data-tema='claro'] .bg-\[\#501228\] *,
 :root[data-tema='claro'] .bg-\[\#55152D\] *,
+:root[data-tema='claro'] .bg-\[\#55152D\]\/90 *,
 :root[data-tema='claro'] .bg-\[\#6E1E3A\] *,
 :root[data-tema='claro'] .bg-emerald-600 *,
 :root[data-tema='claro'] .bg-amber-600 *,
-:root[data-tema='claro'] .bg-slate-800 * {
+:root[data-tema='claro'] .bg-slate-800 *,
+:root[data-tema='claro'] .bg-slate-900 *,
+:root[data-tema='claro'] .bg-black\/75 *,
+:root[data-tema='claro'] .bg-black\/70 * {
   color: #FFFFFF !important;
 }
 

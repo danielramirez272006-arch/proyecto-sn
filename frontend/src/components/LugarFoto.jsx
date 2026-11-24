@@ -4,9 +4,20 @@ import { useTema } from '../context/TemaContext';
 import { useIdioma } from '../context/IdiomaContext';
 
 function etiquetaProveedor(provider) {
+  if (
+    provider === 'supabase_database' ||
+    provider === 'own_catalog' ||
+    provider === 'supabase_storage' ||
+    provider === 'synodos_db' ||
+    provider === 'academic_dataset' ||
+    provider === 'curated_local' ||
+    provider === 'admin_upload'
+  ) {
+    return 'Catálogo Synodos';
+  }
   if (provider === 'wikimedia_commons') return 'Wikimedia Commons';
   if (provider === 'foursquare') return 'Foursquare';
-  return 'Google Places';
+  return 'Catálogo Synodos';
 }
 
 /**
@@ -95,8 +106,11 @@ export function LugarFoto({
 
   const primerAutor = photoMeta?.attributions?.[0];
   const nombreProveedor = etiquetaProveedor(photoMeta?.provider);
-  const textoCredito = primerAutor?.displayName
-    ? `${primerAutor.displayName} · ${nombreProveedor}`
+  const autorLimpio = primerAutor?.displayName
+    ? String(primerAutor.displayName).split('Fuente:')[0].trim().replace(/\.$/, '')
+    : '';
+  const textoCredito = autorLimpio
+    ? `${autorLimpio} · ${nombreProveedor}`
     : t('fotoLugar.creditoFoto', { proveedor: nombreProveedor });
 
   return (
@@ -110,9 +124,12 @@ export function LugarFoto({
       />
 
       {/* Atribuciones y procedencia */}
-      <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-black/75 text-white text-[10px] backdrop-blur-xs max-w-[85%]">
+      <div
+        style={{ color: '#FFFFFF' }}
+        className="absolute bottom-2 right-2 z-10 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-black/75 text-white text-[10px] backdrop-blur-xs max-w-[75%]"
+      >
         <Camera className="w-3 h-3 shrink-0 text-[#F27B91]" aria-hidden="true" />
-        <span className="truncate">{textoCredito}</span>
+        <span className="truncate" style={{ color: '#FFFFFF' }}>{textoCredito}</span>
         {photoMeta?.sourceUrl && (
           <a
             href={photoMeta.sourceUrl}
@@ -121,6 +138,7 @@ export function LugarFoto({
             onClick={(e) => e.stopPropagation()}
             aria-label={t('fotoLugar.verFuente', { proveedor: nombreProveedor })}
             title={t('fotoLugar.verEn', { proveedor: nombreProveedor })}
+            style={{ color: '#7DD3FC' }}
             className="text-sky-300 hover:text-white shrink-0"
           >
             <ExternalLink className="w-3 h-3" aria-hidden="true" />

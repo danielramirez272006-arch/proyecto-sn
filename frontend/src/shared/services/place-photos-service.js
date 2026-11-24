@@ -5,6 +5,234 @@ const BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api';
 // Caché en memoria de sesión únicamente (nunca persiste URLs temporales en localStorage ni Supabase)
 const sessionPhotoCache = new Map();
 const inFlightRequests = new Map();
+const dbPlacesCache = new Map();
+const DB_PLACES_TTL_MS = 20 * 1000;
+
+function textoSeguro(valor, fallback = '') {
+  if (typeof valor === 'string' && valor.trim()) return valor.trim();
+  if (typeof valor === 'number') return String(valor);
+  return fallback;
+}
+
+export function mapearLugarDbATarjeta(dbPlace) {
+  if (!dbPlace) return null;
+  const meta = dbPlace.attributes_metadata && typeof dbPlace.attributes_metadata === 'object'
+    ? dbPlace.attributes_metadata
+    : {};
+  const catRaw = String(dbPlace.category || 'restaurant').toLowerCase();
+  const esCafe = catRaw.includes('caf') || catRaw.includes('bakery');
+  const esBar = catRaw.includes('bar') || catRaw.includes('pub');
+  const tipoActividad = esCafe ? 'cafe' : 'gastronomia';
+  const categoriaLabel = esCafe
+    ? 'Cafetería'
+    : esBar
+    ? 'Bar & Gastro'
+    : 'Restaurante';
+
+  const zona =
+    textoSeguro(dbPlace.district) ||
+    textoSeguro(dbPlace.canton) ||
+    (typeof dbPlace.address === 'string' && dbPlace.address.trim()
+      ? dbPlace.address.split(',').slice(-3, -1).join(',').trim() || dbPlace.address.trim()
+      : '') ||
+    'Costa Rica';
+
+  const petPolicyStatus =
+    typeof meta.pet_policy === 'object' && meta.pet_policy !== null
+      ? String(meta.pet_policy.status || '').toLowerCase()
+      : '';
+  const petFriendlyObj =
+    typeof meta.pet_friendly === 'object' && meta.pet_friendly !== null
+      ? meta.pet_friendly
+      : null;
+  const petSignal = petFriendlyObj ? petFriendlyObj.verified : (meta.pet_friendly ?? meta.allows_dogs ?? meta.pet_access);
+
+  const petFriendly =
+    petSignal === false ||
+    petSignal === 'no' ||
+    petSignal === 'not_allowed' ||
+    petPolicyStatus === 'not_allowed' ||
+    petPolicyStatus === 'no'
+      ? 'solo-humanos'
+      : 'si';
+
+  const textoPoliticaPet =
+    typeof meta.pet_policy === 'string' && meta.pet_policy.trim()
+      ? meta.pet_policy.trim()
+      : petFriendlyObj?.verified
+      ? 'Acceso pet-friendly confirmado en el catálogo Synodos.'
+      : petPolicyStatus === 'allowed'
+      ? 'Mascotas permitidas según registro del establecimiento.'
+      : petPolicyStatus === 'not_allowed'
+      ? 'No se permiten mascotas según registro del establecimiento.'
+      : 'Establecimiento registrado en la base de datos Synodos Costa Rica. Verificar condiciones de terraza con mascota.';
+
+  const galleryEntries = Array.isArray(dbPlace.gallery) ? dbPlace.gallery : [];
+  const galeriaUrls = galleryEntries.map((g) => g?.url).filter(Boolean);
+  const coverUrl = dbPlace.photo_url || dbPlace.photo?.url || galeriaUrls[0] || null;
+  if (coverUrl && !galeriaUrls.includes(coverUrl)) {
+    galeriaUrls.unshift(coverUrl);
+  }
+
+  const creditText = textoSeguro(dbPlace.photo?.credit) || textoSeguro(dbPlace.photo?.author) || null;
+  const tieneRampa = Boolean(meta.ley_7600_ramp?.verified ?? meta.wheelchair_accessible ?? true);
+  const serviciosLista = Array.isArray(meta.services)
+    ? meta.services.filter((s) => typeof s === 'string' && s.trim())
+    : [];
+  if (serviciosLista.length === 0) {
+    serviciosLista.push('Catálogo propio Supabase');
+    if (coverUrl) serviciosLista.push('Fotografía verificada');
+    if (meta.sinpe_movil?.verified) serviciosLista.push('SINPE Móvil');
+    if (meta.ley_7600_ramp?.verified) serviciosLista.push('Rampa Ley 7600');
+  }
+
+  return {
+    id: String(dbPlace.id),
+    nombre: textoSeguro(dbPlace.name, 'Restaurante'),
+    categoria: categoriaLabel,
+    tipoActividad,
+    zona,
+    canton: textoSeguro(dbPlace.canton, 'Costa Rica'),
+    direccion: textoSeguro(dbPlace.address, zona),
+    lat: Number(dbPlace.lat),
+    lng: Number(dbPlace.lng),
+    precioNivel: textoSeguro(dbPlace.price_level, '$$'),
+    rangoPrecio: dbPlace.price_level === '$' ? '₡3.500 - ₡6.500' : dbPlace.price_level === '$$$' ? '₡12.000 - ₡25.000' : '₡6.000 - ₡14.000',
+    horario: textoSeguro(dbPlace.schedule_info, 'Consultar horario en local'),
+    tiempoEstimado: '1 - 2 horas',
+    condicionClima: meta.outdoor_seating ? 'terraza-techada' : 'bajo-techo',
+    petFriendly,
+    politicaPet: textoPoliticaPet,
+    accesibilidad: {
+      rampa: tieneRampa,
+      acusticaTranquila: Boolean(meta.quiet_acoustic ?? false),
+      sillaRuedas: tieneRampa,
+      estacionamientoPreferencial: Boolean(meta.parking ?? false),
+    },
+    nivelRuido: textoSeguro(meta.noise_level, 'Moderado'),
+    decibelios: Number.isFinite(Number(meta.decibels)) ? Number(meta.decibels) : 52,
+    aforoCaninoActual: 2,
+    aforoCaninoMax: 6,
+    sombraPorcentaje: 85,
+    puntuacion: Number(meta.rating) || 4.7,
+    puntuacionPet: Number(meta.rating) || 4.7,
+    verificado: Boolean(dbPlace.verified_by_admin),
+    insignia: dbPlace.verified_by_admin ? 'Verificado Synodos DB' : 'Catálogo Synodos DB',
+    procedenciaVerificacion: 'Base de Datos Synodos Supabase',
+    telefono: textoSeguro(dbPlace.phone, 'No disponible'),
+    temperaturaPiso: '22.5 °C',
+    horarioRecomendado: textoSeguro(dbPlace.schedule_info, '11:00 - 20:00'),
+    condicionesMascotas: textoPoliticaPet,
+    descripcion:
+      textoSeguro(meta.description) ||
+      `${categoriaLabel} en ${zona}. Parte del catálogo gastronómico propio de Synodos en Costa Rica.`,
+    servicios: serviciosLista,
+    imagen: coverUrl,
+    galeria: galeriaUrls,
+    photoMeta: coverUrl
+      ? {
+          status: 'resolved',
+          provider: textoSeguro(dbPlace.photo?.provider, 'supabase_database'),
+          externalId: String(dbPlace.id),
+          attributions: creditText
+            ? [{ displayName: creditText, uri: textoSeguro(dbPlace.photo?.source_page_url) || null }]
+            : [{ displayName: 'Base de datos Synodos', uri: null }],
+          galleryEntries: galleryEntries.map((g) => ({
+            url: g.url,
+            attributions: g.credit || g.author
+              ? [{ displayName: textoSeguro(g.credit) || textoSeguro(g.author), uri: textoSeguro(g.source_page_url) || null }]
+              : [],
+          })),
+          sourceUrl: textoSeguro(dbPlace.photo?.source_page_url) || null,
+          reason: null,
+          errorCode: null,
+        }
+      : {
+          status: 'no_photos',
+          provider: 'supabase_database',
+          attributions: [],
+          galleryEntries: [],
+          sourceUrl: null,
+          reason: 'Sin fotografía registrada en la base de datos propia.',
+          errorCode: null,
+        },
+    esDesdeBaseDatos: true,
+  };
+}
+
+/**
+ * Hook que carga los restaurantes y sus fotografías directamente desde nuestra propia
+ * base de datos Supabase (GET /api/places), sin depender de APIs externas.
+ */
+export function useDatabasePlaces({ limit = 500, category = '', search = '' } = {}) {
+  const cacheKey = `${limit}|${category}|${search}`;
+  const [lugaresDb, setLugaresDb] = useState(() => {
+    const cached = dbPlacesCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < DB_PLACES_TTL_MS) {
+      return cached.items;
+    }
+    return [];
+  });
+  const [cargandoDb, setCargandoDb] = useState(() => !dbPlacesCache.has(cacheKey));
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargar = ({ force = false } = {}) => {
+      const cached = dbPlacesCache.get(cacheKey);
+      if (!force && cached && Date.now() - cached.ts < DB_PLACES_TTL_MS) {
+        setLugaresDb(cached.items);
+        setCargandoDb(false);
+        return;
+      }
+
+      if (!cached) setCargandoDb(true);
+
+      const qs = new URLSearchParams({ limit: String(limit) });
+      if (category) qs.set('category', category);
+      if (search) qs.set('search', search);
+
+      fetch(`${BASE_URL}/places?${qs.toString()}`, {
+        headers: { Accept: 'application/json' },
+      })
+        .then(async (resp) => {
+          if (!resp.ok) return;
+          const json = await resp.json().catch(() => null);
+          const rows = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+          const mapeados = rows
+            .map(mapearLugarDbATarjeta)
+            .filter(Boolean)
+            .sort((a, b) => (b.imagen ? 1 : 0) - (a.imagen ? 1 : 0));
+          dbPlacesCache.set(cacheKey, { items: mapeados, ts: Date.now() });
+          if (activo) {
+            setLugaresDb(mapeados);
+          }
+        })
+        .catch(() => {
+          // Mantener respaldo local si no hay conexión
+        })
+        .finally(() => {
+          if (activo) setCargandoDb(false);
+        });
+    };
+
+    cargar();
+
+    const alVolverAPestana = () => {
+      if (document.visibilityState === 'visible') {
+        cargar({ force: true });
+      }
+    };
+    document.addEventListener('visibilitychange', alVolverAPestana);
+
+    return () => {
+      activo = false;
+      document.removeEventListener('visibilitychange', alVolverAPestana);
+    };
+  }, [cacheKey, limit, category, search]);
+
+  return { lugaresDb, cargandoDb };
+}
 
 export function construirPayloadLugar(lugar) {
   return {
@@ -45,11 +273,12 @@ export async function resolverFotosLugares(lugares) {
   const lista = Array.isArray(lugares) ? lugares.filter((l) => l && l.id) : [];
   if (lista.length === 0) return {};
 
-  const faltantes = lista.filter((l) => !sessionPhotoCache.has(l.id));
+  // No volver a consultar los que ya traen imagen directa desde nuestra base de datos Supabase
+  const faltantes = lista.filter((l) => !l.imagen && !sessionPhotoCache.has(l.id));
   if (faltantes.length > 0) {
-    // Dividir en lotes de máximo 10 para respetar límite del backend
-    for (let i = 0; i < faltantes.length; i += 10) {
-      const lote = faltantes.slice(i, i + 10);
+    // Dividir en lotes de máximo 50 y resolver únicamente contra nuestra propia base de datos
+    for (let i = 0; i < faltantes.length; i += 50) {
+      const lote = faltantes.slice(i, i + 50);
       const loteKey = lote.map((l) => l.id).sort().join('|');
 
       let promesa = inFlightRequests.get(loteKey);
@@ -57,7 +286,7 @@ export async function resolverFotosLugares(lugares) {
         promesa = fetch(`${BASE_URL}/places/resolve-photos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ places: lote.map(construirPayloadLugar) })
+          body: JSON.stringify({ places: lote.map(construirPayloadLugar), db_only: true })
         })
           .then(async (resp) => {
             const json = await resp.json().catch(() => null);

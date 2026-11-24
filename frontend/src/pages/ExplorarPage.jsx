@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { PageWrapper } from '../components/PageWrapper';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { LUGARES_GOTOX } from '../data/lugaresGoToX';
-import { useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { useResolvedPlacePhotos, useDatabasePlaces } from '../shared/services/place-photos-service';
 import { LugarFoto } from '../components/LugarFoto';
 import { esFavorito, alternarFavorito } from '../servicios/almacenamientoCliente';
 import { useTema } from '../context/TemaContext';
@@ -54,14 +54,32 @@ export function ExplorarPage() {
   const [favoritosTrigger, setFavoritosTrigger] = useState(0);
   const [restaurantesReales, setRestaurantesReales] = useState([]);
   const [cargandoReales, setCargandoReales] = useState(false);
-  const { lugaresConFotos, cargandoFotos } = useResolvedPlacePhotos(LUGARES_GOTOX);
+  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
+  const { lugaresConFotos: lugaresLocalesConFotos, cargandoFotos: cargandoFotosLocales } = useResolvedPlacePhotos(LUGARES_GOTOX);
+  const cargandoFotos = cargandoDb || cargandoFotosLocales;
+
+  const lugaresConFotos = useMemo(() => {
+    const porNombre = new Map();
+    for (const dbItem of lugaresDb) {
+      if (dbItem?.nombre) {
+        porNombre.set(dbItem.nombre.trim().toLowerCase(), dbItem);
+      }
+    }
+    for (const localItem of lugaresLocalesConFotos) {
+      const key = localItem?.nombre?.trim().toLowerCase();
+      if (key && !porNombre.has(key)) {
+        porNombre.set(key, localItem);
+      }
+    }
+    return Array.from(porNombre.values());
+  }, [lugaresDb, lugaresLocalesConFotos]);
 
   useEffect(() => {
     let cancelado = false;
     const cargar = async (lat, lng) => {
       setCargandoReales(true);
       try {
-        const res = await fetch(`/api/places/multisource/search?lat=${lat}&lng=${lng}&radius=2200&limit=12`);
+        const res = await fetch(`/api/places/multisource/search?lat=${lat}&lng=${lng}&radius=5000&limit=12&source=db`);
         if (!res.ok) return;
         const json = await res.json();
         if (!cancelado && Array.isArray(json?.data?.places)) {
@@ -90,11 +108,11 @@ export function ExplorarPage() {
     };
   }, []);
 
-  // Zonas únicas disponibles
+  // Zonas únicas disponibles (catálogo propio Supabase + locales)
   const zonasDisponibles = useMemo(() => {
-    const setZonas = new Set(LUGARES_GOTOX.map(l => l.zona));
+    const setZonas = new Set(lugaresConFotos.map(l => l.zona).filter(Boolean));
     return ['todas', ...Array.from(setZonas)];
-  }, []);
+  }, [lugaresConFotos]);
 
   // Filtrado compuesto
   const lugaresFiltrados = useMemo(() => {

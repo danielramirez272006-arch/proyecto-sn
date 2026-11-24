@@ -52,6 +52,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to={isLoggedIn ? "/usuario?tab=explorar" : "/acceso"} className="hover:text-[#501228] transition-colors">
+                  Explorar Restaurantes & Catálogo
+                </Link>
+              </li>
+              <li>
                 <Link to="/copiloto" className="hover:text-[#501228] transition-colors">
                   {t('footer.copilotoAi')}
                 </Link>
@@ -86,10 +91,17 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <span className="text-slate-400">{t('footer.sensores')}</span>
+                <Link to="/mapa" className="hover:text-[#501228] transition-colors">
+                  {t('footer.sensores')}
+                </Link>
               </li>
               <li>
-                <span className="text-slate-400">{t('footer.flotaSos')}</span>
+                <Link
+                  to={esAdmin ? "/panel" : isLoggedIn ? "/usuario?tab=mascota" : "/acceso"}
+                  className="hover:text-[#501228] transition-colors"
+                >
+                  {t('footer.flotaSos')}
+                </Link>
               </li>
             </ul>
           </div>

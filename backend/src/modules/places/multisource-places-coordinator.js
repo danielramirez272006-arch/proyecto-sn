@@ -182,6 +182,11 @@ class MultisourcePlacesCoordinator {
     const params = petCompatibilityService.validateSearchParams(rawParams);
     const categoryFilter = rawParams.category ? String(rawParams.category).trim().toLowerCase() : null;
     const textQuery = rawParams.q ? String(rawParams.q).trim().toLowerCase() : '';
+    const dbOnlyMode =
+      rawParams.source === 'db' ||
+      rawParams.source === 'database' ||
+      rawParams.db_only === 'true' ||
+      rawParams.db_only === true;
     const now = deps.now || new Date();
     const queriedAt = now.toISOString();
 
@@ -193,10 +198,10 @@ class MultisourcePlacesCoordinator {
 
     const providersStatus = {
       internal_catalog: { status: 'ok', count: 0, queried_at: queriedAt },
-      openstreetmap: { status: env.osmPlaces?.enabled !== false ? 'pending' : 'disabled', count: 0 },
-      geoapify: { status: geoClient.isEnabledAndConfigured() ? 'pending' : 'not_configured', count: 0 },
-      foursquare: { status: fsqClient.isEnabledAndConfigured() ? 'pending' : 'not_configured', count: 0, paid_operations: 'disabled' },
-      wikimedia_commons: { status: env.wikimedia?.enabled !== false ? 'on_demand' : 'disabled', count: 0 },
+      openstreetmap: { status: !dbOnlyMode && env.osmPlaces?.enabled !== false ? 'pending' : 'disabled', count: 0 },
+      geoapify: { status: !dbOnlyMode && geoClient.isEnabledAndConfigured() ? 'pending' : 'not_configured', count: 0 },
+      foursquare: { status: !dbOnlyMode && fsqClient.isEnabledAndConfigured() ? 'pending' : 'not_configured', count: 0, paid_operations: 'disabled' },
+      wikimedia_commons: { status: !dbOnlyMode && env.wikimedia?.enabled !== false ? 'on_demand' : 'disabled', count: 0 },
     };
 
     // 2. Consultar catálogo propio primero
@@ -234,11 +239,11 @@ class MultisourcePlacesCoordinator {
       deps.loadExternalLinks ? deps.loadExternalLinks(internalIds) : this._loadExternalLinksMap(internalIds),
     ]);
 
-    // 3. Consultar fuentes externas habilitadas (NUNCA Google, NUNCA operaciones de pago)
+    // 3. Consultar fuentes externas habilitadas (omitido si source=db para 0 dependencia de APIs externas)
     const externalRaw = [];
     const tasks = [];
 
-    if (env.osmPlaces?.enabled !== false) {
+    if (!dbOnlyMode && env.osmPlaces?.enabled !== false) {
       tasks.push(
         this.guards.osm
           .run(() => osmSvc.searchNearbyRestaurants({ lat: params.lat, lng: params.lng, radius: params.radius, limit: params.limit }))
@@ -272,7 +277,7 @@ class MultisourcePlacesCoordinator {
       );
     }
 
-    if (geoClient.isEnabledAndConfigured()) {
+    if (!dbOnlyMode && geoClient.isEnabledAndConfigured()) {
       tasks.push(
         this.guards.geoapify
           .run(() =>
@@ -296,7 +301,7 @@ class MultisourcePlacesCoordinator {
       );
     }
 
-    if (fsqClient.isEnabledAndConfigured()) {
+    if (!dbOnlyMode && fsqClient.isEnabledAndConfigured()) {
       tasks.push(
         this.guards.foursquare
           .run(() =>
@@ -538,7 +543,7 @@ class MultisourcePlacesCoordinator {
           })),
         };
         photoReason = null;
-      } else if (env.wikimedia?.enabled !== false && wikiClient) {
+      } else if (!dbOnlyMode && env.wikimedia?.enabled !== false && wikiClient) {
         // Prioridad 2: Wikimedia Commons con licencia obligatoria
         try {
           const wikiHit = await this.guards.wikimedia.run(() =>

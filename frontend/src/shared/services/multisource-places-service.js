@@ -45,22 +45,28 @@ export function mapearLugarMultifuenteATarjeta(item) {
     insignia:
       item.verification_level === 'business_confirmation'
         ? 'Confirmado por local'
-        : 'Fuente Real OSM / Multi-fuente',
+        : item.id_type === 'internal'
+        ? 'Catálogo Synodos DB'
+        : 'Catálogo Synodos',
     telefono: item.provenance?.phone?.value || 'No disponible',
-    descripcion: item.explanation || 'Establecimiento real consultado en vivo.',
+    descripcion: item.explanation || 'Establecimiento registrado en la base de datos Synodos.',
     servicios: [
       item.known_conditions?.seating_access ? `Zona: ${item.known_conditions.seating_access}` : 'Condiciones por confirmar'
     ],
     imagen: item.photo?.url || null,
-    galeria: item.photo?.url ? [item.photo.url] : [],
+    galeria: Array.isArray(item.photo?.gallery) && item.photo.gallery.length > 0
+      ? item.photo.gallery.map((g) => g.url).filter(Boolean)
+      : item.photo?.url
+      ? [item.photo.url]
+      : [],
     photoMeta: item.photo
       ? {
           status: 'resolved',
-          provider: item.photo.provider || 'wikimedia_commons',
+          provider: item.photo.provider || 'supabase_database',
           externalId: item.id,
-          attributions: item.photo.author
-            ? [{ displayName: `${item.photo.author}${item.photo.license ? ` · ${item.photo.license}` : ''}`, uri: item.photo.source_page_url }]
-            : [],
+          attributions: item.photo.credit || item.photo.author
+            ? [{ displayName: `${item.photo.credit || item.photo.author}${item.photo.license ? ` · ${item.photo.license}` : ''}`, uri: item.photo.source_page_url }]
+            : [{ displayName: 'Base de datos Synodos', uri: null }],
           sourceUrl: item.photo.source_page_url || null,
           reason: null
         }
@@ -100,7 +106,7 @@ export function useLiveMultisourcePlaces({
       setCargando(true);
       try {
         const resp = await fetch(
-          `${BASE_URL}/places/multisource/search?lat=${lat}&lng=${lng}&radius=${radius}&limit=${limit}`
+          `${BASE_URL}/places/multisource/search?lat=${lat}&lng=${lng}&radius=${radius}&limit=${limit}&source=db`
         );
         if (!resp.ok) return;
         const json = await resp.json();

@@ -528,7 +528,24 @@ export function MapaPage() {
     [moverMapa]
   );
 
-  // Buscar en esta zona con cancelación de solicitudes obsoletas
+  // Cargar automáticamente nuestros restaurantes reales desde Supabase DB (con fotos propias)
+  useEffect(() => {
+    let activo = true;
+    fetch('/api/places?limit=500', { headers: { Accept: 'application/json' } })
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((json) => {
+        const items = Array.isArray(json?.data) ? json.data : [];
+        if (activo && items.length > 0) {
+          setLugaresExternosRaw(items);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  // Buscar en esta zona con cancelación de solicitudes obsoletas (solo base de datos propia)
   const handleBuscarEnEstaZona = useCallback(async () => {
     if (!mapRef.current) return;
     abortControllerRef.current?.abort();
@@ -541,7 +558,7 @@ export function MapaPage() {
 
     try {
       const resp = await fetch(
-        `/api/places/multisource/search?lat=${center.lat}&lng=${center.lng}&radius=2200&limit=25`,
+        `/api/places/multisource/search?lat=${center.lat}&lng=${center.lng}&radius=5000&limit=50&source=db`,
         { signal: controller.signal }
       );
       if (resp.ok) {

@@ -359,7 +359,8 @@ router.get('/places/google-photo', async (req, res, next) => {
 router.post('/places/resolve-photos', async (req, res, next) => {
   try {
     const photoResolver = require('../../modules/places/google-place-photo-resolver');
-    const result = await photoResolver.resolveBatchPlacePhotos(req.body?.places);
+    const dbOnly = req.body?.db_only === true || req.query?.source === 'db';
+    const result = await photoResolver.resolveBatchPlacePhotos(req.body?.places, { dbOnly });
     return success(res, result);
   } catch (err) {
     if (err.status === 400 || err.code === 'INVALID_PLACES_LIST') {

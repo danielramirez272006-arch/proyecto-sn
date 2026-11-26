@@ -1,7 +1,36 @@
 const authService = require('./auth-service');
+const env = require('../../shared/config/env-config');
 const { success, created, unauthorized, badRequest, conflict } = require('../../shared/utils/http-response');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const REFRESH_COOKIE_NAME = 'sn_refresh_token';
+
+function parseCookieValue(cookieHeader, name) {
+  if (!cookieHeader || typeof cookieHeader !== 'string') return null;
+  const parts = cookieHeader.split(';');
+  for (const part of parts) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const key = part.slice(0, idx).trim();
+    if (key === name) {
+      return decodeURIComponent(part.slice(idx + 1).trim());
+    }
+  }
+  return null;
+}
+
+function setRefreshCookie(res, refreshToken) {
+  if (!refreshToken || typeof res.setHeader !== 'function') return;
+  const secureFlag = env.isProd ? '; Secure' : '';
+  const cookie = `${REFRESH_COOKIE_NAME}=${encodeURIComponent(refreshToken)}; HttpOnly; SameSite=Strict; Path=/api/auth; Max-Age=2592000${secureFlag}`;
+  res.setHeader('Set-Cookie', cookie);
+}
+
+function clearRefreshCookie(res) {
+  if (typeof res.setHeader !== 'function') return;
+  const secureFlag = env.isProd ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${REFRESH_COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/api/auth; Max-Age=0${secureFlag}`);
+}
 
 class AuthController {
   async login(req, res, next) {
@@ -11,6 +40,7 @@ class AuthController {
       if (!EMAIL_REGEX.test(String(email).trim())) return badRequest(res, 'El formato del correo electrónico no es válido');
 
       const result = await authService.login(email, password, req);
+      setRefreshCookie(res, result.refresh_token);
       return success(res, result);
     } catch (err) {
       if (err.message === 'INVALID_CREDENTIALS') {
@@ -28,7 +58,8 @@ class AuthController {
       } = req.body || {};
       if (!name || !email || !password) return badRequest(res, 'name, email y password son requeridos');
       if (!EMAIL_REGEX.test(String(email).trim())) return badRequest(res, 'El formato del correo electrónico no es válido');
-      if (String(password).length < 6) return badRequest(res, 'La contraseña debe tener al menos 6 caracteres');
+      const strength = authService.validatePasswordStrength(password);
+      if (!strength.valid) return badRequest(res, strength.message);
       if (acceptTerms !== true || acceptPrivacy !== true) {
         return badRequest(res, 'Debes aceptar los Términos y Condiciones (acceptTerms: true) y la Política de Privacidad (acceptPrivacy: true) según la Ley N.º 8968.');
       }
@@ -37,6 +68,7 @@ class AuthController {
         { name, email, password, role: 'client', phone, zone, hasPet, pet, termsVersion, cookiesPreferences },
         req
       );
+      setRefreshCookie(res, result.refresh_token);
       return created(res, result);
     } catch (err) {
       if (err.message === 'EMAIL_ALREADY_REGISTERED') {
@@ -48,13 +80,15 @@ class AuthController {
 
   async refresh(req, res, next) {
     try {
-      const { refresh_token } = req.body;
-      if (!refresh_token) return badRequest(res, 'refresh_token es requerido');
+      const refreshToken = req.body?.refresh_token || parseCookieValue(req.headers?.cookie, REFRESH_COOKIE_NAME);
+      if (!refreshToken) return badRequest(res, 'refresh_token es requerido');
 
-      const result = await authService.refreshSession(refresh_token, req);
+      const result = await authService.refreshSession(refreshToken, req);
+      setRefreshCookie(res, result.refresh_token);
       return success(res, result);
     } catch (err) {
       if (err.message === 'INVALID_REFRESH_TOKEN' || err.message === 'REFRESH_TOKEN_REQUIRED') {
+        clearRefreshCookie(res);
         return unauthorized(res, 'Token de refresco inválido o revocado');
       }
       next(err);
@@ -63,8 +97,9 @@ class AuthController {
 
   async logout(req, res, next) {
     try {
-      const { refresh_token } = req.body;
-      const result = await authService.logout(refresh_token, req);
+      const refreshToken = req.body?.refresh_token || parseCookieValue(req.headers?.cookie, REFRESH_COOKIE_NAME);
+      const result = await authService.logout(refreshToken, req);
+      clearRefreshCookie(res);
       return success(res, result);
     } catch (err) {
       next(err);
@@ -130,8 +165,9 @@ class AuthController {
       if (!EMAIL_REGEX.test(String(email).trim())) {
         return badRequest(res, 'El formato del correo electrónico no es válido.');
       }
-      if (String(newPassword).length < 6) {
-        return badRequest(res, 'La nueva contraseña debe tener al menos 6 caracteres.');
+      const strength = authService.validatePasswordStrength(newPassword);
+      if (!strength.valid) {
+        return badRequest(res, strength.message);
       }
       const result = await authService.resetPassword({ email, token, newPassword }, req);
       return success(res, result);

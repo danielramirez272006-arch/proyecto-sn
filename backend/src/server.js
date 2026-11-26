@@ -10,9 +10,19 @@ async function bootstrap() {
   try {
     console.log('[Server] Inicializando Synodos API — Costa Rica...');
 
-    // 1. Inicializar servidor HTTP primero para que el proxy de Vite no reciba ECONNREFUSED durante migraciones en nube
-    const server = app.listen(env.port, () => {
-      console.log(`[Server] Backend Express escuchando en http://localhost:${env.port}`);
+    // Validación estricta de secretos en producción (fail-fast en Render)
+    if (env.isProd) {
+      if (!env.jwtSecret || env.jwtSecret === 'dev_insecure_jwt_secret_change_in_production' || env.jwtSecret.length < 32) {
+        throw new Error('JWT_SECRET inseguro o faltante en NODE_ENV=production (mínimo 32 caracteres).');
+      }
+      if (!env.security?.passwordPepper) {
+        console.warn('[Server] ADVERTENCIA: PASSWORD_PEPPER no está definido en producción.');
+      }
+    }
+
+    // 1. Inicializar servidor HTTP en 0.0.0.0 (requerido por Render/contenedores)
+    const server = app.listen(env.port, '0.0.0.0', () => {
+      console.log(`[Server] Backend Express escuchando en http://0.0.0.0:${env.port}`);
       console.log(`[Server] Documentación y salud en http://localhost:${env.port}/api/health`);
     });
 

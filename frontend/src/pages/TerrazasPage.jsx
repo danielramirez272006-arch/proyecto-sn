@@ -53,19 +53,31 @@ export function TerrazasPage() {
   const cargandoFotos = cargandoDb || cargandoFotosLocales;
 
   const terrazasConFotos = useMemo(() => {
-    const porNombre = new Map();
+    const fotosPorNombre = new Map();
     for (const dbItem of lugaresDb) {
       if (dbItem?.nombre && dbItem.imagen) {
-        porNombre.set(dbItem.nombre.trim().toLowerCase(), dbItem);
+        fotosPorNombre.set(dbItem.nombre.trim().toLowerCase(), dbItem.imagen);
       }
     }
-    for (const localItem of terrazasLocalesConFotos) {
-      const key = localItem?.nombre?.trim().toLowerCase();
-      if (key && !porNombre.has(key)) {
-        porNombre.set(key, localItem);
-      }
-    }
-    return Array.from(porNombre.values());
+
+    return terrazasLocalesConFotos.map((terraza) => {
+      const key = (terraza?.nombre || '').trim().toLowerCase();
+      const fotoDb = fotosPorNombre.get(key);
+      return {
+        ...terraza,
+        imagen: fotoDb || terraza.imagen,
+        servicios: Array.isArray(terraza.servicios) ? terraza.servicios : [],
+        nivelRuido: terraza.nivelRuido || 'Moderado',
+        zona: terraza.zona || 'San José',
+        decibelios: typeof terraza.decibelios === 'number' ? terraza.decibelios : 48,
+        aforoCaninoActual: typeof terraza.aforoCaninoActual === 'number' ? terraza.aforoCaninoActual : 2,
+        aforoCaninoMax: typeof terraza.aforoCaninoMax === 'number' ? terraza.aforoCaninoMax : 6,
+        sombraPorcentaje: typeof terraza.sombraPorcentaje === 'number' ? terraza.sombraPorcentaje : 85,
+        puntuacionPet: terraza.puntuacionPet || 4.8,
+        insignia: terraza.insignia || 'Terraza Verificada',
+        temperaturaPiso: terraza.temperaturaPiso || '22.0 °C'
+      };
+    });
   }, [lugaresDb, terrazasLocalesConFotos]);
 
   // Simulación de carga inicial para stagger suave

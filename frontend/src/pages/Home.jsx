@@ -590,12 +590,8 @@ export function Home() {
       {/* ============================================================
           SECCIÓN 5. RADAR DE TERRAZAS Y COPILOTO ARGOS
           ============================================================ */}
-      <ScrollReveal>
-        <RadarTerrazas />
-      </ScrollReveal>
-      <ScrollReveal delay={0.05}>
-        <CopilotoBruno />
-      </ScrollReveal>
+      <RadarTerrazas />
+      <CopilotoBruno />
 
       {/* ============================================================
           SECCIÓN 6. BANNER DE LLAMADO A LA ACCIÓN

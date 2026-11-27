@@ -262,8 +262,8 @@ class PlacesRepository {
 
   async create(placeData) {
     const id = placeData.id || `plc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const metadataStr = typeof placeData.attributes_metadata === 'object' 
-      ? JSON.stringify(placeData.attributes_metadata) 
+    const metadataStr = typeof placeData.attributes_metadata === 'object'
+      ? JSON.stringify(placeData.attributes_metadata)
       : (placeData.attributes_metadata || '{}');
 
     await execute(
@@ -325,8 +325,8 @@ class PlacesRepository {
     if (!row) return null;
     let metadata = {};
     try {
-      metadata = typeof row.attributes_metadata === 'string' 
-        ? JSON.parse(row.attributes_metadata) 
+      metadata = typeof row.attributes_metadata === 'string'
+        ? JSON.parse(row.attributes_metadata)
         : (row.attributes_metadata || {});
     } catch {
       metadata = {};

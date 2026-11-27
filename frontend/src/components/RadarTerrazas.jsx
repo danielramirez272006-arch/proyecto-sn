@@ -38,21 +38,36 @@ export function RadarTerrazas() {
   const cargandoFotos = cargandoDb || cargandoFotosLocales;
 
   const terrazasConFotos = React.useMemo(() => {
-    const porNombre = new Map();
-    // Mostrar primero restaurantes con fotografía real de nuestra BD Supabase (hasta 12 en el radar)
-    for (const dbItem of lugaresDb.filter((p) => p?.imagen).slice(0, 12)) {
-      if (dbItem?.nombre) {
-        porNombre.set(dbItem.nombre.trim().toLowerCase(), dbItem);
+    // Mapa de fotografías reales sincronizadas desde Supabase por nombre normalizado
+    const fotosPorNombre = new Map();
+    for (const dbItem of lugaresDb) {
+      if (dbItem?.nombre && dbItem.imagen) {
+        fotosPorNombre.set(dbItem.nombre.trim().toLowerCase(), dbItem.imagen);
       }
     }
-    for (const localItem of terrazasLocalesConFotos) {
-      const key = localItem?.nombre?.trim().toLowerCase();
-      if (key && !porNombre.has(key)) {
-        porNombre.set(key, localItem);
-      }
-    }
-    return Array.from(porNombre.values());
-  }, [lugaresDb, terrazasLocalesConFotos]);
+
+    return terrazasLocalesConFotos.map((terraza) => {
+      const key = (terraza?.nombre || '').trim().toLowerCase();
+      const fotoSupabase = fotosPorNombre.get(key);
+      return {
+        ...terraza,
+        imagen: fotoSupabase || terraza.imagen,
+        servicios: Array.isArray(terraza.servicios) ? terraza.servicios : [],
+        nivelRuido: terraza.nivelRuido || 'Moderado',
+        zona: terraza.zona || 'San José',
+        decibelios: typeof terraza.decibelios === 'number' ? terraza.decibelios : 48,
+        aforoCaninoActual: typeof terraza.aforoCaninoActual === 'number' ? terraza.aforoCaninoActual : 2,
+        aforoCaninoMax: typeof terraza.aforoCaninoMax === 'number' ? terraza.aforoCaninoMax : 6,
+        sombraPorcentaje: typeof terraza.sombraPorcentaje === 'number' ? terraza.sombraPorcentaje : 85,
+        puntuacionPet: terraza.puntuacionPet || 4.8,
+        insignia: terraza.insignia || t('radar.badge'),
+        procedenciaVerificacion: terraza.procedenciaVerificacion || t('radar.auditoriaDefault'),
+        condicionesMascotas: terraza.condicionesMascotas || '',
+        horarioRecomendado: terraza.horarioRecomendado || '09:00 - 18:00',
+        temperaturaPiso: terraza.temperaturaPiso || '22.0 °C'
+      };
+    });
+  }, [lugaresDb, terrazasLocalesConFotos, t]);
 
   useEffect(() => {
     let activo = true;
@@ -69,24 +84,28 @@ export function RadarTerrazas() {
   }, []);
 
   const terrazasFiltradas = terrazasConFotos.filter((terraza) => {
+    const ruido = (terraza.nivelRuido || '').toLowerCase();
     if (filtroRuido !== 'todos') {
-      if (filtroRuido === 'silencioso' && !terraza.nivelRuido.toLowerCase().includes('silencioso')) {
+      if (filtroRuido === 'silencioso' && !ruido.includes('silencioso')) {
         return false;
       }
-      if (filtroRuido === 'moderado' && terraza.nivelRuido.toLowerCase() !== 'moderado') {
+      if (filtroRuido === 'moderado' && ruido !== 'moderado') {
         return false;
       }
     }
-    if (soloEspacioDisponible && terraza.aforoCaninoActual >= terraza.aforoCaninoMax) {
+    const aforoActual = typeof terraza.aforoCaninoActual === 'number' ? terraza.aforoCaninoActual : 0;
+    const aforoMax = typeof terraza.aforoCaninoMax === 'number' ? terraza.aforoCaninoMax : 6;
+    if (soloEspacioDisponible && aforoActual >= aforoMax) {
       return false;
     }
     if (busqueda.trim()) {
       const q = busqueda.toLowerCase();
-      const coincide =
-        terraza.nombre.toLowerCase().includes(q) ||
-        terraza.zona.toLowerCase().includes(q) ||
-        terraza.categoria.toLowerCase().includes(q);
-      if (!coincide) return false;
+      const nombre = (terraza.nombre || '').toLowerCase();
+      const zona = (terraza.zona || '').toLowerCase();
+      const categoria = (terraza.categoria || '').toLowerCase();
+      if (!nombre.includes(q) && !zona.includes(q) && !categoria.includes(q)) {
+        return false;
+      }
     }
     return true;
   }).sort((a, b) => (b.imagen ? 1 : 0) - (a.imagen ? 1 : 0));
@@ -218,7 +237,9 @@ export function RadarTerrazas() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 sm:gap-8">
             {terrazasFiltradas.map((terraza) => {
-              const espacioLibre = terraza.aforoCaninoMax - terraza.aforoCaninoActual;
+              const maxAforo = typeof terraza.aforoCaninoMax === 'number' ? terraza.aforoCaninoMax : 6;
+              const actualAforo = typeof terraza.aforoCaninoActual === 'number' ? terraza.aforoCaninoActual : 2;
+              const espacioLibre = Math.max(0, maxAforo - actualAforo);
               return (
                 <Card
                   key={terraza.id}
@@ -327,7 +348,7 @@ export function RadarTerrazas() {
 
                     {/* Servicios incluidos */}
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      {terraza.servicios.slice(0, 3).map((serv, i) => (
+                      {(terraza.servicios || []).slice(0, 3).map((serv, i) => (
                         <span
                           key={i}
                           className="text-[11px] bg-[#162032] text-[#94A3B8] px-2.5 py-0.5 rounded-lg border border-white/5"
@@ -421,7 +442,7 @@ export function RadarTerrazas() {
                   {t('radar.serviciosProtocolos')}
                 </h4>
                 <ul className="space-y-1.5 text-xs">
-                  {terrazaSeleccionada.servicios.map((s, idx) => (
+                  {(terrazaSeleccionada.servicios || []).map((s, idx) => (
                     <li key={idx} className="flex items-center gap-2">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                       <span>{s}</span>

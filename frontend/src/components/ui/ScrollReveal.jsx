@@ -8,8 +8,8 @@ import { motion, useReducedMotion } from 'motion/react';
 export function ScrollReveal({
   children,
   delay = 0,
-  yOffset = 22,
-  blur = '5px',
+  yOffset = 14,
+  blur = '0px',
   className = '',
   id
 }) {
@@ -29,17 +29,15 @@ export function ScrollReveal({
       className={className}
       initial={{
         opacity: 0,
-        y: yOffset,
-        filter: `blur(${blur})`
+        y: yOffset
       }}
       whileInView={{
         opacity: 1,
-        y: 0,
-        filter: 'blur(0px)'
+        y: 0
       }}
-      viewport={{ once: true, amount: 0.1, margin: '0px 0px -50px 0px' }}
+      viewport={{ once: true, amount: 'some', margin: '0px' }}
       transition={{
-        duration: 0.6,
+        duration: 0.45,
         delay,
         ease: [0.22, 1, 0.36, 1]
       }}

@@ -164,7 +164,7 @@ export function mapearLugarDbATarjeta(dbPlace) {
  * Hook que carga los restaurantes y sus fotografías directamente desde nuestra propia
  * base de datos Supabase (GET /api/places), sin depender de APIs externas.
  */
-export function useDatabasePlaces({ limit = 500, category = '', search = '' } = {}) {
+export function useDatabasePlaces({ limit = 800, category = '', search = '' } = {}) {
   const cacheKey = `${limit}|${category}|${search}`;
   const [lugaresDb, setLugaresDb] = useState(() => {
     const cached = dbPlacesCache.get(cacheKey);

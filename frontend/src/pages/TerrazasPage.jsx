@@ -40,7 +40,7 @@ export function TerrazasPage() {
   const [soloEspacioDisponible, setSoloEspacioDisponible] = useState(false);
   const [terrazaSeleccionada, setTerrazaSeleccionada] = useState(null);
   const [backendPlacesCount, setBackendPlacesCount] = useState(null);
-  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
+  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 800 });
   const { lugaresConFotos: terrazasLocalesConFotos, cargandoFotos: cargandoFotosLocales } = useResolvedPlacePhotos(TERRAZAS);
   const cargandoFotos = cargandoDb || cargandoFotosLocales;
 

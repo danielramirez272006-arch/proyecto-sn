@@ -7,6 +7,11 @@ import { PageWrapper } from '../components/PageWrapper';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { ScrollReveal } from '../components/ui/ScrollReveal';
+import {
+  handleSynodosCardMouseMove,
+  handleSynodosCardMouseLeave
+} from '../components/ui/Card';
 import { LUGARES_GOTOX, CATEGORIAS_DESCUBRIMIENTO, CONSULTAS_RAPIDAS_SUGERIDAS } from '../data/lugaresGoToX';
 import { useResolvedPlacePhotos, useDatabasePlaces } from '../shared/services/place-photos-service';
 import { useLiveMultisourcePlaces } from '../shared/services/multisource-places-service';
@@ -320,31 +325,55 @@ export function Home() {
           </div>
         </div>
 
-        {/* Categorías de Descubrimiento */}
-        <div className="pt-2">
-          <div className="flex gap-2 overflow-x-auto pb-2 gotox-scrollbar">
+        {/* Categorías de Descubrimiento (Sticky Glass Filter Bar al hacer scroll) */}
+        <div
+          className={`sticky top-3 z-20 pt-2 pb-2 px-3 -mx-3 rounded-2xl backdrop-blur-xl transition-colors ${
+            esClaro
+              ? 'bg-[#FAF9FE]/85 border border-slate-200/70 shadow-sm'
+              : esMorado
+              ? 'bg-[#140810]/85 border border-[#F27B91]/20 shadow-lg'
+              : 'bg-[#090D14]/85 border border-white/10 shadow-lg'
+          }`}
+        >
+          <div className="flex gap-2 overflow-x-auto pb-1 gotox-scrollbar">
             {CATEGORIAS_DESCUBRIMIENTO.map((cat) => {
               const Icono = mapIconoCategoria(cat.icon);
               const activa = categoriaSeleccionada === cat.id;
+              const etiquetasIngles = {
+                todas: 'All Places',
+                gastronomia: 'Restaurants & Dining',
+                cafe: 'Specialty Coffee',
+                'aire-libre': 'Outdoors & Parks',
+                cultural: 'Culture & Museums',
+                'pet-friendly': 'With Pets',
+                'bajo-techo': 'Indoors / Rain'
+              };
               const mapaCat = {
                 todas: 'home.catTodas',
                 gastronomia: 'home.catRestaurantes',
-                cafe: 'home.catRestaurantes',
+                cafe: 'home.catCafe',
                 'aire-libre': 'home.catParques',
                 cultural: 'home.catCultura',
                 'pet-friendly': 'home.catPetFriendly',
                 'bajo-techo': 'home.catBajoTecho'
               };
-              const etiquetaCat = idioma === 'es' ? cat.label : t(mapaCat[cat.id] || 'home.catTodas', cat.label);
+              const etiquetaCat =
+                idioma === 'es'
+                  ? cat.label
+                  : idioma === 'en' && etiquetasIngles[cat.id]
+                  ? etiquetasIngles[cat.id]
+                  : cat.id === 'cafe'
+                  ? 'Specialty Coffee & Bakery'
+                  : t(mapaCat[cat.id] || 'home.catTodas', cat.label);
               return (
                 <button
                   key={cat.id}
                   type="button"
                   aria-pressed={activa}
                   onClick={() => setCategoriaSeleccionada(cat.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${activa
+                  className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${activa
                     ? 'bg-[#501228] text-white border-[#F27B91]/40 shadow-sm'
-                    : 'bg-current/5 border-current/10 opacity-70 hover:opacity-100 hover:bg-current/10'
+                    : 'bg-current/5 border-current/10 opacity-75 hover:opacity-100 hover:bg-current/10'
                     }`}
                 >
                   <Icono className="w-4 h-4" aria-hidden="true" />
@@ -388,13 +417,20 @@ export function Home() {
               return (
                 <div
                   key={lugar.id}
-                  className={`group rounded-3xl border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${esClaro
+                  onMouseMove={handleSynodosCardMouseMove}
+                  onMouseEnter={handleSynodosCardMouseMove}
+                  onMouseLeave={handleSynodosCardMouseLeave}
+                  className={`group synodos-spotlight-card synodos-tilt-card rounded-3xl border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${esClaro
                     ? 'bg-white border-slate-200'
                     : esMorado
                       ? 'bg-[#1F0C18] border-[#F27B91]/20 hover:border-[#F27B91]/40'
                       : 'bg-[#162032] border-white/10 hover:border-white/20'
                     }`}
                 >
+                  <div
+                    aria-hidden="true"
+                    className="synodos-border-beam opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  />
                   {/* Foto de Portada */}
                   <div
                     onClick={() => setLugarSeleccionado(lugar)}
@@ -416,21 +452,19 @@ export function Home() {
                       </span>
                     </div>
 
-                    {isLoggedIn && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          alternarFavorito(lugar.id);
-                          setFavoritosVersion(v => v + 1);
-                        }}
-                        aria-label={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
-                        title={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
-                        className="absolute top-3 right-3 p-2 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md transition-all active:scale-90"
-                      >
-                        <Heart className={`w-4 h-4 ${fav ? 'fill-rose-500 text-rose-500' : ''}`} />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        alternarFavorito(lugar.id, lugar);
+                        setFavoritosVersion((v) => v + 1);
+                      }}
+                      aria-label={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
+                      title={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}
+                      className="absolute top-3 right-3 p-2 rounded-full bg-black/45 hover:bg-black/75 text-white backdrop-blur-md transition-all active:scale-90 z-10"
+                    >
+                      <Heart className={`w-4 h-4 ${fav ? 'fill-rose-500 text-rose-500' : ''}`} />
+                    </button>
 
                     <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-white text-xs">
                       <span className="text-[11px] opacity-90 truncate">{lugar.categoria}</span>
@@ -494,12 +528,16 @@ export function Home() {
       {/* ============================================================
           SECCIÓN 2. TELEMETRÍA URBANA EN VIVO & COPILOTO
           ============================================================ */}
-      <TelemetriaHero />
+      <ScrollReveal>
+        <TelemetriaHero />
+      </ScrollReveal>
 
       {/* ============================================================
           SECCIÓN 3. RECOMENDACIÓN DE VIDEOS EDUCATIVOS
           ============================================================ */}
-      <RuletaVideos />
+      <ScrollReveal delay={0.05}>
+        <RuletaVideos />
+      </ScrollReveal>
 
       {/* ============================================================
           SECCIÓN 4. TRES PILARES URBANOS DE GOTOX
@@ -550,26 +588,30 @@ export function Home() {
       </section>
 
       {/* ============================================================
-          SECCIÓN 5. RADAR DE TERRAZAS Y COPILOTO BRUNO
+          SECCIÓN 5. RADAR DE TERRAZAS Y COPILOTO ARGOS
           ============================================================ */}
-      <RadarTerrazas />
-      <CopilotoBruno />
+      <ScrollReveal>
+        <RadarTerrazas />
+      </ScrollReveal>
+      <ScrollReveal delay={0.05}>
+        <CopilotoBruno />
+      </ScrollReveal>
 
       {/* ============================================================
           SECCIÓN 6. BANNER DE LLAMADO A LA ACCIÓN
           ============================================================ */}
       <section className="py-12 relative overflow-hidden">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
-          <div className="relative rounded-3xl p-8 sm:p-12 overflow-hidden border border-[#F27B91]/25 bg-gradient-to-r from-[#55152D] via-[#3d0f20] to-[#111827] text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
+          <div className="gotox-banner-cta relative rounded-3xl p-8 sm:p-12 overflow-hidden shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 text-left">
             <div className="max-w-xl space-y-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-semibold tracking-wide uppercase text-[#F27B91] border border-white/15">
+              <span className="cta-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase">
                 <Sparkles className="w-3 h-3" />
                 {t('homeExt.ctaBadge')}
               </span>
-              <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-white">
+              <h2 className="cta-titulo font-serif text-3xl sm:text-4xl font-bold tracking-tight">
                 {t('homeExt.ctaTitulo')}
               </h2>
-              <p className="text-slate-300 text-sm leading-relaxed">
+              <p className="cta-subtitulo text-sm leading-relaxed">
                 {t('homeExt.ctaSubtitulo')}
               </p>
             </div>
@@ -581,7 +623,7 @@ export function Home() {
                     <Button
                       variant="secondary"
                       size="lg"
-                      className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
+                      className="cta-btn-primary w-full sm:w-auto justify-center font-bold shadow-md"
                     >
                       {t('homeExt.ctaExplorar')}
                     </Button>
@@ -590,7 +632,7 @@ export function Home() {
                     <Button
                       variant="outline"
                       size="lg"
-                      className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
+                      className="cta-btn-secondary w-full sm:w-auto justify-center font-semibold"
                     >
                       {t('homeExt.ctaCrearPlan')}
                     </Button>
@@ -602,7 +644,7 @@ export function Home() {
                     <Button
                       variant="secondary"
                       size="lg"
-                      className="w-full sm:w-auto justify-center bg-white text-[#55152D] hover:bg-slate-100 border-transparent font-bold shadow-md"
+                      className="cta-btn-primary w-full sm:w-auto justify-center font-bold shadow-md"
                     >
                       {t('homeExt.ctaVerMapa')}
                     </Button>
@@ -611,7 +653,7 @@ export function Home() {
                     <Button
                       variant="outline"
                       size="lg"
-                      className="w-full sm:w-auto justify-center border-white/30 text-white hover:bg-white/10 font-semibold"
+                      className="cta-btn-secondary w-full sm:w-auto justify-center font-semibold"
                     >
                       {t('homeExt.ctaLoginPlanes')}
                     </Button>

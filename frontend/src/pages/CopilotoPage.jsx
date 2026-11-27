@@ -66,6 +66,8 @@ export function CopilotoPage() {
   const { idioma, idiomaActual, t } = useIdioma();
   const ttsLang = idiomaActual?.ttsLang || 'es-CR';
   const finHistorialRef = useRef(null);
+  const contenedorChatRef = useRef(null);
+  const haInteractuadoRef = useRef(false);
   const recognitionRef = useRef(null);
 
   const preguntasSugeridas = [
@@ -172,15 +174,20 @@ export function CopilotoPage() {
     return nivel;
   };
 
-  // Auto-scroll suave al último mensaje
+  // Auto-scroll suave al último mensaje (solo en el contenedor interno, sin alterar scroll de la ventana)
   useEffect(() => {
-    if (modoVista === 'chat' && finHistorialRef.current) {
-      finHistorialRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!haInteractuadoRef.current) return;
+    if (modoVista === 'chat' && contenedorChatRef.current) {
+      contenedorChatRef.current.scrollTo({
+        top: contenedorChatRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   }, [mensajes, escribiendo, modoVista]);
 
   // Enviar mensaje al asistente
   const handleEnviarConsulta = async (textoAEnviar) => {
+    haInteractuadoRef.current = true;
     const texto = (textoAEnviar || consultaTexto).trim();
     if (!texto) return;
 
@@ -327,7 +334,7 @@ export function CopilotoPage() {
               </motion.div>
 
               <div className="space-y-1.5">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#55152D]/35 text-[#F27B91] border border-[#F27B91]/30 text-xs font-semibold">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FDF2F4] dark:bg-[#55152D]/30 text-[#501228] dark:text-[#F27B91] border border-[#F9E2E8] dark:border-[#55152D]/50 text-xs font-semibold">
                   <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
                   <span>{t('copiloto.badge')}</span>
                 </div>
@@ -511,7 +518,7 @@ export function CopilotoPage() {
               )}
 
               {/* Historial de Mensajes con Scroll Suave */}
-              <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 gotox-scrollbar">
+              <div ref={contenedorChatRef} className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 gotox-scrollbar">
                 {mensajes.map((msg) => {
                   const esBruno = msg.remitente === 'bruno';
 

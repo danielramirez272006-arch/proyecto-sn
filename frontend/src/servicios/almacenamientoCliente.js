@@ -5,6 +5,7 @@
  */
 
 const CLAVE_FAVORITOS = 'gotox_favoritos_v1';
+const CLAVE_FAVORITOS_DATA = 'gotox_favoritos_data_v1';
 const CLAVE_PLANES = 'gotox_planes_v1';
 const CLAVE_CHECKINS = 'synodos_checkins_v1';
 const CLAVE_ALERTAS_SOS = 'synodos_alertas_sos_v1';
@@ -19,33 +20,61 @@ const emitirCambio = (tipo) => {
 };
 
 /* ============================================================
-   1. GESTIÓN DE FAVORITOS
+   1. GESTIÓN DE FAVORITOS (SOPORTA LUGARES LOCALES Y DE SUPABASE DB)
    ============================================================ */
 export const obtenerFavoritosIds = () => {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(CLAVE_FAVORITOS);
-    return raw ? JSON.parse(raw) : ['franco-cafe', 'el-arbol-de-seda'];
+    const parsed = raw ? JSON.parse(raw) : ['franco-cafe', 'el-arbol-de-seda'];
+    return Array.isArray(parsed) ? parsed.map(String) : [];
   } catch {
     return ['franco-cafe', 'el-arbol-de-seda'];
   }
 };
 
-export const esFavorito = (lugarId) => {
-  const favs = obtenerFavoritosIds();
-  return favs.includes(lugarId);
+export const obtenerFavoritosGuardadosMap = () => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(CLAVE_FAVORITOS_DATA);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
 };
 
-export const alternarFavorito = (lugarId) => {
+export const esFavorito = (lugarId) => {
+  if (!lugarId) return false;
   const favs = obtenerFavoritosIds();
+  return favs.includes(String(lugarId));
+};
+
+export const alternarFavorito = (lugarOrId, lugarSnapshot = null) => {
+  const esObj = lugarOrId && typeof lugarOrId === 'object';
+  const lugarId = String(esObj ? lugarOrId.id : lugarOrId || '').trim();
+  const datosLugar = esObj ? lugarOrId : lugarSnapshot;
+  if (!lugarId) return obtenerFavoritosIds();
+
+  const favs = obtenerFavoritosIds();
+  const mapaDatos = obtenerFavoritosGuardadosMap();
   let nuevos;
+
   if (favs.includes(lugarId)) {
     nuevos = favs.filter((id) => id !== lugarId);
   } else {
     nuevos = [...favs, lugarId];
+    if (datosLugar && typeof datosLugar === 'object') {
+      mapaDatos[lugarId] = {
+        ...datosLugar,
+        id: lugarId
+      };
+    }
   }
+
   try {
     localStorage.setItem(CLAVE_FAVORITOS, JSON.stringify(nuevos));
+    localStorage.setItem(CLAVE_FAVORITOS_DATA, JSON.stringify(mapaDatos));
     emitirCambio('favoritos');
   } catch (e) {
     console.error('Error al guardar favorito:', e);

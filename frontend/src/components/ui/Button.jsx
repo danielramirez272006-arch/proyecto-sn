@@ -20,7 +20,7 @@ export function Button({
   };
 
   const variantStyles = {
-    primary: 'bg-[#501228] text-white hover:bg-[#6E1E3A] shadow-sm hover:shadow-md border border-transparent',
+    primary: 'synodos-btn-shimmer bg-[#501228] text-white hover:bg-[#6E1E3A] shadow-sm hover:shadow-md border border-transparent',
     secondary: 'bg-white text-[#501228] hover:bg-[#FDF2F4] border border-slate-200/80 shadow-sm hover:border-[#501228]/30',
     outline: 'bg-transparent text-[#501228] hover:bg-[#501228]/5 border border-[#501228]/30 hover:border-[#501228]',
     ghost: 'bg-transparent text-[#4B5563] hover:text-[#501228] hover:bg-[#501228]/5 border border-transparent',

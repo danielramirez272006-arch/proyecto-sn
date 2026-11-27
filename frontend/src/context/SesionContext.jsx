@@ -14,7 +14,8 @@ const SESION_DEFECTO = {
     role: 'client',
     telefono: '',
     ubicacion: 'San José, Costa Rica',
-    tieneMascota: false
+    tieneMascota: false,
+    avatar: { tipo: 'auto', url: null, semilla: '' }
   },
   mascota: {
     ...MASCOTA_ACTIVA_DEFECTO,
@@ -255,7 +256,8 @@ export function SesionProvider({ children }) {
           role: vault.user?.role || prev.usuario.role,
           telefono: vault.user?.phone ?? prev.usuario.telefono,
           ubicacion: vault.user?.zone ?? prev.usuario.ubicacion,
-          tieneMascota: vault.has_pet !== undefined ? Boolean(vault.has_pet) : prev.usuario.tieneMascota
+          tieneMascota: vault.has_pet !== undefined ? Boolean(vault.has_pet) : prev.usuario.tieneMascota,
+          avatar: vault.preferences?.avatarUsuario || prev.usuario.avatar || { tipo: 'auto', url: null, semilla: '' }
         },
         mascota: vault.pet
           ? construirMascotaParaUsuario(vault.pet, vault.user || prev.usuario)
@@ -282,7 +284,8 @@ export function SesionProvider({ children }) {
             nombre: updated.user?.name || payload.name || prev.usuario.nombre,
             telefono: updated.user?.phone ?? payload.phone ?? prev.usuario.telefono,
             ubicacion: updated.user?.zone ?? payload.zone ?? prev.usuario.ubicacion,
-            tieneMascota: updated.has_pet !== undefined ? Boolean(updated.has_pet) : Boolean(payload.has_pet)
+            tieneMascota: updated.has_pet !== undefined ? Boolean(updated.has_pet) : Boolean(payload.has_pet),
+            avatar: payload.avatar || updated.preferences?.avatarUsuario || prev.usuario.avatar
           },
           mascota: updated.pet
             ? construirMascotaParaUsuario(updated.pet, updated.user || prev.usuario)
@@ -305,7 +308,8 @@ export function SesionProvider({ children }) {
         nombre: payload.name || prev.usuario.nombre,
         telefono: payload.phone ?? prev.usuario.telefono,
         ubicacion: payload.zone ?? prev.usuario.ubicacion,
-        tieneMascota: payload.has_pet !== undefined ? Boolean(payload.has_pet) : prev.usuario.tieneMascota
+        tieneMascota: payload.has_pet !== undefined ? Boolean(payload.has_pet) : prev.usuario.tieneMascota,
+        avatar: payload.avatar || prev.usuario.avatar
       },
       mascota: payload.pet ? construirMascotaParaUsuario(payload.pet, prev.usuario) : prev.mascota,
       boveda: {

@@ -1,12 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Globe, Check, ChevronDown } from 'lucide-react';
 import { useIdioma } from '../context/IdiomaContext';
 import { useTema } from '../context/TemaContext';
 
 /**
- * Selector multilingüe reutilizable (ES, EN, FR, PT, DE, 中文).
+ * Selector multilingüe reutilizable (ES, EN, FR, PT, DE, 中文, JA, KO, RU, IT).
  * Soporta variantes:
- * - 'grid'    : grilla de 6 botones para el panel de accesibilidad/idioma.
+ * - 'grid'    : grilla de botones para el panel de accesibilidad/idioma.
  * - 'header'  : botón compacto con menú desplegable para barra móvil.
  * - 'sidebar' : botón anclado compatible con barra lateral expandida o colapsada.
  */
@@ -20,14 +21,65 @@ export function SelectorIdioma({
   const { idioma, idiomaActual, idiomas, setIdioma, t } = useIdioma();
   const { esClaro, esMorado } = useTema();
   const [abierto, setAbierto] = useState(false);
+  const [posicionDropdown, setPosicionDropdown] = useState(null);
   const ref = useRef(null);
+
+  const actualizarPosicion = useCallback(() => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const alturaEstimada = Math.min(288, idiomas.length * 36 + 16);
+
+    if (compacto) {
+      // Sidebar cerrado / colapsado: el menú flota libremente a la derecha del botón (fuera del sidebar)
+      let top = rect.bottom - alturaEstimada;
+      if (top < 10) top = 10;
+      if (top + alturaEstimada > window.innerHeight - 10) {
+        top = Math.max(10, window.innerHeight - alturaEstimada - 10);
+      }
+      setPosicionDropdown({
+        position: 'fixed',
+        left: `${Math.round(rect.right + 10)}px`,
+        top: `${Math.round(top)}px`,
+        width: '230px',
+        zIndex: 99999
+      });
+    } else {
+      // Sidebar expandido: el menú flota encima del botón
+      let top = rect.top - alturaEstimada - 8;
+      if (top < 10) {
+        top = rect.bottom + 8;
+      }
+      setPosicionDropdown({
+        position: 'fixed',
+        left: `${Math.round(Math.max(10, rect.left))}px`,
+        top: `${Math.round(top)}px`,
+        width: `${Math.round(Math.max(220, rect.width))}px`,
+        zIndex: 99999
+      });
+    }
+  }, [compacto, idiomas.length]);
+
+  useEffect(() => {
+    if (!abierto) {
+      setPosicionDropdown(null);
+      return undefined;
+    }
+    actualizarPosicion();
+    window.addEventListener('resize', actualizarPosicion);
+    window.addEventListener('scroll', actualizarPosicion, true);
+    return () => {
+      window.removeEventListener('resize', actualizarPosicion);
+      window.removeEventListener('scroll', actualizarPosicion, true);
+    };
+  }, [abierto, actualizarPosicion]);
 
   useEffect(() => {
     if (!abierto) return undefined;
     const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setAbierto(false);
-      }
+      if (ref.current && ref.current.contains(e.target)) return;
+      const popup = document.querySelector('.selector-idioma-popup');
+      if (popup && popup.contains(e.target)) return;
+      setAbierto(false);
     };
     const handleKey = (e) => {
       if (e.key === 'Escape') {
@@ -209,43 +261,44 @@ export function SelectorIdioma({
         </div>
       </button>
 
-      {abierto && (
-        <div
-          role="listbox"
-          aria-label={t('a11y.idiomaSeccion')}
-          className={`absolute ${
-            compacto ? 'left-full bottom-0 ml-2 w-56' : 'left-0 right-0 bottom-full mb-1.5'
-          } max-h-72 overflow-y-auto gotox-scrollbar rounded-2xl border p-1.5 z-[1400] grid grid-cols-1 gap-0.5 ${cajaMenu}`}
-        >
-          {idiomas.map((item) => {
-            const activo = item.codigo === idioma;
-            return (
-              <button
-                key={item.codigo}
-                type="button"
-                role="option"
-                aria-selected={activo}
-                onClick={() => seleccionar(item.codigo)}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-colors ${
-                  activo
-                    ? 'bg-[#501228] text-white font-bold'
-                    : esClaro
-                    ? 'text-slate-800 hover:bg-slate-100'
-                    : 'hover:bg-white/10'
-                }`}
-              >
-                <span className="flex items-center gap-2 truncate">
-                  <span className="text-[10px] font-black uppercase w-8 text-left opacity-80 shrink-0">
-                    {item.corto}
+      {abierto && posicionDropdown && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            role="listbox"
+            aria-label={t('a11y.idiomaSeccion')}
+            style={posicionDropdown}
+            className={`selector-idioma-popup max-h-72 overflow-y-auto gotox-scrollbar rounded-2xl border p-1.5 shadow-2xl grid grid-cols-1 gap-0.5 ${cajaMenu}`}
+          >
+            {idiomas.map((item) => {
+              const activo = item.codigo === idioma;
+              return (
+                <button
+                  key={item.codigo}
+                  type="button"
+                  role="option"
+                  aria-selected={activo}
+                  onClick={() => seleccionar(item.codigo)}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-colors ${
+                    activo
+                      ? 'bg-[#501228] text-white font-bold'
+                      : esClaro
+                      ? 'text-slate-800 hover:bg-slate-100'
+                      : 'hover:bg-white/10'
+                  }`}
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    <span className="text-[10px] font-black uppercase w-8 text-left opacity-80 shrink-0">
+                      {item.corto}
+                    </span>
+                    <span className="truncate">{item.nombreNativo}</span>
                   </span>
-                  <span className="truncate">{item.nombreNativo}</span>
-                </span>
-                {activo && <Check className="w-3.5 h-3.5 shrink-0 text-[#F27B91]" aria-hidden="true" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
+                  {activo && <Check className="w-3.5 h-3.5 shrink-0 text-[#F27B91]" aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

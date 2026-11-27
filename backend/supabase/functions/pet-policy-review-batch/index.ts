@@ -391,7 +391,6 @@ Deno.serve(async (req: Request) => {
   const enableGeminiSearch = Deno.env.get('PET_REVIEW_ENABLE_GEMINI_SEARCH') !== 'false' && Boolean(geminiApiKey);
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    db: { schema: 'app_private' },
     auth: { persistSession: false },
   });
 
@@ -401,36 +400,24 @@ Deno.serve(async (req: Request) => {
   const windowMs = expiringWithinDays * 24 * 60 * 60 * 1000;
   const cooldownCutoff = new Date(now.getTime() - cooldownDays * 24 * 60 * 60 * 1000).toISOString();
 
-  // 2. Cargar locales y eventos recientes de rotación para no repetir siempre los mismos 10
-  const { data: places, error: placesErr } = await supabase
-    .from('places')
-    .select('id, name, category, address, canton, lat, lng, verified_by_admin, attributes_metadata')
-    .limit(400);
+  // 2. Cargar locales, marcas de rotación y evidencias vía RPC segura (service_role -> app_private)
+  const { data: stateData, error: stateErr } = await supabase.rpc('pet_review_get_batch_state', {
+    p_cooldown_cutoff: cooldownCutoff,
+  });
 
-  if (placesErr) {
-    return new Response(JSON.stringify({ ok: false, error: placesErr.message }), {
+  if (stateErr) {
+    return new Response(JSON.stringify({ ok: false, error: stateErr.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  const { data: recentCheckEvents } = await supabase
-    .from('automation_events')
-    .select('place_id, created_at')
-    .eq('event_type', 'hint_batch_checked')
-    .gte('created_at', cooldownCutoff);
-
-  const recentlyChecked = new Set((recentCheckEvents || []).map((r: any) => r.place_id));
-
-  const placeIds = (places || []).map((p: any) => p.id);
-  const { data: allEvidences } = await supabase
-    .from('place_pet_evidence')
-    .select('*')
-    .in('place_id', placeIds.length ? placeIds : ['__none__'])
-    .neq('status', 'retracted');
+  const places = Array.isArray(stateData?.places) ? stateData.places : [];
+  const recentlyChecked = new Set(Array.isArray(stateData?.recent_checked) ? stateData.recent_checked : []);
+  const allEvidences = Array.isArray(stateData?.evidences) ? stateData.evidences : [];
 
   const evidenceByPlace = new Map<string, any[]>();
-  for (const row of allEvidences || []) {
+  for (const row of allEvidences) {
     const list = evidenceByPlace.get(row.place_id) || [];
     let cond: Record<string, any> = {};
     try {
@@ -566,25 +553,22 @@ Deno.serve(async (req: Request) => {
           await sha256Hex(`${place.id}|${source.provider_name}|${source.source_url || ''}|${source.branch_name || ''}`)
         ).slice(0, 24);
         const dedupeKey = `hint_branch_mismatch:${place.id}:${mismatchHash}`;
-        await supabase.from('automation_events').upsert(
-          {
-            id: `aut_${Date.now()}_${mismatchHash.slice(0, 6)}`,
-            event_type: 'review_pending',
+        await supabase.rpc('pet_review_upsert_event', {
+          p_id: `aut_${Date.now()}_${mismatchHash.slice(0, 6)}`,
+          p_event_type: 'review_pending',
+          p_place_id: place.id,
+          p_dedupe_key: dedupeKey,
+          p_status: 'pending',
+          p_payload_json: JSON.stringify({
             place_id: place.id,
-            dedupe_key: dedupeKey,
-            idempotency_key: dedupeKey,
-            status: 'pending',
-            payload_json: JSON.stringify({
-              place_id: place.id,
-              place_name: place.name,
-              reason: 'branch_unidentified',
-              detail: branchCheck.reason,
-              source_url: source.source_url || null,
-              checked_at: source.checked_at || nowIso,
-            }),
-          },
-          { onConflict: 'dedupe_key', ignoreDuplicates: true }
-        );
+            place_name: place.name,
+            reason: 'branch_unidentified',
+            detail: branchCheck.reason,
+            source_url: source.source_url || null,
+            checked_at: source.checked_at || nowIso,
+          }),
+          p_processed_at: null,
+        });
         continue;
       }
 
@@ -622,19 +606,15 @@ Deno.serve(async (req: Request) => {
       };
 
       // Guardar únicamente como sugerencia (nunca sobrescribe places.attributes_metadata.pet_policy)
-      await supabase.from('place_pet_evidence').insert({
-        id: evidenceId,
-        place_id: place.id,
-        source_type: 'external_provider',
-        provider_name: source.provider_name || source.source_type,
-        external_place_id: source.provider_place_id || null,
-        access_status: accessStatus,
-        conditions_json: JSON.stringify(conditionsPayload),
-        evidence_ref: source.source_url || `hint:${evidenceHash}`,
-        verified_by: null,
-        status: 'active',
-        checked_at: source.checked_at || nowIso,
-        expires_at: null,
+      await supabase.rpc('pet_review_record_evidence', {
+        p_id: evidenceId,
+        p_place_id: place.id,
+        p_provider_name: source.provider_name || source.source_type,
+        p_external_place_id: source.provider_place_id || null,
+        p_access_status: accessStatus,
+        p_conditions_json: JSON.stringify(conditionsPayload),
+        p_evidence_ref: source.source_url || `hint:${evidenceHash}`,
+        p_checked_at: source.checked_at || nowIso,
       });
 
       workingEvidences.push({
@@ -646,28 +626,25 @@ Deno.serve(async (req: Request) => {
       summary.suggestions_created += 1;
 
       const suggestionKey = `hint_suggestion:${place.id}:${evidenceHash.slice(0, 24)}`;
-      await supabase.from('automation_events').upsert(
-        {
-          id: `aut_${Date.now()}_${evidenceHash.slice(0, 6)}`,
-          event_type: 'review_pending',
+      await supabase.rpc('pet_review_upsert_event', {
+        p_id: `aut_${Date.now()}_${evidenceHash.slice(0, 6)}`,
+        p_event_type: 'review_pending',
+        p_place_id: place.id,
+        p_dedupe_key: suggestionKey,
+        p_status: 'pending',
+        p_payload_json: JSON.stringify({
           place_id: place.id,
-          dedupe_key: suggestionKey,
-          idempotency_key: suggestionKey,
-          status: 'pending',
-          payload_json: JSON.stringify({
-            place_id: place.id,
-            place_name: place.name,
-            reason: 'external_hint_suggestion',
-            evidence_id: evidenceId,
-            suggested_access_status: accessStatus,
-            source_url: source.source_url || null,
-            excerpt,
-            conditions,
-            checked_at: source.checked_at || nowIso,
-          }),
-        },
-        { onConflict: 'dedupe_key', ignoreDuplicates: true }
-      );
+          place_name: place.name,
+          reason: 'external_hint_suggestion',
+          evidence_id: evidenceId,
+          suggested_access_status: accessStatus,
+          source_url: source.source_url || null,
+          excerpt,
+          conditions,
+          checked_at: source.checked_at || nowIso,
+        }),
+        p_processed_at: null,
+      });
     }
 
     // Detectar contradicción entre fuentes activas (allowed vs not_allowed)
@@ -677,40 +654,33 @@ Deno.serve(async (req: Request) => {
     if (explicitStatuses.has('allowed') && explicitStatuses.has('not_allowed')) {
       summary.conflicts_flagged += 1;
       const conflictKey = `hint_conflict:${place.id}:${nowIso.slice(0, 10)}`;
-      await supabase.from('automation_events').upsert(
-        {
-          id: `aut_c_${Date.now()}_${place.id.slice(-6)}`,
-          event_type: 'contradiction_detected',
+      await supabase.rpc('pet_review_upsert_event', {
+        p_id: `aut_c_${Date.now()}_${place.id.slice(-6)}`,
+        p_event_type: 'contradiction_detected',
+        p_place_id: place.id,
+        p_dedupe_key: conflictKey,
+        p_status: 'pending',
+        p_payload_json: JSON.stringify({
           place_id: place.id,
-          dedupe_key: conflictKey,
-          idempotency_key: conflictKey,
-          status: 'pending',
-          payload_json: JSON.stringify({
-            place_id: place.id,
-            place_name: place.name,
-            reason: 'conflicting_pet_sources',
-            detected_at: nowIso,
-          }),
-        },
-        { onConflict: 'dedupe_key', ignoreDuplicates: true }
-      );
+          place_name: place.name,
+          reason: 'conflicting_pet_sources',
+          detected_at: nowIso,
+        }),
+        p_processed_at: null,
+      });
     }
 
     // Registrar marca de rotación diaria para avanzar por todo el catálogo
     const checkKey = `hint_checked:${place.id}:${nowIso.slice(0, 10)}`;
-    await supabase.from('automation_events').upsert(
-      {
-        id: `aut_k_${Date.now()}_${place.id.slice(-6)}`,
-        event_type: 'hint_batch_checked',
-        place_id: place.id,
-        dedupe_key: checkKey,
-        idempotency_key: checkKey,
-        status: 'processed',
-        payload_json: JSON.stringify({ checked_at: nowIso, sources_found: sources.length }),
-        processed_at: nowIso,
-      },
-      { onConflict: 'dedupe_key', ignoreDuplicates: true }
-    );
+    await supabase.rpc('pet_review_upsert_event', {
+      p_id: `aut_k_${Date.now()}_${place.id.slice(-6)}`,
+      p_event_type: 'hint_batch_checked',
+      p_place_id: place.id,
+      p_dedupe_key: checkKey,
+      p_status: 'processed',
+      p_payload_json: JSON.stringify({ checked_at: nowIso, sources_found: sources.length }),
+      p_processed_at: nowIso,
+    });
   }
 
   summary.remaining_pending = Math.max(0, candidates.length - summary.processed_places);

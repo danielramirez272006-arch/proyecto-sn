@@ -376,7 +376,7 @@ router.post('/places/resolve-photos', async (req, res, next) => {
 
 router.get('/places/export/geojson', async (req, res, next) => {
   try {
-    const places = await placesRepository.findAll({ limit: 200 });
+    const places = await placesRepository.findAll({ limit: 1000 });
     const { placesToGeoJson } = require('../utils/export-formats');
     const geojson = placesToGeoJson(places);
     res.setHeader('Content-Type', 'application/geo+json; charset=utf-8');

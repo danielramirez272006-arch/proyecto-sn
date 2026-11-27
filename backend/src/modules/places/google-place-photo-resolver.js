@@ -14,7 +14,7 @@ async function getInternalPlacesWithPhotos(repo = placesRepository) {
     return internalCatalogCache.items;
   }
   try {
-    const rows = await repo.findAll({ limit: 500 });
+    const rows = await repo.findAll({ limit: 1000 });
     const withPhotos = (rows || []).filter((p) => p && p.photo_url);
     internalCatalogCache = { items: withPhotos, ts: Date.now() };
     return withPhotos;

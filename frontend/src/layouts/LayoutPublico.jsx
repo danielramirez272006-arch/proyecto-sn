@@ -4,6 +4,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Footer } from '../components/Footer';
 import { BannerCookies } from '../components/BannerCookies';
+import { ScrollCompanion } from '../components/ScrollCompanion';
 import { EnlaceSaltarContenido } from '../components/EnlaceSaltarContenido';
 
 const STORAGE_KEY_SIDEBAR = 'gotox_sidebar_compacta';
@@ -48,6 +49,7 @@ export function LayoutPublico() {
         </main>
         <Footer />
         <BannerCookies />
+        <ScrollCompanion />
       </div>
     </div>
   );

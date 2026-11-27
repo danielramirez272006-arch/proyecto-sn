@@ -21,17 +21,17 @@ async function initDatabase() {
         const sslConfig = process.env.SUPABASE_DB_CA_CERT
           ? { rejectUnauthorized: true, ca: process.env.SUPABASE_DB_CA_CERT.replace(/\\n/g, '\n') }
           : { rejectUnauthorized: false };
-        const statementTimeout = Number(process.env.PG_STATEMENT_TIMEOUT_MS) || 10000;
-        const queryTimeout = Number(process.env.PG_QUERY_TIMEOUT_MS) || 12000;
+        const statementTimeout = Number(process.env.PG_STATEMENT_TIMEOUT_MS) || 25000;
+        const queryTimeout = Number(process.env.PG_QUERY_TIMEOUT_MS) || 25000;
 
         if (env.db.supabaseDbUrl) {
           const cleanedUrl = env.db.supabaseDbUrl.replace(/\[([^\]]+)\]/, '$1');
           poolConfig = { 
             connectionString: cleanedUrl, 
             ssl: sslConfig,
-            max: Number(process.env.PG_POOL_MAX) || 10,
+            max: Number(process.env.PG_POOL_MAX) || 12,
             idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 5000,
+            connectionTimeoutMillis: 20000,
             statement_timeout: statementTimeout,
             query_timeout: queryTimeout,
             allowExitOnIdle: true,
@@ -45,9 +45,9 @@ async function initDatabase() {
             password: env.db.password,
             database: env.db.database,
             ssl: sslConfig,
-            max: Number(process.env.PG_POOL_MAX) || 10,
+            max: Number(process.env.PG_POOL_MAX) || 12,
             idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 5000,
+            connectionTimeoutMillis: 20000,
             statement_timeout: statementTimeout,
             query_timeout: queryTimeout,
             allowExitOnIdle: true,

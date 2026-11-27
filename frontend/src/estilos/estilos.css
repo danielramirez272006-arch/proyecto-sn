@@ -96,24 +96,272 @@
   border-color: rgba(80, 18, 40, 0.2);
 }
 
-/* Efectos de pulso y telemetría */
-@keyframes gotox-ping-suave {
+/* Efectos de pulso y telemetría (Radar Multicapa inspirado en Magic UI Ripple) */
+@keyframes synodos-radar-ripple {
   0% {
-    transform: scale(0.95);
-    opacity: 0.8;
+    transform: scale(1);
+    opacity: 0.75;
   }
-  50% {
-    transform: scale(1.15);
-    opacity: 0.3;
+  75% {
+    transform: scale(2.8);
+    opacity: 0;
   }
   100% {
-    transform: scale(0.95);
-    opacity: 0.8;
+    transform: scale(2.8);
+    opacity: 0;
   }
 }
 
-.gotox-radar-dot {
-  animation: gotox-ping-suave 2.4s ease-in-out infinite;
+.gotox-radar-dot,
+.synodos-radar-dot {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.gotox-radar-dot::before,
+.gotox-radar-dot::after,
+.synodos-radar-dot::before,
+.synodos-radar-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background-color: inherit;
+  animation: synodos-radar-ripple 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+.gotox-radar-dot::after,
+.synodos-radar-dot::after {
+  animation-delay: 1.2s;
+}
+
+/* 1. Border Beam Luminoso Perimetral (inspirado en Magic UI BorderBeam) */
+@keyframes synodos-border-beam {
+  0% {
+    offset-distance: 0%;
+  }
+  100% {
+    offset-distance: 100%;
+  }
+}
+
+.synodos-border-beam {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1.5px solid transparent;
+  -webkit-mask:
+    linear-gradient(transparent, transparent),
+    linear-gradient(#000, #000);
+  mask:
+    linear-gradient(transparent, transparent),
+    linear-gradient(#000, #000);
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  z-index: 2;
+}
+
+.synodos-border-beam::after {
+  content: "";
+  position: absolute;
+  aspect-ratio: 1 / 1;
+  width: var(--beam-size, 95px);
+  background: linear-gradient(
+    to left,
+    var(--beam-from, #fb7185),
+    var(--beam-to, #e11d48),
+    transparent
+  );
+  offset-path: rect(0 auto auto 0 round var(--beam-size, 95px));
+  animation: synodos-border-beam var(--beam-duration, 6.5s) linear infinite;
+  animation-delay: var(--beam-delay, 0s);
+}
+
+/* 2. Spotlight Radial Reactivo al Cursor (inspirado en Magic UI MagicCard) */
+.synodos-spotlight-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.synodos-spotlight-card::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    360px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(242, 123, 145, 0.16),
+    rgba(85, 21, 45, 0.05) 45%,
+    transparent 80%
+  );
+  opacity: 0;
+  transition: opacity 280ms ease;
+  z-index: 1;
+}
+
+.synodos-spotlight-card::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: radial-gradient(
+    250px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(242, 123, 145, 0.65),
+    transparent 75%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 280ms ease;
+  z-index: 2;
+}
+
+.synodos-spotlight-card:hover::before,
+.synodos-spotlight-card:hover::after {
+  opacity: 1;
+}
+
+/* =====================================================================
+   AJUSTES ESPECÍFICOS DE LUZ / SPOTLIGHT PARA MODO BLANCO / CLARO
+   Garantiza que la luz reactiva al ratón resalte con calidez y nitidez
+   sobre fondos blancos y claros (#FFFFFF / #FAF9FE) sin lavarse.
+   ===================================================================== */
+:root[data-tema='claro'] .synodos-spotlight-card::before,
+:root:not([data-tema='oscuro']):not([data-tema='morado']) .synodos-spotlight-card::before,
+html[data-tema='claro'] .synodos-spotlight-card::before {
+  background: radial-gradient(
+    380px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(225, 29, 72, 0.22) 0%,
+    rgba(244, 63, 94, 0.14) 28%,
+    rgba(159, 18, 57, 0.06) 55%,
+    transparent 78%
+  );
+}
+
+:root[data-tema='claro'] .synodos-spotlight-card::after,
+:root:not([data-tema='oscuro']):not([data-tema='morado']) .synodos-spotlight-card::after,
+html[data-tema='claro'] .synodos-spotlight-card::after {
+  padding: 1.5px;
+  background: radial-gradient(
+    260px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(190, 18, 60, 0.95) 0%,
+    rgba(225, 29, 72, 0.55) 45%,
+    transparent 75%
+  );
+}
+
+:root[data-tema='claro'] .synodos-border-beam::after,
+:root:not([data-tema='oscuro']):not([data-tema='morado']) .synodos-border-beam::after,
+html[data-tema='claro'] .synodos-border-beam::after {
+  background: linear-gradient(
+    to left,
+    #e11d48,
+    #9f1239,
+    transparent
+  );
+  filter: drop-shadow(0 0 6px rgba(225, 29, 72, 0.65));
+}
+
+:root[data-tema='claro'] .synodos-tilt-card:hover,
+:root:not([data-tema='oscuro']):not([data-tema='morado']) .synodos-tilt-card:hover,
+html[data-tema='claro'] .synodos-tilt-card:hover {
+  --lift-y: -3px;
+  box-shadow:
+    0 18px 36px -10px rgba(136, 19, 55, 0.15),
+    0 0 24px -2px rgba(225, 29, 72, 0.18),
+    0 4px 8px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* 3. Elevación 3D Sutil / Tilt Magnético (inspirado en Aceternity UI 3D Card) */
+.synodos-tilt-card {
+  transform-style: preserve-3d;
+  transform: perspective(1000px)
+    rotateX(var(--rotate-x, 0deg))
+    rotateY(var(--rotate-y, 0deg))
+    translateY(var(--lift-y, 0px));
+  transition:
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 300ms ease;
+  will-change: transform;
+}
+
+.synodos-tilt-card:hover {
+  --lift-y: -3px;
+  box-shadow:
+    0 18px 36px -12px rgba(80, 18, 40, 0.24),
+    0 0 24px -6px rgba(242, 123, 145, 0.18);
+}
+
+/* 4. Barrido Shimmer Diagonal en Botones Principales (inspirado en Magic UI ShimmerButton) */
+@keyframes synodos-shimmer-sweep {
+  0% {
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  45%, 100% {
+    transform: translateX(230%) skewX(-18deg);
+  }
+}
+
+.synodos-btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.synodos-btn-shimmer::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.22),
+    transparent
+  );
+  transform: translateX(-130%) skewX(-18deg);
+  animation: synodos-shimmer-sweep 4.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/* 5. Destello Sutil en Insignias / Badges (inspirado en Magic UI AnimatedShinyText) */
+@keyframes synodos-shiny-badge {
+  0%, 88%, 100% {
+    background-position: calc(-100% - var(--shiny-width, 80px)) 0;
+  }
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width, 80px)) 0;
+  }
+}
+
+.synodos-shiny-badge {
+  --shiny-width: 80px;
+  background-image: linear-gradient(
+    110deg,
+    transparent 35%,
+    rgba(255, 241, 242, 0.26) 50%,
+    transparent 65%
+  );
+  background-size: var(--shiny-width) 100%;
+  background-repeat: no-repeat;
+  animation: synodos-shiny-badge 6.5s cubic-bezier(0.6, 0.6, 0, 1) infinite;
 }
 
 /* Card 3D tilt para Carnet Digital */
@@ -129,7 +377,52 @@
   backface-visibility: hidden;
 }
 
-/* Barra de desplazamiento fluida, estilizada y adaptable a los 3 temas */
+/* Barra de desplazamiento global (html/body) e interna fluida, estilizada y adaptable a los 3 temas */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 2rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(225, 29, 72, 0.55) rgba(18, 6, 11, 0.85);
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(18, 6, 11, 0.82);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(190, 24, 93, 0.6) 0%, rgba(225, 29, 72, 0.8) 50%, rgba(242, 123, 145, 0.65) 100%);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background 0.25s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(225, 29, 72, 0.9) 0%, rgba(242, 123, 145, 0.95) 100%);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+:root[data-tema='claro'] html,
+:root[data-tema='claro'] {
+  scrollbar-color: rgba(80, 18, 40, 0.4) rgba(250, 249, 254, 0.9);
+}
+
+:root[data-tema='claro'] ::-webkit-scrollbar-track {
+  background: rgba(243, 238, 249, 0.85);
+}
+
+:root[data-tema='claro'] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(80, 18, 40, 0.45) 0%, rgba(137, 40, 75, 0.65) 100%);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
 .gotox-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(242, 123, 145, 0.35) transparent;

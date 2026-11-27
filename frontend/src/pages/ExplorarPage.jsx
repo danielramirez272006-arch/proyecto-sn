@@ -470,7 +470,7 @@ export function ExplorarPage() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        alternarFavorito(lugar.id);
+                        alternarFavorito(lugar.id, lugar);
                         setFavoritosTrigger(v => v + 1);
                       }}
                       title={fav ? t('homeExt.quitarFavoritos') : t('homeExt.guardarFavoritos')}

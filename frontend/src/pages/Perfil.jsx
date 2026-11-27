@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { CarnetDigital } from '../components/CarnetDigital';
 import { QrCollar } from '../components/QrCollar';
 import { SelectorFotoMascota } from '../components/SelectorFotoMascota';
+import { AvatarUsuario, SelectorAvatarUsuario } from '../components/AvatarUsuario';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -80,7 +81,8 @@ export function Perfil({ embebido = false }) {
     notificacionesLluvia: boveda?.preferences?.notificacionesLluvia ?? true,
     notificacionesAcusticas: boveda?.preferences?.notificacionesAcusticas ?? true,
     notificacionesEventos: boveda?.preferences?.notificacionesEventos ?? false,
-    compartirUbicacion: boveda?.preferences?.compartirUbicacion ?? true
+    compartirUbicacion: boveda?.preferences?.compartirUbicacion ?? true,
+    avatar: usuario?.avatar || boveda?.preferences?.avatarUsuario || { tipo: 'auto', url: null, semilla: '' }
   });
 
   // Estado editable de la mascota propia del usuario
@@ -129,7 +131,8 @@ export function Perfil({ embebido = false }) {
       notificacionesLluvia: boveda?.preferences?.notificacionesLluvia ?? prev.notificacionesLluvia,
       notificacionesAcusticas: boveda?.preferences?.notificacionesAcusticas ?? prev.notificacionesAcusticas,
       notificacionesEventos: boveda?.preferences?.notificacionesEventos ?? prev.notificacionesEventos,
-      compartirUbicacion: boveda?.preferences?.compartirUbicacion ?? prev.compartirUbicacion
+      compartirUbicacion: boveda?.preferences?.compartirUbicacion ?? prev.compartirUbicacion,
+      avatar: usuario?.avatar || boveda?.preferences?.avatarUsuario || prev.avatar
     }));
   }, [usuario, boveda]);
 
@@ -236,11 +239,13 @@ export function Perfil({ embebido = false }) {
         has_pet: perfilUsuario.tieneMascota,
         budget_level: perfilUsuario.presupuestoHabitual,
         interests: perfilUsuario.intereses,
+        avatar: perfilUsuario.avatar,
         preferences: {
           notificacionesLluvia: perfilUsuario.notificacionesLluvia,
           notificacionesAcusticas: perfilUsuario.notificacionesAcusticas,
           notificacionesEventos: perfilUsuario.notificacionesEventos,
-          compartirUbicacion: perfilUsuario.compartirUbicacion
+          compartirUbicacion: perfilUsuario.compartirUbicacion,
+          avatarUsuario: perfilUsuario.avatar
         },
         pet: petPayload
       });
@@ -329,9 +334,12 @@ export function Perfil({ embebido = false }) {
         {/* Cabecera Principal del Usuario */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-200/80 dark:border-white/10 gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#501228] to-[#F27B91] flex items-center justify-center text-white shadow-lg text-2xl font-serif font-bold">
-              {(perfilUsuario.nombre || 'U').charAt(0).toUpperCase()}
-            </div>
+            <AvatarUsuario
+              nombre={perfilUsuario.nombre}
+              avatar={perfilUsuario.avatar}
+              size="lg"
+              mostrarPuntoOnline={true}
+            />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-serif font-bold text-2xl sm:text-3xl text-[#111827] dark:text-white">
@@ -453,6 +461,16 @@ export function Perfil({ embebido = false }) {
                 <h3 className="font-serif font-bold text-lg text-[#111827] dark:text-white pb-2 border-b border-slate-100 dark:border-white/10">
                   {t('perfil.infoUsuarioTitulo')}
                 </h3>
+
+                {/* Selector Interactivo de Avatar (Mascotas deterministas según nombre o subida de foto) */}
+                <SelectorAvatarUsuario
+                  nombre={perfilUsuario.nombre}
+                  valor={perfilUsuario.avatar}
+                  onChange={(nuevoAvatar) =>
+                    setPerfilUsuario((prev) => ({ ...prev, avatar: nuevoAvatar }))
+                  }
+                />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
                     <label className="text-slate-500 dark:text-slate-400 block mb-1 font-medium">{t('perfil.lblNombre')}</label>

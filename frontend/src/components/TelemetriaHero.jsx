@@ -18,6 +18,7 @@ import {
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Card } from './ui/Card';
+import { NumberTicker } from './ui/NumberTicker';
 import { useTelemetria } from '../hooks/useTelemetria';
 import { useIdioma } from '../context/IdiomaContext';
 
@@ -86,8 +87,8 @@ export function TelemetriaHero() {
           {/* Columna Izquierda: Identidad, Titular Editorial y Acciones */}
           <div className="lg:col-span-6 space-y-6 text-left">
             {/* Identidad de Synodos */}
-            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#111827] border border-white/10 shadow-xs text-xs">
-              <span className="w-2 h-2 rounded-full bg-[#F27B91] animate-pulse" />
+            <div className="synodos-shiny-badge inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#111827] border border-white/10 shadow-xs text-xs">
+              <span className="w-2 h-2 rounded-full bg-[#F27B91] gotox-radar-dot" />
               <span className="font-semibold text-[#E8EDF5] tracking-wide">Synodos Pet OS (Σύνοδος)</span>
               <span className="text-slate-500">&bull;</span>
               <span className="text-[#94A3B8] text-[11px]">{t('telemetriaHero.ubicacionHeader')}</span>
@@ -230,7 +231,7 @@ export function TelemetriaHero() {
           {hayDatos && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {/* 1. PRIORIDAD: Temperatura del Pavimento */}
-              <Card className="p-5 sm:p-6 bg-[#111827] border-white/10 rounded-2xl space-y-4 hover:border-[#F27B91]/30 transition-colors shadow-sm">
+              <Card beam={true} className="p-5 sm:p-6 bg-[#111827] border-white/10 rounded-2xl space-y-4 hover:border-[#F27B91]/30 transition-colors shadow-sm">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8] block">
@@ -238,7 +239,7 @@ export function TelemetriaHero() {
                     </span>
                     <div className="flex items-baseline gap-2">
                       <span className="font-serif font-bold text-3xl sm:text-4xl text-[#E8EDF5] tabular-nums">
-                        {temperaturaAsfalto}
+                        <NumberTicker value={temperaturaAsfalto} decimals={1} />
                       </span>
                       <span className="text-sm font-semibold text-[#F27B91] font-sans">°C</span>
                       <span className="text-xs text-[#94A3B8] font-sans">
@@ -263,7 +264,7 @@ export function TelemetriaHero() {
               </Card>
 
               {/* 2. PRIORIDAD: Condiciones de Lluvia y Ventana Seca */}
-              <Card className="p-5 sm:p-6 bg-[#111827] border-white/10 rounded-2xl space-y-4 hover:border-blue-400/30 transition-colors shadow-sm">
+              <Card beam={true} className="p-5 sm:p-6 bg-[#111827] border-white/10 rounded-2xl space-y-4 hover:border-blue-400/30 transition-colors shadow-sm">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8] block">
@@ -271,7 +272,7 @@ export function TelemetriaHero() {
                     </span>
                     <div className="flex items-baseline gap-2">
                       <span className="font-serif font-bold text-3xl sm:text-4xl text-[#E8EDF5] tabular-nums">
-                        {ventanaSecaMinutos}
+                        <NumberTicker value={ventanaSecaMinutos} decimals={0} />
                       </span>
                       <span className="text-sm font-semibold text-blue-500 dark:text-blue-400 font-sans">{t('telemetriaHero.minutos')}</span>
                     </div>
@@ -298,7 +299,7 @@ export function TelemetriaHero() {
               </Card>
 
               {/* 3. PRIORIDAD: Confort Acústico Urbano */}
-              <Card className="p-5 sm:p-6 bg-[#111827] border-white/10 rounded-2xl space-y-4 hover:border-purple-400/30 transition-colors shadow-sm">
+              <Card beam={true} className="p-5 sm:p-6 bg-[#111827] border-white/10 rounded-2xl space-y-4 hover:border-purple-400/30 transition-colors shadow-sm">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8] block">
@@ -306,7 +307,7 @@ export function TelemetriaHero() {
                     </span>
                     <div className="flex items-baseline gap-2">
                       <span className="font-serif font-bold text-3xl sm:text-4xl text-[#E8EDF5] tabular-nums">
-                        {aforoAcusticoDb}
+                        <NumberTicker value={aforoAcusticoDb} decimals={0} />
                       </span>
                       <span className="text-sm font-semibold text-purple-500 dark:text-purple-400 font-sans">dB</span>
                     </div>

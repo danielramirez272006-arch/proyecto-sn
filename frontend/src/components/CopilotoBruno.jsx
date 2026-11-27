@@ -296,7 +296,10 @@ export function CopilotoBruno() {
     handleEnviarConsulta(prompt);
   };
 
-  const nombreMascotaVisible = mascota?.nombre || t('comun.tuMascotaDefault');
+  const tieneMascotaReal = Boolean(
+    mascota?.nombre && mascota.nombre !== 'Sin mascota registrada'
+  );
+  const nombreMascotaVisible = tieneMascotaReal ? mascota.nombre : t('comun.tuMascotaDefault');
 
   return (
     <section id="copiloto" className="py-16 md:py-24 relative overflow-hidden">
@@ -436,7 +439,7 @@ export function CopilotoBruno() {
                       }`}
                     >
                       <Heart className="w-3.5 h-3.5" />
-                      <span>{t('copilotoExt.chequeoBtn', { nombre: mascota?.nombre || t('copilotoExt.chequeoMascotaDefault') })}</span>
+                      <span>{t('copilotoExt.chequeoBtn', { nombre: tieneMascotaReal ? mascota.nombre : t('copilotoExt.chequeoMascotaDefault') })}</span>
                     </button>
 
                     {soportaVozSalida() && (

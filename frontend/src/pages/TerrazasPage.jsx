@@ -39,7 +39,16 @@ export function TerrazasPage() {
   const [filtroZona, setFiltroZona] = useState('todas');
   const [soloEspacioDisponible, setSoloEspacioDisponible] = useState(false);
   const [terrazaSeleccionada, setTerrazaSeleccionada] = useState(null);
+  const [compararIds, setCompararIds] = useState([]);
   const [backendPlacesCount, setBackendPlacesCount] = useState(null);
+
+  const alternarComparar = (id) => {
+    setCompararIds((prev) => {
+      if (prev.includes(id)) return prev.filter((item) => item !== id);
+      if (prev.length >= 2) return [prev[1], id];
+      return [...prev, id];
+    });
+  };
   const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
   const { lugaresConFotos: terrazasLocalesConFotos, cargandoFotos: cargandoFotosLocales } = useResolvedPlacePhotos(TERRAZAS);
   const cargandoFotos = cargandoDb || cargandoFotosLocales;
@@ -159,11 +168,11 @@ export function TerrazasPage() {
                 {t('terrazas.subtitulo')}
               </p>
 
-              {/* Métricas Rápidas de Verificación */}
+              {/* Métricas Rápidas de Verificación (Sincronizadas con el total auditado real) */}
               <div className="pt-2 flex flex-wrap items-center gap-4 text-xs text-[#94A3B8]">
                 <div className="flex items-center gap-2 bg-[#111827] px-3.5 py-2 rounded-xl border border-white/10 shadow-2xs">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 gotox-radar-dot" aria-hidden="true" />
-                  <span className="font-semibold text-[#E8EDF5]">{TERRAZAS.length} {t('terrazas.auditadas')}</span>
+                  <span className="font-semibold text-[#E8EDF5] tabular-nums">{terrazasConFotos.length} {t('terrazas.auditadas')}</span>
                 </div>
                 <div className="flex items-center gap-2 bg-[#111827] px-3.5 py-2 rounded-xl border border-white/10 shadow-2xs">
                   <Volume2 className="w-3.5 h-3.5 text-blue-400" aria-hidden="true" />
@@ -221,10 +230,10 @@ export function TerrazasPage() {
       </section>
 
       {/* ============================================================
-          BUSCADOR DESTACADO & FILTROS CON INTERACCIÓN MODERNA
+          BUSCADOR DESTACADO & FILTROS CON INTERACCIÓN MODERNA (STICKY GLASS)
           ============================================================ */}
-      <section className="max-w-[1240px] mx-auto px-4 sm:px-6">
-        <div className="p-4 sm:p-5 rounded-3xl bg-[#111827] border border-white/10 shadow-lg space-y-4">
+      <section className="sticky top-3 z-20 max-w-[1240px] mx-auto px-4 sm:px-6">
+        <div className="p-4 sm:p-5 rounded-3xl bg-[#111827]/90 backdrop-blur-xl border border-white/15 shadow-2xl space-y-4">
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
             {/* Input de Búsqueda Destacado */}
             <div className="relative flex-1">
@@ -350,9 +359,74 @@ export function TerrazasPage() {
       </section>
 
       {/* ============================================================
-          CATÁLOGO DE TARJETAS PREMIUM DE DESCUBRIMIENTO
+          CATÁLOGO DE TARJETAS PREMIUM DE DESCUBRIMIENTO + COMPARADOR
           ============================================================ */}
       <section className="max-w-[1240px] mx-auto px-4 sm:px-6 space-y-6">
+        {compararIds.length > 0 && (
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-[#1A0B14] via-[#111827] to-[#1A0B14] border border-[#F27B91]/40 shadow-2xl space-y-4 text-left">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#F27B91]" />
+                <h3 className="font-serif font-bold text-base sm:text-lg text-white">
+                  Comparador Rápido de Terrazas GAM ({compararIds.length}/2)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCompararIds([])}
+                className="text-xs font-semibold text-[#F27B91] hover:underline"
+              >
+                Limpiar comparación
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {compararIds.map((idComp) => {
+                const item = terrazasConFotos.find((x) => x.id === idComp);
+                if (!item) return null;
+                const libres = item.aforoCaninoMax - item.aforoCaninoActual;
+                return (
+                  <div
+                    key={item.id}
+                    className="p-4 rounded-2xl bg-[#162032]/90 border border-white/10 space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#F27B91]">
+                          {item.zona}
+                        </span>
+                        <h4 className="font-serif font-bold text-lg text-white">{item.nombre}</h4>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                        ★ {item.puntuacionPet}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs pt-1">
+                      <div className="p-2 rounded-xl bg-[#090D14]/80 border border-white/5">
+                        <span className="text-[10px] text-slate-400 block">Acústica</span>
+                        <span className="font-bold text-emerald-400 tabular-nums">{item.decibelios} dB</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-[#090D14]/80 border border-white/5">
+                        <span className="text-[10px] text-slate-400 block">Piso / Sombra</span>
+                        <span className="font-bold text-white tabular-nums">{item.temperaturaPiso} ({item.sombraPorcentaje}%)</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-[#090D14]/80 border border-white/5">
+                        <span className="text-[10px] text-slate-400 block">Cupos libres</span>
+                        <span className="font-bold text-[#F27B91] tabular-nums">{libres} de {item.aforoCaninoMax}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {compararIds.length === 1 && (
+                <div className="p-4 rounded-2xl border border-dashed border-[#F27B91]/35 flex items-center justify-center text-xs text-slate-400 text-center">
+                  Pulsa «Comparar» en una segunda terraza del listado para ver la comparativa lado a lado.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between text-xs text-[#94A3B8]">
           <span>
             {t('terrazasExt.mostrando', { n: terrazasFiltradas.length, total: terrazasConFotos.length })}
@@ -518,11 +592,20 @@ export function TerrazasPage() {
                       )}
                     </div>
 
-                    {/* Botón de Auditoría Completa */}
-                    <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-3">
-                      <span className="text-[11px] text-[#94A3B8] truncate">
-                        {terraza.procedenciaVerificacion}
-                      </span>
+                    {/* Botón de Auditoría Completa + Comparador */}
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => alternarComparar(terraza.id)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                          compararIds.includes(terraza.id)
+                            ? 'bg-[#55152D] text-white border-[#F27B91]'
+                            : 'bg-[#162032] text-[#94A3B8] hover:text-white border-white/10'
+                        }`}
+                      >
+                        <Layers className="w-3.5 h-3.5 text-[#F27B91]" />
+                        <span>{compararIds.includes(terraza.id) ? 'Comparando ✓' : 'Comparar'}</span>
+                      </button>
                       <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button
                           size="sm"

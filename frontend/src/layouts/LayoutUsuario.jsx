@@ -19,6 +19,7 @@ import {
 import { BotonTema } from '../components/BotonTema';
 import { AnimacionCierreSesion } from '../components/AnimacionCierreSesion';
 import { ModalConfirmarCierre } from '../components/ModalConfirmarCierre';
+import { AvatarUsuario } from '../components/AvatarUsuario';
 import { LogoSynodos } from '../components/LogoSynodos';
 import { useSesion } from '../hooks/useSesion';
 import { useTema } from '../context/TemaContext';
@@ -399,12 +400,12 @@ export function LayoutUsuario({ children, tabs, tabActiva, onTabChange }) {
                 className={`w-full flex items-center justify-start pl-1.5 pr-2 py-1 rounded-xl border text-left whitespace-nowrap overflow-hidden transition-colors ${clasesTema.tarjetaUsuario} ${clasesTema.focusRing}`}
               >
                 <div className="w-10 h-10 shrink-0 flex items-center justify-center">
-                  <div className="relative shrink-0">
-                    <div className="w-8 h-8 rounded-lg bg-[#501228] text-white flex items-center justify-center font-bold text-xs">
-                      {nombreUsuarioMostrar.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-current" />
-                  </div>
+                  <AvatarUsuario
+                    nombre={nombreUsuarioMostrar}
+                    avatar={usuario?.avatar}
+                    size="sm"
+                    mostrarPuntoOnline={true}
+                  />
                 </div>
                 <div className={`flex items-center justify-between flex-1 min-w-0 ${clasesColapsoTexto(compacta, 'max-w-[185px]')}`}>
                   <div className="truncate pr-2">

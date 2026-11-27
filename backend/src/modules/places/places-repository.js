@@ -2,6 +2,16 @@ const { query, execute } = require('../../shared/config/database');
 const { haversineDistanceKm } = require('../../shared/utils/geo-math');
 
 class PlacesRepository {
+  constructor() {
+    this._findAllCache = new Map();
+    this._findAllInFlight = new Map();
+    this._cacheTtlMs = 5 * 60 * 1000;
+  }
+
+  invalidateCache() {
+    this._findAllCache.clear();
+  }
+
   async _attachApprovedPhotos(places) {
     if (!Array.isArray(places) || places.length === 0) return places;
     const ids = places.map((p) => p?.id).filter(Boolean);
@@ -77,28 +87,49 @@ class PlacesRepository {
   }
 
   async findAll({ category, verifiedOnly, search, limit = 50, offset = 0 } = {}) {
-    let sql = 'SELECT * FROM places WHERE 1=1';
-    const params = [];
-
-    if (category) {
-      sql += ' AND category = ?';
-      params.push(category);
-    }
-    if (verifiedOnly) {
-      sql += ' AND (verified_by_admin IS TRUE OR verified_by_admin = 1)';
-    }
-    if (search) {
-      sql += ' AND (name LIKE ? OR address LIKE ? OR district LIKE ?)';
-      const term = `%${search}%`;
-      params.push(term, term, term);
+    const cacheKey = `${category || ''}|${Boolean(verifiedOnly)}|${search || ''}|${limit}|${offset}`;
+    const cached = this._findAllCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < this._cacheTtlMs) {
+      return cached.items;
     }
 
-    sql += ' ORDER BY verified_by_admin DESC, name ASC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    if (this._findAllInFlight.has(cacheKey)) {
+      return this._findAllInFlight.get(cacheKey);
+    }
 
-    const rows = await query(sql, params);
-    const deserialized = rows.map(r => this.deserialize(r));
-    return this._attachApprovedPhotos(deserialized);
+    const promise = (async () => {
+      let sql = 'SELECT * FROM places WHERE 1=1';
+      const params = [];
+
+      if (category) {
+        sql += ' AND category = ?';
+        params.push(category);
+      }
+      if (verifiedOnly) {
+        sql += ' AND (verified_by_admin IS TRUE OR verified_by_admin = 1)';
+      }
+      if (search) {
+        sql += ' AND (name LIKE ? OR address LIKE ? OR district LIKE ?)';
+        const term = `%${search}%`;
+        params.push(term, term, term);
+      }
+
+      sql += ' ORDER BY verified_by_admin DESC, name ASC LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+
+      const rows = await query(sql, params);
+      const deserialized = rows.map((r) => this.deserialize(r));
+      const enriched = await this._attachApprovedPhotos(deserialized);
+      this._findAllCache.set(cacheKey, { items: enriched, ts: Date.now() });
+      return enriched;
+    })();
+
+    this._findAllInFlight.set(cacheKey, promise);
+    try {
+      return await promise;
+    } finally {
+      this._findAllInFlight.delete(cacheKey);
+    }
   }
 
   async findPaginated({

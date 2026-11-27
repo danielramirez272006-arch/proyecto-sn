@@ -120,9 +120,9 @@ export function RadarTerrazas() {
         </div>
 
         {/* ============================================================
-            BARRA DE FILTROS Y BÚSQUEDA REDISEÑADA (Chips Premium)
+            BARRA DE FILTROS Y BÚSQUEDA REDISEÑADA (Sticky Glass Chips Premium)
             ============================================================ */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-3 rounded-2xl bg-[#111827] border border-white/10 shadow-sm">
+        <div className="sticky top-3 z-20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-3 rounded-2xl bg-[#111827]/90 backdrop-blur-xl border border-white/15 shadow-xl">
           {/* Campo de búsqueda */}
           <div className="relative flex-1 min-w-[200px]">
             <Search className="w-4 h-4 text-[#94A3B8] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />

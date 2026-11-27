@@ -79,8 +79,8 @@ export function ModalDetalleLugar({ lugar, onClose, onFavoritoCambiado }) {
     : [];
 
   const handleToggleFavorito = () => {
-    const nuevos = alternarFavorito(lugar.id);
-    setFavorito(nuevos.includes(lugar.id));
+    const nuevos = alternarFavorito(lugar.id, lugar);
+    setFavorito(nuevos.includes(String(lugar.id)));
     if (onFavoritoCambiado) onFavoritoCambiado(lugar.id);
   };
 

@@ -22,15 +22,27 @@ async function bootstrap() {
     server.keepAliveTimeout = 65000;
 
     // 2. Inicializar base de datos e hidratar tokens JWT revocados (OWASP A07:2025)
-    await initDatabase();
+    const dbInfo = await initDatabase();
     await hydrateRevokedTokensFromDb();
 
-    // 3. Si es desarrollo y la base está limpia, correr migraciones y seeds automáticamente
+    // 3. Si es desarrollo, correr migraciones y seeds solo si la base está limpia (o SQLite local) para no saturar el pool de Supabase en cada reinicio
     if (env.nodeEnv !== 'production') {
       try {
-        await runMigrations();
-        await runSeeds();
-        await authService.ensureDefaultAccounts();
+        const { query } = require('./shared/config/database');
+        let skipHeavyCloudMigrations = false;
+        if (dbInfo?.dialect === 'postgres' && process.env.FORCE_MIGRATE !== 'true') {
+          const existingPlaces = await query('SELECT COUNT(*) as total FROM places').catch(() => []);
+          const count = Number(existingPlaces?.[0]?.total || 0);
+          if (count >= 10) {
+            skipHeavyCloudMigrations = true;
+            console.log(`[Server] Base Supabase ya inicializada (${count} lugares activos). Omitiendo re-ejecución de migraciones en arranque.`);
+          }
+        }
+        if (!skipHeavyCloudMigrations) {
+          await runMigrations();
+          await runSeeds();
+          await authService.ensureDefaultAccounts();
+        }
       } catch (dbErr) {
         console.warn('[Server] Aviso al auto-aplicar migraciones/seeds:', dbErr.message);
       }

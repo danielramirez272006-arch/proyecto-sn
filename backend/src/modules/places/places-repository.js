@@ -6,7 +6,6 @@ const CATALOG_CACHE_TTL_MS = 20 * 1000;
 
 class PlacesRepository {
   constructor() {
-  constructor() {
     this._cache = new Map();
     this._findAllInFlight = new Map();
   }

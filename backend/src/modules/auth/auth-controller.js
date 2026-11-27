@@ -128,6 +128,16 @@ class AuthController {
   }
 
   async webauthnVerify(req, res) {
+    if (env.isProd) {
+      return res.status(501).json({
+        ok: false,
+        data: null,
+        error: {
+          code: 'WEBAUTHN_NOT_ENABLED',
+          message: 'La verificación WebAuthn simulada está deshabilitada en producción.'
+        }
+      });
+    }
     return success(res, {
       verified: true,
       credential_id: 'webauthn_passkey_cr_simulated',

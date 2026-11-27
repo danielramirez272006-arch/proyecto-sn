@@ -40,3 +40,11 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        value: no-reply@synodos.cr
+      - key: BREVO_SENDER_NAME
+        value: Synodos Pet OS
+      - key: BREVO_RESET_TEMPLATE_ID
+        value: "1"

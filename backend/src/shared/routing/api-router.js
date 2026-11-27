@@ -1022,5 +1022,6 @@ router.delete('/client/account', requireAuth, rateLimiter.authLimiter, (req, res
 );
 router.use('/client', require('../../modules/client-dashboard').clientRoutes);
 router.use('/agents', require('../../routes/agents-routes'));
+router.use('/rag', require('../../modules/rag').ragRoutes);
 
 module.exports = router;

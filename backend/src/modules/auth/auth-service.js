@@ -11,6 +11,7 @@ const {
   revokeAllUserAccessTokens
 } = require('../../shared/middlewares/auth-role-guard');
 const auditService = require('../../shared/audit/audit-service');
+const emailClient = require('../../shared/clients/email-client');
 const { encryptColumnValue, decryptColumnValue } = require('../../models');
 
 // Cuentas exclusivas administrativas y usuarios demo de desarrollo
@@ -188,7 +189,30 @@ class AuthService {
   }
 
   async ensureDefaultAccounts() {
-    for (const acc of DEFAULT_ACCOUNTS) {
+    if (!env.isTest && this._defaultAccountsEnsured) {
+      return;
+    }
+
+    // En producción jamás sembrar cuentas demo con contraseñas conocidas; solo bootstrap admin si está explícito en entorno
+    const accountsToEnsure = env.isProd
+      ? (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD
+          ? [
+              {
+                id: 'usr_admin_gotox',
+                name: process.env.ADMIN_NAME || 'Administrador Synodos',
+                email: process.env.ADMIN_EMAIL,
+                password: process.env.ADMIN_PASSWORD,
+                role: 'admin',
+                gpsTrustScore: 100,
+                zone: 'Centro de Mando GAM, San José',
+                hasPet: false,
+              },
+            ]
+          : [])
+      : DEFAULT_ACCOUNTS;
+
+    let allSucceeded = true;
+    for (const acc of accountsToEnsure) {
       try {
         const normalizedEmail = acc.email.trim().toLowerCase();
         const existing = await query('SELECT id, password_hash, role FROM users WHERE LOWER(email) = ? OR id = ?', [
@@ -238,8 +262,12 @@ class AuthService {
           ).catch(() => {});
         }
       } catch (err) {
+        allSucceeded = false;
         // Ignorar si las tablas aún no están migradas durante algún unit test aislado
       }
+    }
+    if (!env.isTest && allSucceeded) {
+      this._defaultAccountsEnsured = true;
     }
   }
 
@@ -507,6 +535,26 @@ class AuthService {
 
     const profileDetails = await this._loadUserProfileDetails(id);
 
+    // Correo de bienvenida no bloqueante (Brevo en producción / local en dev-test)
+    const welcomeTemplateId = parseInt(
+      process.env.BREVO_WELCOME_TEMPLATE_ID || String(env.email?.welcomeTemplateId || '0'),
+      10
+    ) || null;
+    const safeWelcomeName = cleanName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    emailClient.sendMail({
+      to: normalizedEmail,
+      toName: cleanName,
+      subject: '¡Bienvenido a Synodos Pet OS!',
+      text: `¡Pura vida, ${cleanName}! Tu cuenta en Synodos Pet OS ya está activa. Explora terrazas pet-friendly, el Mapa GAM y el Copiloto Argos en ${env.frontendUrl}.`,
+      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;background:#FFFFFF;border-radius:18px;overflow:hidden;border:1px solid #E5D5E0;"><div style="background:#501228;padding:24px 28px;color:#FFFFFF;"><h2 style="margin:0;font-size:22px;">¡Pura vida, ${safeWelcomeName}!</h2><p style="margin:6px 0 0;color:#F5D8E2;font-size:13px;">Synodos Pet OS · Costa Rica</p></div><div style="height:4px;background:#1DA481;"></div><div style="padding:24px 28px;color:#1F2937;font-size:14.5px;line-height:1.6;"><p style="margin:0 0 14px;">Tu cuenta ya está lista para descubrir <strong>terrazas pet-friendly verificadas</strong>, consultar el clima del GAM y conversar con <strong>Argos</strong>.</p><p style="margin:0;"><a href="${env.frontendUrl}" style="display:inline-block;background:#501228;color:#FFFFFF;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px;">Explorar Synodos &rarr;</a></p></div></div>`,
+      templateId: welcomeTemplateId,
+      params: { NAME: cleanName, APP_URL: env.frontendUrl },
+      idempotencyKey: `welcome_${id}`,
+      tags: ['auth', 'welcome'],
+    }).catch((mailErr) => {
+      console.warn('[Auth] No se pudo enviar correo de bienvenida:', mailErr.message);
+    });
+
     return {
       token,
       refresh_token: refreshToken,
@@ -636,16 +684,70 @@ class AuthService {
     );
 
     const outboxId = `ntf_reset_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const resetSubject = 'Recuperación de contraseña — Synodos Pet OS';
+    const resetUrl = `${env.frontendUrl}/acceso?reset_token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(user.email)}`;
+    const resetText = [
+      `Hola ${user.name || 'explorador'},`,
+      '',
+      'Solicitaste restablecer tu contraseña en Synodos Pet OS.',
+      `Tu código temporal (válido por 15 minutos) es: ${rawToken}`,
+      '',
+      `Ingresa a ${resetUrl} para completar el cambio.`,
+      'Si no realizaste esta solicitud, puedes ignorar este correo de forma segura.'
+    ].join('\n');
+
+    const safeName = String(user.name || 'explorador')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const resetHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; background: #0f172a; color: #f8fafc; border-radius: 16px;">
+        <h2 style="margin: 0 0 12px; color: #38bdf8;">Synodos Pet OS</h2>
+        <p style="margin: 0 0 16px; color: #cbd5e1;">Hola <strong>${safeName}</strong>, solicitaste restablecer tu contraseña.</p>
+        <p style="margin: 0 0 8px; font-size: 13px; color: #94a3b8;">Tu código temporal (válido por 15 minutos):</p>
+        <div style="padding: 14px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; font-family: monospace; font-size: 16px; letter-spacing: 1px; color: #f8fafc; word-break: break-all;">
+          ${rawToken}
+        </div>
+        <p style="margin: 18px 0 0; font-size: 12px; color: #94a3b8;">Si no realizaste esta solicitud, puedes ignorar este correo.</p>
+      </div>
+    `.trim();
+
     await execute(
       `INSERT INTO notification_outbox (id, recipient_email, subject, body, status)
        VALUES (?, ?, ?, ?, 'pending')`,
-      [
-        outboxId,
-        user.email,
-        'Recuperación de contraseña — Synodos',
-        `Solicitaste restablecer tu contraseña. Tu código temporal (válido 15 minutos) es: ${rawToken}`
-      ]
+      [outboxId, user.email, resetSubject, resetText]
     ).catch(() => {});
+
+    // Envío transaccional directo (Brevo API v3 cuando BREVO_API_KEY está configurada; modo local si aún no)
+    const resetTemplateId = parseInt(
+      process.env.BREVO_RESET_TEMPLATE_ID || String(env.email?.resetTemplateId || '0'),
+      10
+    ) || null;
+    try {
+      const mailResult = await emailClient.sendMail({
+        to: user.email,
+        toName: user.name || '',
+        subject: resetSubject,
+        text: resetText,
+        html: resetHtml,
+        templateId: resetTemplateId,
+        params: {
+          NAME: user.name || 'explorador',
+          RESET_CODE: rawToken,
+          RESET_URL: resetUrl,
+        },
+        idempotencyKey: outboxId,
+        tags: ['auth', 'password-reset'],
+      });
+      if (mailResult && mailResult.provider === 'brevo') {
+        await execute(
+          `UPDATE notification_outbox SET status = 'sent' WHERE id = ?`,
+          [outboxId]
+        ).catch(() => {});
+      }
+    } catch (mailErr) {
+      console.warn('[Auth] No se pudo enviar correo de recuperación vía proveedor:', mailErr.message);
+    }
 
     await auditService.record({
       userId: user.id,

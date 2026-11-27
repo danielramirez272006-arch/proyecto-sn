@@ -115,6 +115,21 @@ const env = {
   webhook: {
     url: process.env.WEBHOOK_URL || '',
   },
+  email: {
+    provider: process.env.EMAIL_PROVIDER || (process.env.BREVO_API_KEY ? 'brevo' : 'local'),
+    brevoApiKey: process.env.BREVO_API_KEY || '',
+    brevoApiUrl: process.env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email',
+    senderEmail: process.env.BREVO_SENDER_EMAIL || 'no-reply@synodos.cr',
+    senderName: process.env.BREVO_SENDER_NAME || 'Synodos Pet OS',
+    replyTo: process.env.BREVO_REPLY_TO || '',
+    resetTemplateId: parseInt(process.env.BREVO_RESET_TEMPLATE_ID || '0', 10) || null,
+    welcomeTemplateId: parseInt(process.env.BREVO_WELCOME_TEMPLATE_ID || '0', 10) || null,
+    timeoutMs: parseInt(process.env.EMAIL_TIMEOUT_MS || '10000', 10),
+  },
+  cache: {
+    // Opcional a futuro si el servicio escala a múltiples instancias en Render
+    redisUrl: process.env.REDIS_URL || '',
+  },
   integrations: {
     osrmUrl: process.env.OSRM_BASE_URL || 'https://router.project-osrm.org',
     openMeteoUrl: process.env.OPEN_METEO_BASE_URL || 'https://api.open-meteo.com/v1',

@@ -10,6 +10,7 @@ class DeepSeekSafeClient {
     this.temperature = env.deepseek?.temperature ?? 0.2;
     this.requestCountToday = 0;
     this.providerName = 'DeepSeek';
+    this.timeoutMs = parseInt(process.env.DEEPSEEK_TIMEOUT_MS || '8000', 10);
     this.chatSessions = new Map(); // session_id -> messages array
   }
 
@@ -50,7 +51,8 @@ class DeepSeekSafeClient {
           messages,
           temperature: temperature ?? this.temperature,
           response_format: { type: 'json_object' }
-        })
+        }),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
 
       if (!response.ok) {
@@ -121,7 +123,8 @@ class DeepSeekSafeClient {
           model: model || this.model,
           messages,
           temperature: 0.3
-        })
+        }),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
 
       if (!response.ok) {

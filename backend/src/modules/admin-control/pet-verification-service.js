@@ -285,42 +285,58 @@ class PetVerificationService {
   }
 
   /**
-   * Genera eventos idempotentes para n8n (pendientes de revisión, próximas a vencer y contradicciones).
+   * Genera eventos idempotentes para n8n / bandeja admin (pendientes de revisión, próximas a vencer y contradicciones)
+   * usando consultas agrupadas para evitar N+1 sobre PostgreSQL remoto.
    */
-  async scanAndEmitAutomationEvents({ expiringWithinDays = 14, now = new Date() } = {}) {
+  async scanAndEmitAutomationEvents({ expiringWithinDays = 14, maxNewEvents = 40, now = new Date() } = {}) {
     const places = await placesRepository.findAll({ limit: 200 });
     const windowMs = Math.max(1, Number(expiringWithinDays) || 14) * 24 * 60 * 60 * 1000;
     const dateBucket = now.toISOString().slice(0, 10);
     const emitted = [];
 
-    for (const place of places) {
-      const evRows = await query(
-        `SELECT * FROM place_pet_evidence WHERE place_id = ? AND status != 'retracted'`,
-        [place.id]
-      );
-      const evidences = (evRows || []).map((r) => {
-        let cond = {};
-        try { cond = typeof r.conditions_json === 'string' ? JSON.parse(r.conditions_json) : (r.conditions_json || {}); } catch {}
-        return { ...r, conditions: cond };
-      });
+    if (!places || places.length === 0) {
+      return { emitted_count: 0, emitted_events: [], pending_events: [] };
+    }
 
+    const placeIds = places.map((p) => p.id).filter(Boolean);
+    const placeholders = placeIds.map(() => '?').join(', ');
+    const allEvRows = await query(
+      `SELECT * FROM place_pet_evidence WHERE place_id IN (${placeholders}) AND status != 'retracted'`,
+      placeIds
+    ).catch(() => []);
+
+    const evidencesByPlace = new Map();
+    for (const r of allEvRows || []) {
+      let cond = {};
+      try {
+        cond = typeof r.conditions_json === 'string' ? JSON.parse(r.conditions_json) : (r.conditions_json || {});
+      } catch {}
+      const list = evidencesByPlace.get(r.place_id) || [];
+      list.push({ ...r, conditions: cond });
+      evidencesByPlace.set(r.place_id, list);
+    }
+
+    const candidateEvents = [];
+    for (const place of places) {
+      const evidences = evidencesByPlace.get(place.id) || [];
       const fallback = petCompatibilityService.extractInternalPolicy(place);
       const reconciled = petCompatibilityService.reconcileEvidence(evidences.length ? evidences : [fallback], now);
 
       if (reconciled.conflicts.length > 0) {
-        const res = await this._insertAutomationEvent({
+        candidateEvents.push({
+          priority: 1,
           eventType: 'contradiction_detected',
           placeId: place.id,
           idempotencyKey: `contradiction:${place.id}:${dateBucket}`,
           payload: { place_id: place.id, place_name: place.name, conflicts: reconciled.conflicts },
         });
-        if (res.inserted) emitted.push(res.event);
       }
 
       if (reconciled.provenance?.review_due_at) {
         const dueMs = new Date(reconciled.provenance.review_due_at).getTime();
         if (Number.isFinite(dueMs) && dueMs - now.getTime() <= windowMs) {
-          const res = await this._insertAutomationEvent({
+          candidateEvents.push({
+            priority: 2,
             eventType: 'confirmation_expiring',
             placeId: place.id,
             idempotencyKey: `expiring:${place.id}:${reconciled.provenance.review_due_at.slice(0, 10)}`,
@@ -331,12 +347,12 @@ class PetVerificationService {
               is_expired: reconciled.is_expired,
             },
           });
-          if (res.inserted) emitted.push(res.event);
         }
       }
 
       if (!reconciled.is_confirmed && reconciled.conflicts.length === 0) {
-        const res = await this._insertAutomationEvent({
+        candidateEvents.push({
+          priority: 3,
           eventType: 'review_pending',
           placeId: place.id,
           idempotencyKey: `review_pending:${place.id}:${dateBucket}`,
@@ -347,6 +363,22 @@ class PetVerificationService {
             access_status: reconciled.access_status,
           },
         });
+      }
+    }
+
+    if (candidateEvents.length > 0) {
+      candidateEvents.sort((a, b) => a.priority - b.priority);
+      const allKeys = candidateEvents.map((c) => c.idempotencyKey);
+      const keyPlaceholders = allKeys.map(() => '?').join(', ');
+      const existingRows = await query(
+        `SELECT idempotency_key FROM automation_events WHERE idempotency_key IN (${keyPlaceholders})`,
+        allKeys
+      ).catch(() => []);
+      const existingKeys = new Set((existingRows || []).map((r) => r.idempotency_key));
+
+      const missing = candidateEvents.filter((c) => !existingKeys.has(c.idempotencyKey)).slice(0, maxNewEvents);
+      for (const item of missing) {
+        const res = await this._insertAutomationEvent(item);
         if (res.inserted) emitted.push(res.event);
       }
     }
@@ -416,6 +448,106 @@ class PetVerificationService {
       event: rows[0],
       verification: result,
     };
+  }
+
+  /**
+   * Devuelve la bandeja unificada de revisión administrativa (sugerencias externas,
+   * contradicciones y confirmaciones por vencer) enriquecida con datos del local y evidencias.
+   */
+  async getReviewQueue({ limit = 50, eventType = null } = {}) {
+    const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50));
+    const clauses = ["e.status = 'pending'"];
+    const params = [];
+
+    if (eventType) {
+      clauses.push('e.event_type = ?');
+      params.push(String(eventType).trim());
+    } else {
+      clauses.push("e.event_type IN ('review_pending', 'contradiction_detected', 'confirmation_expiring')");
+    }
+
+    const rows = await query(
+      `SELECT e.*, p.name AS place_name, p.address AS place_address, p.canton AS place_canton, p.verified_by_admin
+       FROM automation_events e
+       LEFT JOIN places p ON e.place_id = p.id
+       WHERE ${clauses.join(' AND ')}
+       ORDER BY e.created_at DESC
+       LIMIT ?`,
+      [...params, safeLimit]
+    );
+
+    const placeIds = [...new Set((rows || []).map((r) => r.place_id).filter(Boolean))];
+    const evidenceByPlace = new Map();
+    if (placeIds.length > 0) {
+      const placeholders = placeIds.map(() => '?').join(', ');
+      const evRows = await query(
+        `SELECT * FROM place_pet_evidence WHERE place_id IN (${placeholders}) AND status != 'retracted' ORDER BY checked_at DESC`,
+        placeIds
+      ).catch(() => []);
+      for (const ev of evRows || []) {
+        let conditions = {};
+        try {
+          conditions = typeof ev.conditions_json === 'string' ? JSON.parse(ev.conditions_json) : (ev.conditions_json || {});
+        } catch {}
+        const list = evidenceByPlace.get(ev.place_id) || [];
+        list.push({ ...ev, conditions });
+        evidenceByPlace.set(ev.place_id, list);
+      }
+    }
+
+    const items = (rows || []).map((row) => {
+      let payload = {};
+      try {
+        payload = typeof row.payload_json === 'string' ? JSON.parse(row.payload_json) : (row.payload_json || {});
+      } catch {}
+      return {
+        id: row.id,
+        event_type: row.event_type,
+        status: row.status,
+        place_id: row.place_id,
+        place_name: row.place_name || payload.place_name || null,
+        place_address: row.place_address || null,
+        place_canton: row.place_canton || null,
+        verified_by_admin: Boolean(row.verified_by_admin),
+        payload,
+        evidences: evidenceByPlace.get(row.place_id) || [],
+        created_at: row.created_at,
+      };
+    });
+
+    return {
+      total: items.length,
+      counts: {
+        contradiction_detected: items.filter((i) => i.event_type === 'contradiction_detected').length,
+        review_pending: items.filter((i) => i.event_type === 'review_pending').length,
+        confirmation_expiring: items.filter((i) => i.event_type === 'confirmation_expiring').length,
+      },
+      items,
+    };
+  }
+
+  /**
+   * Marca un evento de la bandeja administrativa como revisado/atendido.
+   */
+  async acknowledgeAutomationEvent(eventId, actorUserId = 'usr_admin_1', req = null) {
+    const cleanId = String(eventId || '').trim();
+    const existing = await query('SELECT * FROM automation_events WHERE id = ?', [cleanId]);
+    if (!existing || existing.length === 0) {
+      throw makeErr('EVENT_NOT_FOUND', 'Evento de revisión no encontrado', 404);
+    }
+    await execute(
+      `UPDATE automation_events SET status = 'acknowledged', processed_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [cleanId]
+    );
+    await auditService.record({
+      userId: actorUserId,
+      action: 'PET_AUTOMATION_EVENT_ACKNOWLEDGED',
+      resource: 'automation_events',
+      resourceId: cleanId,
+      details: { event_type: existing[0].event_type, place_id: existing[0].place_id },
+      req,
+    }).catch(() => {});
+    return { id: cleanId, status: 'acknowledged' };
   }
 }
 

@@ -51,6 +51,9 @@ router.post('/places/:id/pet-outdated', (req, res, next) => adminController.mark
 router.post('/places/:id/pet-resolve-conflict', (req, res, next) => adminController.resolvePlacePetConflict(req, res, next));
 router.delete('/places/:id/pet-confirm', (req, res, next) => adminController.withdrawPlacePetConfirmation(req, res, next));
 router.get('/pet-automation/events', (req, res, next) => adminController.scanPetAutomationEvents(req, res, next));
+router.get('/pet-automation/review-queue', (req, res, next) => adminController.getPetReviewQueue(req, res, next));
+router.post('/pet-automation/events/:id/acknowledge', (req, res, next) => adminController.acknowledgePetAutomationEvent(req, res, next));
+router.post('/pet-automation/detect-hints', (req, res, next) => adminController.runPetHintDetectionBatch(req, res, next));
 router.post('/pet-automation/confirmations', (req, res, next) => adminController.recordPetAutomationConfirmation(req, res, next));
 
 module.exports = router;

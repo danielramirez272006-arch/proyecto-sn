@@ -27,20 +27,25 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/admin/places/pet-automation/scan?expiring_within_days=14",
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/admin/pet-automation/events?expiring_within_days=14",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             { "name": "Authorization", "value": "=Bearer {{ $env.ADMIN_JWT_TOKEN }}" }
           ]
+        },
+        "options": {
+          "timeout": 12000
         }
       },
       "id": "wf1-http-scan",
       "name": "2. Escanear Políticas Pet-Friendly",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [420, 280]
+      "retryOnFail": true,
+      "maxTries": 2,
+      "position": [520, 280]
     },
     {
       "parameters": {
@@ -63,7 +68,7 @@
                 "conditions": [
                   {
                     "leftValue": "={{ $json.event_type }}",
-                    "rightValue": "PET_POLICY_CONFLICT_DETECTED",
+                    "rightValue": "contradiction_detected",
                     "operator": { "type": "string", "operation": "equals" }
                   }
                 ]
@@ -77,13 +82,27 @@
                 "conditions": [
                   {
                     "leftValue": "={{ $json.event_type }}",
-                    "rightValue": "PET_POLICY_EXPIRING_SOON",
+                    "rightValue": "confirmation_expiring",
                     "operator": { "type": "string", "operation": "equals" }
                   }
                 ]
               },
               "renameOutput": true,
               "outputKey": "preventivo_14_dias"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "review_pending",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "revision_pendiente"
             }
           ]
         }
@@ -194,7 +213,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/admin/places/pet-automation/webhook-confirm",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:4000' }}/api/admin/pet-automation/confirmations",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -203,7 +222,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"place_id\": $json.place_id, \"access_status\": $json.access_status, \"evidence_ref\": $json.evidence_ref, \"notes\": $json.notes }"
+        "jsonBody": "={ \"idempotency_key\": $json.idempotency_key || ('wf1_confirm_' + $json.place_id + '_' + $now.toFormat('yyyy-MM-dd')), \"place_id\": $json.place_id, \"access_status\": $json.access_status, \"evidence_ref\": $json.evidence_ref, \"notes\": $json.notes }"
       },
       "id": "wf1-http-confirm",
       "name": "10. Backend: Guardar Evidencia Verificada",
@@ -249,7 +268,7 @@
       "main": [[{ "node": "2. Escanear Políticas Pet-Friendly", "type": "main", "index": 0 }]]
     },
     "1B. Webhook Confirmación Comercio": {
-      "main": [[{ "node": "2. Escanear Políticas Pet-Friendly", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "9. Code: Consolidar Evidencia y Sello", "type": "main", "index": 0 }]]
     },
     "2. Escanear Políticas Pet-Friendly": {
       "main": [[{ "node": "3. SplitInBatches (Por Comercio)", "type": "main", "index": 0 }]]

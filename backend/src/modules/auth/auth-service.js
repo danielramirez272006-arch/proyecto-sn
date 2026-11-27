@@ -508,6 +508,26 @@ class AuthService {
 
     const profileDetails = await this._loadUserProfileDetails(id);
 
+    // Correo de bienvenida no bloqueante (Brevo en producción / local en dev-test)
+    const welcomeTemplateId = parseInt(
+      process.env.BREVO_WELCOME_TEMPLATE_ID || String(env.email?.welcomeTemplateId || '0'),
+      10
+    ) || null;
+    const safeWelcomeName = cleanName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    emailClient.sendMail({
+      to: normalizedEmail,
+      toName: cleanName,
+      subject: '¡Bienvenido a Synodos Pet OS!',
+      text: `¡Pura vida, ${cleanName}! Tu cuenta en Synodos Pet OS ya está activa. Explora terrazas pet-friendly, el Mapa GAM y el Copiloto Argos en ${env.frontendUrl}.`,
+      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;background:#FFFFFF;border-radius:18px;overflow:hidden;border:1px solid #E5D5E0;"><div style="background:#501228;padding:24px 28px;color:#FFFFFF;"><h2 style="margin:0;font-size:22px;">¡Pura vida, ${safeWelcomeName}!</h2><p style="margin:6px 0 0;color:#F5D8E2;font-size:13px;">Synodos Pet OS · Costa Rica</p></div><div style="height:4px;background:#1DA481;"></div><div style="padding:24px 28px;color:#1F2937;font-size:14.5px;line-height:1.6;"><p style="margin:0 0 14px;">Tu cuenta ya está lista para descubrir <strong>terrazas pet-friendly verificadas</strong>, consultar el clima del GAM y conversar con <strong>Argos</strong>.</p><p style="margin:0;"><a href="${env.frontendUrl}" style="display:inline-block;background:#501228;color:#FFFFFF;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px;">Explorar Synodos &rarr;</a></p></div></div>`,
+      templateId: welcomeTemplateId,
+      params: { NAME: cleanName, APP_URL: env.frontendUrl },
+      idempotencyKey: `welcome_${id}`,
+      tags: ['auth', 'welcome'],
+    }).catch((mailErr) => {
+      console.warn('[Auth] No se pudo enviar correo de bienvenida:', mailErr.message);
+    });
+
     return {
       token,
       refresh_token: refreshToken,
@@ -638,13 +658,14 @@ class AuthService {
 
     const outboxId = `ntf_reset_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const resetSubject = 'Recuperación de contraseña — Synodos Pet OS';
+    const resetUrl = `${env.frontendUrl}/acceso?reset_token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(user.email)}`;
     const resetText = [
       `Hola ${user.name || 'explorador'},`,
       '',
       'Solicitaste restablecer tu contraseña en Synodos Pet OS.',
       `Tu código temporal (válido por 15 minutos) es: ${rawToken}`,
       '',
-      `Ingresa a ${env.frontendUrl}/acceso para completar el cambio.`,
+      `Ingresa a ${resetUrl} para completar el cambio.`,
       'Si no realizaste esta solicitud, puedes ignorar este correo de forma segura.'
     ].join('\n');
 
@@ -686,7 +707,7 @@ class AuthService {
         params: {
           NAME: user.name || 'explorador',
           RESET_CODE: rawToken,
-          RESET_URL: `${env.frontendUrl}/acceso`,
+          RESET_URL: resetUrl,
         },
         idempotencyKey: outboxId,
         tags: ['auth', 'password-reset'],

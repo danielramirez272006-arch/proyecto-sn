@@ -123,6 +123,7 @@ const env = {
     senderName: process.env.BREVO_SENDER_NAME || 'Synodos Pet OS',
     replyTo: process.env.BREVO_REPLY_TO || '',
     resetTemplateId: parseInt(process.env.BREVO_RESET_TEMPLATE_ID || '0', 10) || null,
+    welcomeTemplateId: parseInt(process.env.BREVO_WELCOME_TEMPLATE_ID || '0', 10) || null,
     timeoutMs: parseInt(process.env.EMAIL_TIMEOUT_MS || '10000', 10),
   },
   cache: {

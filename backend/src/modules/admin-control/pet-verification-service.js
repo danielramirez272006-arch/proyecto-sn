@@ -417,6 +417,106 @@ class PetVerificationService {
       verification: result,
     };
   }
+
+  /**
+   * Devuelve la bandeja unificada de revisión administrativa (sugerencias externas,
+   * contradicciones y confirmaciones por vencer) enriquecida con datos del local y evidencias.
+   */
+  async getReviewQueue({ limit = 50, eventType = null } = {}) {
+    const safeLimit = Math.max(1, Math.min(100, Number(limit) || 50));
+    const clauses = ["e.status = 'pending'"];
+    const params = [];
+
+    if (eventType) {
+      clauses.push('e.event_type = ?');
+      params.push(String(eventType).trim());
+    } else {
+      clauses.push("e.event_type IN ('review_pending', 'contradiction_detected', 'confirmation_expiring')");
+    }
+
+    const rows = await query(
+      `SELECT e.*, p.name AS place_name, p.address AS place_address, p.canton AS place_canton, p.verified_by_admin
+       FROM automation_events e
+       LEFT JOIN places p ON e.place_id = p.id
+       WHERE ${clauses.join(' AND ')}
+       ORDER BY e.created_at DESC
+       LIMIT ?`,
+      [...params, safeLimit]
+    );
+
+    const placeIds = [...new Set((rows || []).map((r) => r.place_id).filter(Boolean))];
+    const evidenceByPlace = new Map();
+    if (placeIds.length > 0) {
+      const placeholders = placeIds.map(() => '?').join(', ');
+      const evRows = await query(
+        `SELECT * FROM place_pet_evidence WHERE place_id IN (${placeholders}) AND status != 'retracted' ORDER BY checked_at DESC`,
+        placeIds
+      ).catch(() => []);
+      for (const ev of evRows || []) {
+        let conditions = {};
+        try {
+          conditions = typeof ev.conditions_json === 'string' ? JSON.parse(ev.conditions_json) : (ev.conditions_json || {});
+        } catch {}
+        const list = evidenceByPlace.get(ev.place_id) || [];
+        list.push({ ...ev, conditions });
+        evidenceByPlace.set(ev.place_id, list);
+      }
+    }
+
+    const items = (rows || []).map((row) => {
+      let payload = {};
+      try {
+        payload = typeof row.payload_json === 'string' ? JSON.parse(row.payload_json) : (row.payload_json || {});
+      } catch {}
+      return {
+        id: row.id,
+        event_type: row.event_type,
+        status: row.status,
+        place_id: row.place_id,
+        place_name: row.place_name || payload.place_name || null,
+        place_address: row.place_address || null,
+        place_canton: row.place_canton || null,
+        verified_by_admin: Boolean(row.verified_by_admin),
+        payload,
+        evidences: evidenceByPlace.get(row.place_id) || [],
+        created_at: row.created_at,
+      };
+    });
+
+    return {
+      total: items.length,
+      counts: {
+        contradiction_detected: items.filter((i) => i.event_type === 'contradiction_detected').length,
+        review_pending: items.filter((i) => i.event_type === 'review_pending').length,
+        confirmation_expiring: items.filter((i) => i.event_type === 'confirmation_expiring').length,
+      },
+      items,
+    };
+  }
+
+  /**
+   * Marca un evento de la bandeja administrativa como revisado/atendido.
+   */
+  async acknowledgeAutomationEvent(eventId, actorUserId = 'usr_admin_1', req = null) {
+    const cleanId = String(eventId || '').trim();
+    const existing = await query('SELECT * FROM automation_events WHERE id = ?', [cleanId]);
+    if (!existing || existing.length === 0) {
+      throw makeErr('EVENT_NOT_FOUND', 'Evento de revisión no encontrado', 404);
+    }
+    await execute(
+      `UPDATE automation_events SET status = 'acknowledged', processed_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [cleanId]
+    );
+    await auditService.record({
+      userId: actorUserId,
+      action: 'PET_AUTOMATION_EVENT_ACKNOWLEDGED',
+      resource: 'automation_events',
+      resourceId: cleanId,
+      details: { event_type: existing[0].event_type, place_id: existing[0].place_id },
+      req,
+    }).catch(() => {});
+    return { id: cleanId, status: 'acknowledged' };
+  }
 }
 
 module.exports = new PetVerificationService();

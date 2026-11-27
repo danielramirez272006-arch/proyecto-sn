@@ -26,7 +26,7 @@ async function migrate() {
   console.log('[Supabase CLI] Conectando a Supabase PostgreSQL...');
   const client = await getClient();
   try {
-    const schemaFile = path.resolve(__dirname, '../../../supabase/supabase-esquema-mvp.sql');
+    const schemaFile = path.resolve(__dirname, '../../../supabase/schema/supabase-esquema-mvp.sql');
     if (!fs.existsSync(schemaFile)) {
       throw new Error(`Archivo de esquema no encontrado: ${schemaFile}`);
     }
@@ -43,7 +43,7 @@ async function seed() {
   console.log('[Supabase CLI] Conectando a Supabase PostgreSQL...');
   const client = await getClient();
   try {
-    const seedFile = path.resolve(__dirname, '../../../supabase/supabase-datos-demo.sql');
+    const seedFile = path.resolve(__dirname, '../../../supabase/schema/supabase-datos-demo.sql');
     if (!fs.existsSync(seedFile)) {
       throw new Error(`Archivo de semillas no encontrado: ${seedFile}`);
     }

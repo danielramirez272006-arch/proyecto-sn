@@ -54,7 +54,7 @@ export function ExplorarPage() {
   const [favoritosTrigger, setFavoritosTrigger] = useState(0);
   const [restaurantesReales, setRestaurantesReales] = useState([]);
   const [cargandoReales, setCargandoReales] = useState(false);
-  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
+  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 800 });
   const { lugaresConFotos: lugaresLocalesConFotos, cargandoFotos: cargandoFotosLocales } = useResolvedPlacePhotos(LUGARES_GOTOX);
   const cargandoFotos = cargandoDb || cargandoFotosLocales;
 

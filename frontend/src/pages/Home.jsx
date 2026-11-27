@@ -125,7 +125,7 @@ export function Home() {
     );
   };
 
-  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
+  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 800 });
   const { lugaresConFotos, cargandoFotos: cargandoFotosLocales } = useResolvedPlacePhotos(LUGARES_GOTOX);
   const { lugaresReales, cargandoReales, refrescarReales } = useLiveMultisourcePlaces({
     lat: 9.9352,

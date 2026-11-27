@@ -11,6 +11,7 @@ const {
   revokeAllUserAccessTokens
 } = require('../../shared/middlewares/auth-role-guard');
 const auditService = require('../../shared/audit/audit-service');
+const emailClient = require('../../shared/clients/email-client');
 const { encryptColumnValue, decryptColumnValue } = require('../../models');
 
 // Cuentas exclusivas administrativas y usuarios demo de desarrollo
@@ -636,16 +637,69 @@ class AuthService {
     );
 
     const outboxId = `ntf_reset_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const resetSubject = 'Recuperación de contraseña — Synodos Pet OS';
+    const resetText = [
+      `Hola ${user.name || 'explorador'},`,
+      '',
+      'Solicitaste restablecer tu contraseña en Synodos Pet OS.',
+      `Tu código temporal (válido por 15 minutos) es: ${rawToken}`,
+      '',
+      `Ingresa a ${env.frontendUrl}/acceso para completar el cambio.`,
+      'Si no realizaste esta solicitud, puedes ignorar este correo de forma segura.'
+    ].join('\n');
+
+    const safeName = String(user.name || 'explorador')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const resetHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; background: #0f172a; color: #f8fafc; border-radius: 16px;">
+        <h2 style="margin: 0 0 12px; color: #38bdf8;">Synodos Pet OS</h2>
+        <p style="margin: 0 0 16px; color: #cbd5e1;">Hola <strong>${safeName}</strong>, solicitaste restablecer tu contraseña.</p>
+        <p style="margin: 0 0 8px; font-size: 13px; color: #94a3b8;">Tu código temporal (válido por 15 minutos):</p>
+        <div style="padding: 14px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; font-family: monospace; font-size: 16px; letter-spacing: 1px; color: #f8fafc; word-break: break-all;">
+          ${rawToken}
+        </div>
+        <p style="margin: 18px 0 0; font-size: 12px; color: #94a3b8;">Si no realizaste esta solicitud, puedes ignorar este correo.</p>
+      </div>
+    `.trim();
+
     await execute(
       `INSERT INTO notification_outbox (id, recipient_email, subject, body, status)
        VALUES (?, ?, ?, ?, 'pending')`,
-      [
-        outboxId,
-        user.email,
-        'Recuperación de contraseña — Synodos',
-        `Solicitaste restablecer tu contraseña. Tu código temporal (válido 15 minutos) es: ${rawToken}`
-      ]
+      [outboxId, user.email, resetSubject, resetText]
     ).catch(() => {});
+
+    // Envío transaccional directo (Brevo API v3 cuando BREVO_API_KEY está configurada; modo local si aún no)
+    const resetTemplateId = parseInt(
+      process.env.BREVO_RESET_TEMPLATE_ID || String(env.email?.resetTemplateId || '0'),
+      10
+    ) || null;
+    try {
+      const mailResult = await emailClient.sendMail({
+        to: user.email,
+        toName: user.name || '',
+        subject: resetSubject,
+        text: resetText,
+        html: resetHtml,
+        templateId: resetTemplateId,
+        params: {
+          NAME: user.name || 'explorador',
+          RESET_CODE: rawToken,
+          RESET_URL: `${env.frontendUrl}/acceso`,
+        },
+        idempotencyKey: outboxId,
+        tags: ['auth', 'password-reset'],
+      });
+      if (mailResult && mailResult.provider === 'brevo') {
+        await execute(
+          `UPDATE notification_outbox SET status = 'sent' WHERE id = ?`,
+          [outboxId]
+        ).catch(() => {});
+      }
+    } catch (mailErr) {
+      console.warn('[Auth] No se pudo enviar correo de recuperación vía proveedor:', mailErr.message);
+    }
 
     await auditService.record({
       userId: user.id,

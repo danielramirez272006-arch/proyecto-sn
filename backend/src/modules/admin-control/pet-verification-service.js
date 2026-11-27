@@ -285,42 +285,58 @@ class PetVerificationService {
   }
 
   /**
-   * Genera eventos idempotentes para n8n (pendientes de revisión, próximas a vencer y contradicciones).
+   * Genera eventos idempotentes para n8n / bandeja admin (pendientes de revisión, próximas a vencer y contradicciones)
+   * usando consultas agrupadas para evitar N+1 sobre PostgreSQL remoto.
    */
-  async scanAndEmitAutomationEvents({ expiringWithinDays = 14, now = new Date() } = {}) {
+  async scanAndEmitAutomationEvents({ expiringWithinDays = 14, maxNewEvents = 40, now = new Date() } = {}) {
     const places = await placesRepository.findAll({ limit: 200 });
     const windowMs = Math.max(1, Number(expiringWithinDays) || 14) * 24 * 60 * 60 * 1000;
     const dateBucket = now.toISOString().slice(0, 10);
     const emitted = [];
 
-    for (const place of places) {
-      const evRows = await query(
-        `SELECT * FROM place_pet_evidence WHERE place_id = ? AND status != 'retracted'`,
-        [place.id]
-      );
-      const evidences = (evRows || []).map((r) => {
-        let cond = {};
-        try { cond = typeof r.conditions_json === 'string' ? JSON.parse(r.conditions_json) : (r.conditions_json || {}); } catch {}
-        return { ...r, conditions: cond };
-      });
+    if (!places || places.length === 0) {
+      return { emitted_count: 0, emitted_events: [], pending_events: [] };
+    }
 
+    const placeIds = places.map((p) => p.id).filter(Boolean);
+    const placeholders = placeIds.map(() => '?').join(', ');
+    const allEvRows = await query(
+      `SELECT * FROM place_pet_evidence WHERE place_id IN (${placeholders}) AND status != 'retracted'`,
+      placeIds
+    ).catch(() => []);
+
+    const evidencesByPlace = new Map();
+    for (const r of allEvRows || []) {
+      let cond = {};
+      try {
+        cond = typeof r.conditions_json === 'string' ? JSON.parse(r.conditions_json) : (r.conditions_json || {});
+      } catch {}
+      const list = evidencesByPlace.get(r.place_id) || [];
+      list.push({ ...r, conditions: cond });
+      evidencesByPlace.set(r.place_id, list);
+    }
+
+    const candidateEvents = [];
+    for (const place of places) {
+      const evidences = evidencesByPlace.get(place.id) || [];
       const fallback = petCompatibilityService.extractInternalPolicy(place);
       const reconciled = petCompatibilityService.reconcileEvidence(evidences.length ? evidences : [fallback], now);
 
       if (reconciled.conflicts.length > 0) {
-        const res = await this._insertAutomationEvent({
+        candidateEvents.push({
+          priority: 1,
           eventType: 'contradiction_detected',
           placeId: place.id,
           idempotencyKey: `contradiction:${place.id}:${dateBucket}`,
           payload: { place_id: place.id, place_name: place.name, conflicts: reconciled.conflicts },
         });
-        if (res.inserted) emitted.push(res.event);
       }
 
       if (reconciled.provenance?.review_due_at) {
         const dueMs = new Date(reconciled.provenance.review_due_at).getTime();
         if (Number.isFinite(dueMs) && dueMs - now.getTime() <= windowMs) {
-          const res = await this._insertAutomationEvent({
+          candidateEvents.push({
+            priority: 2,
             eventType: 'confirmation_expiring',
             placeId: place.id,
             idempotencyKey: `expiring:${place.id}:${reconciled.provenance.review_due_at.slice(0, 10)}`,
@@ -331,12 +347,12 @@ class PetVerificationService {
               is_expired: reconciled.is_expired,
             },
           });
-          if (res.inserted) emitted.push(res.event);
         }
       }
 
       if (!reconciled.is_confirmed && reconciled.conflicts.length === 0) {
-        const res = await this._insertAutomationEvent({
+        candidateEvents.push({
+          priority: 3,
           eventType: 'review_pending',
           placeId: place.id,
           idempotencyKey: `review_pending:${place.id}:${dateBucket}`,
@@ -347,6 +363,22 @@ class PetVerificationService {
             access_status: reconciled.access_status,
           },
         });
+      }
+    }
+
+    if (candidateEvents.length > 0) {
+      candidateEvents.sort((a, b) => a.priority - b.priority);
+      const allKeys = candidateEvents.map((c) => c.idempotencyKey);
+      const keyPlaceholders = allKeys.map(() => '?').join(', ');
+      const existingRows = await query(
+        `SELECT idempotency_key FROM automation_events WHERE idempotency_key IN (${keyPlaceholders})`,
+        allKeys
+      ).catch(() => []);
+      const existingKeys = new Set((existingRows || []).map((r) => r.idempotency_key));
+
+      const missing = candidateEvents.filter((c) => !existingKeys.has(c.idempotencyKey)).slice(0, maxNewEvents);
+      for (const item of missing) {
+        const res = await this._insertAutomationEvent(item);
         if (res.inserted) emitted.push(res.event);
       }
     }

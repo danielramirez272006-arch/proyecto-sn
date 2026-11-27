@@ -189,7 +189,30 @@ class AuthService {
   }
 
   async ensureDefaultAccounts() {
-    for (const acc of DEFAULT_ACCOUNTS) {
+    if (!env.isTest && this._defaultAccountsEnsured) {
+      return;
+    }
+
+    // En producción jamás sembrar cuentas demo con contraseñas conocidas; solo bootstrap admin si está explícito en entorno
+    const accountsToEnsure = env.isProd
+      ? (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD
+          ? [
+              {
+                id: 'usr_admin_gotox',
+                name: process.env.ADMIN_NAME || 'Administrador Synodos',
+                email: process.env.ADMIN_EMAIL,
+                password: process.env.ADMIN_PASSWORD,
+                role: 'admin',
+                gpsTrustScore: 100,
+                zone: 'Centro de Mando GAM, San José',
+                hasPet: false,
+              },
+            ]
+          : [])
+      : DEFAULT_ACCOUNTS;
+
+    let allSucceeded = true;
+    for (const acc of accountsToEnsure) {
       try {
         const normalizedEmail = acc.email.trim().toLowerCase();
         const existing = await query('SELECT id, password_hash, role FROM users WHERE LOWER(email) = ? OR id = ?', [
@@ -239,8 +262,12 @@ class AuthService {
           ).catch(() => {});
         }
       } catch (err) {
+        allSucceeded = false;
         // Ignorar si las tablas aún no están migradas durante algún unit test aislado
       }
+    }
+    if (!env.isTest && allSucceeded) {
+      this._defaultAccountsEnsured = true;
     }
   }
 

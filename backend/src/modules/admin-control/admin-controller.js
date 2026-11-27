@@ -1,5 +1,6 @@
 const adminService = require('./admin-service');
 const petVerificationService = require('./pet-verification-service');
+const petPolicyHintDetector = require('./pet-policy-hint-detector');
 const placesRepository = require('../places/places-repository');
 const notificationService = require('../notifications/notification-service');
 const deepSeekClient = require('../../shared/config/deepseek-config');
@@ -271,6 +272,23 @@ class AdminController {
     }
   }
 
+  async runPetHintDetectionBatch(req, res, next) {
+    try {
+      const body = req.body || {};
+      const result = await petPolicyHintDetector.runBatchDetection({
+        placeIds: Array.isArray(body.place_ids) ? body.place_ids : null,
+        limit: body.limit !== undefined ? Math.max(1, Math.min(50, Number(body.limit) || 20)) : 20,
+        expiringWithinDays: body.expiring_within_days !== undefined ? Number(body.expiring_within_days) : 14,
+        timeoutMs: body.timeout_ms !== undefined ? Math.max(1000, Math.min(15000, Number(body.timeout_ms) || 6000)) : 6000,
+        maxRetries: body.max_retries !== undefined ? Math.max(0, Math.min(2, Number(body.max_retries) || 1)) : 2,
+        actorUserId: req.user?.id || 'n8n_workflow',
+      });
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async recordPetAutomationConfirmation(req, res, next) {
     try {
       const result = await petVerificationService.recordConfirmationFromWorkflow(
@@ -282,6 +300,32 @@ class AdminController {
     } catch (err) {
       if (err.status === 404) return notFound(res, err.message);
       if (err.status === 400) return badRequest(res, err.message);
+      next(err);
+    }
+  }
+
+  async getPetReviewQueue(req, res, next) {
+    try {
+      const result = await petVerificationService.getReviewQueue({
+        limit: req.query.limit,
+        eventType: req.query.event_type || null,
+      });
+      return success(res, result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async acknowledgePetAutomationEvent(req, res, next) {
+    try {
+      const result = await petVerificationService.acknowledgeAutomationEvent(
+        req.params.id,
+        req.user?.id || 'usr_admin_1',
+        req
+      );
+      return success(res, result);
+    } catch (err) {
+      if (err.status === 404) return notFound(res, err.message);
       next(err);
     }
   }

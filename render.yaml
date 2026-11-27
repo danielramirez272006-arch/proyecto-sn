@@ -1,0 +1,50 @@
+# Render Blueprint — Synodos Pet OS (Costa Rica)
+# Despliegue unificado: compila frontend/dist y sirve API + SPA desde un solo Web Service
+services:
+  - type: web
+    name: synodos-pet-os
+    runtime: node
+    plan: free
+    region: oregon
+    branch: daniel
+    buildCommand: npm --prefix frontend ci && npm --prefix frontend run build && npm --prefix backend ci --omit=dev
+    startCommand: npm --prefix backend start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PASSWORD_PEPPER
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        value: no-reply@synodos.cr
+      - key: BREVO_SENDER_NAME
+        value: Synodos Pet OS
+      - key: BREVO_RESET_TEMPLATE_ID
+        value: "1"

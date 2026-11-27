@@ -12,6 +12,8 @@ class GeminiSafeClient {
     this.currentDate = new Date().toISOString().slice(0, 10);
     this.requestCountToday = 0;
     this.providerName = 'Google Gemini';
+    this.timeoutMs = parseInt(process.env.GEMINI_TIMEOUT_MS || '9000', 10);
+    this.visionTimeoutMs = parseInt(process.env.GEMINI_VISION_TIMEOUT_MS || '14000', 10);
     this.chatSessions = new Map(); // session_id -> array of { role: 'user' | 'model', content: string }
   }
 
@@ -69,7 +71,8 @@ class GeminiSafeClient {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyPayload)
+        body: JSON.stringify(bodyPayload),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
 
       if (!response.ok) {
@@ -154,7 +157,8 @@ class GeminiSafeClient {
       let response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyPayload)
+        body: JSON.stringify(bodyPayload),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
 
       if ((response.status === 404 || response.status === 503 || response.status === 429) && activeModel !== 'gemini-3-flash-preview') {
@@ -163,7 +167,8 @@ class GeminiSafeClient {
         response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyPayload)
+          body: JSON.stringify(bodyPayload),
+          signal: AbortSignal.timeout(this.timeoutMs),
         });
       }
 
@@ -295,9 +300,7 @@ class GeminiSafeClient {
 
     const candidateModels = [
       model || this.model,
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
-      'gemini-flash-latest'
+      'gemini-3-flash-preview',
     ].filter((m, idx, arr) => Boolean(m) && arr.indexOf(m) === idx);
 
     const parts = [
@@ -344,7 +347,8 @@ class GeminiSafeClient {
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyPayload)
+          body: JSON.stringify(bodyPayload),
+          signal: AbortSignal.timeout(this.visionTimeoutMs),
         });
 
         if ((response.status === 404 || response.status === 503 || response.status === 429) && candidateModel !== candidateModels[candidateModels.length - 1]) {

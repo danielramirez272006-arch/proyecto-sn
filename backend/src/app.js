@@ -14,9 +14,9 @@ const errorHandler = require('./shared/middlewares/error-handler');
 
 const app = express();
 
-// No revelar el framework y confiar en proxies solo si el despliegue lo declara
+// No revelar el framework y confiar en proxies en producción (Render/Railway/Nginx) o si TRUST_PROXY=true
 app.disable('x-powered-by');
-if (process.env.TRUST_PROXY === 'true') {
+if (process.env.TRUST_PROXY === 'true' || env.isProd) {
   app.set('trust proxy', 1);
 }
 
@@ -29,9 +29,19 @@ app.use(i18nMiddleware);
 // 1. Encabezados de seguridad HTTP (CSP, X-Content-Type-Options, FrameGuard)
 app.use(securityHeaders);
 
-// 2. Configuración de CORS
+// 2. Configuración de CORS (soporta múltiples orígenes separados por coma en FRONTEND_URL)
+const allowedOrigins = String(env.frontendUrl || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: env.isProd ? env.frontendUrl : true,
+  origin: env.isProd
+    ? (origin, cb) => {
+        if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+        return cb(new Error('Origen CORS no autorizado'));
+      }
+    : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-guest-token', 'x-request-id', 'x-language', 'accept-language', 'X-RateLimit-Limit', 'X-RateLimit-Remaining']

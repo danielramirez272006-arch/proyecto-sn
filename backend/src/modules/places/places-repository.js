@@ -1,17 +1,40 @@
 const { query, execute } = require('../../shared/config/database');
 const { haversineDistanceKm } = require('../../shared/utils/geo-math');
+const env = require('../../shared/config/env-config');
+
+const CATALOG_CACHE_TTL_MS = 20 * 1000;
 
 class PlacesRepository {
   constructor() {
-    this._findAllCache = new Map();
+  constructor() {
+    this._cache = new Map();
     this._findAllInFlight = new Map();
-    this._cacheTtlMs = 5 * 60 * 1000;
   }
 
   invalidateCache() {
-    this._findAllCache.clear();
+    this._cache.clear();
+    this._findAllInFlight.clear();
   }
 
+  _getCached(key) {
+    if (env.isTest) return null;
+    const entry = this._cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.ts > CATALOG_CACHE_TTL_MS) {
+      this._cache.delete(key);
+      return null;
+    }
+    return entry.value;
+  }
+
+  _setCached(key, value) {
+    if (env.isTest) return;
+    if (this._cache.size > 60) {
+      const oldestKey = this._cache.keys().next().value;
+      if (oldestKey) this._cache.delete(oldestKey);
+    }
+    this._cache.set(key, { value, ts: Date.now() });
+  }
   async _attachApprovedPhotos(places) {
     if (!Array.isArray(places) || places.length === 0) return places;
     const ids = places.map((p) => p?.id).filter(Boolean);
@@ -87,11 +110,9 @@ class PlacesRepository {
   }
 
   async findAll({ category, verifiedOnly, search, limit = 50, offset = 0 } = {}) {
-    const cacheKey = `${category || ''}|${Boolean(verifiedOnly)}|${search || ''}|${limit}|${offset}`;
-    const cached = this._findAllCache.get(cacheKey);
-    if (cached && Date.now() - cached.ts < this._cacheTtlMs) {
-      return cached.items;
-    }
+    const cacheKey = `all:${category || ''}:${verifiedOnly ? 1 : 0}:${search || ''}:${limit}:${offset}`;
+    const cached = this._getCached(cacheKey);
+    if (cached) return cached;
 
     if (this._findAllInFlight.has(cacheKey)) {
       return this._findAllInFlight.get(cacheKey);
@@ -120,7 +141,7 @@ class PlacesRepository {
       const rows = await query(sql, params);
       const deserialized = rows.map((r) => this.deserialize(r));
       const enriched = await this._attachApprovedPhotos(deserialized);
-      this._findAllCache.set(cacheKey, { items: enriched, ts: Date.now() });
+      this._setCached(cacheKey, enriched);
       return enriched;
     })();
 
@@ -266,6 +287,7 @@ class PlacesRepository {
       ]
     );
 
+    this.invalidateCache();
     return this.findById(id);
   }
 
@@ -290,11 +312,13 @@ class PlacesRepository {
 
     params.push(id);
     await execute(`UPDATE places SET ${fields.join(', ')} WHERE id = ?`, params);
+    this.invalidateCache();
     return this.findById(id);
   }
 
   async delete(id) {
     const res = await execute('DELETE FROM places WHERE id = ?', [id]);
+    this.invalidateCache();
     return res;
   }
 

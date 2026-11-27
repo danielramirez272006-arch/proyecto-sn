@@ -207,7 +207,7 @@ class MultisourcePlacesCoordinator {
     // 2. Consultar catálogo propio primero
     let internalPlaces = [];
     try {
-      const allInternal = await repo.findAll({ limit: 150 });
+      const allInternal = await repo.findAll({ limit: 1000 });
       const foodCategories = new Set(['restaurant', 'restaurante', 'cafe', 'bar', 'bakery', 'bistro', 'gastronomia']);
       internalPlaces = (allInternal || [])
         .filter((p) => {

@@ -531,7 +531,7 @@ export function MapaPage() {
   // Cargar automáticamente nuestros restaurantes reales desde Supabase DB (con fotos propias)
   useEffect(() => {
     let activo = true;
-    fetch('/api/places?limit=500', { headers: { Accept: 'application/json' } })
+    fetch('/api/places?limit=800', { headers: { Accept: 'application/json' } })
       .then((resp) => (resp.ok ? resp.json() : null))
       .then((json) => {
         const items = Array.isArray(json?.data) ? json.data : [];

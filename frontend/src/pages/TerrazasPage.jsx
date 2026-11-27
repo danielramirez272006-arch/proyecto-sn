@@ -41,7 +41,6 @@ export function TerrazasPage() {
   const [terrazaSeleccionada, setTerrazaSeleccionada] = useState(null);
   const [compararIds, setCompararIds] = useState([]);
   const [backendPlacesCount, setBackendPlacesCount] = useState(null);
-
   const alternarComparar = (id) => {
     setCompararIds((prev) => {
       if (prev.includes(id)) return prev.filter((item) => item !== id);
@@ -49,7 +48,7 @@ export function TerrazasPage() {
       return [...prev, id];
     });
   };
-  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
+  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 800 });
   const { lugaresConFotos: terrazasLocalesConFotos, cargandoFotos: cargandoFotosLocales } = useResolvedPlacePhotos(TERRAZAS);
   const cargandoFotos = cargandoDb || cargandoFotosLocales;
 

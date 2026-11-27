@@ -9,6 +9,7 @@ const lostPetVisualMatcher = require('../autonomous-agents/consensus-moderator-a
 const invoicePriceExtractor = require('../autonomous-agents/consensus-moderator-agent/invoice-price-extractor');
 const reportConsensusJob = require('../autonomous-agents/consensus-moderator-agent/report-consensus-job');
 const geminiVideoClient = require('../shared/clients/gemini-video-client');
+const ragService = require('../modules/rag/rag-service');
 const { sanitizePromptInjection } = require('../shared/middlewares/payload-sanitizer');
 
 /**
@@ -33,13 +34,16 @@ const AGENT_REGISTRY = {
     objective: 'Orientar al tutor sobre cuidado animal, rutas pet-friendly y recomendaciones de salidas en el GAM.',
     async execute(input = {}) {
       const prompt = sanitizePiiForPrompt(input.message || input.prompt || 'Recomendación de paseo pet-friendly en San José');
+      const rag = await ragService.retrieveContext(prompt, { maxDocs: 2, maxPlaces: 2 }).catch(() => ({ documents: [], places: [], promptBlock: '' }));
+      const fullPrompt = rag.promptBlock ? `${rag.promptBlock}\n\nConsulta: ${prompt}` : prompt;
       const res = await geminiClient.generateJson({
-        prompt,
-        systemInstruction: 'Eres Argos, asistente de bienestar animal y rutas pet-friendly de Synodos en Costa Rica. Responde en JSON breve.'
+        prompt: fullPrompt,
+        systemInstruction: 'Eres Argos, asistente de bienestar animal y rutas pet-friendly de Synodos en Costa Rica. Prioriza el contexto verificado de Synodos y responde en JSON breve.'
       }).catch(() => null);
       return {
         reply: res?.reply || res?.summary || res?.recommendation || 'Para pasear con tu mascota en el GAM, verifica sombra en aceras y lleva hidratación.',
         mode: res?.source || 'heuristic_fallback',
+        rag_sources_count: (rag.documents?.length || 0) + (rag.places?.length || 0),
       };
     },
   },

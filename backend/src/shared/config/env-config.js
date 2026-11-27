@@ -11,6 +11,15 @@ const env = {
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   jwtSecret: process.env.JWT_SECRET || 'dev_insecure_jwt_secret_change_in_production',
   sessionCookieName: process.env.SESSION_COOKIE_NAME || 'sn_session',
+  security: {
+    passwordPepper: process.env.NODE_ENV === 'test'
+      ? (process.env.TEST_PASSWORD_PEPPER || '')
+      : (process.env.PASSWORD_PEPPER || ''),
+    bcryptRounds: parseInt(
+      process.env.BCRYPT_ROUNDS || (process.env.NODE_ENV === 'test' ? '10' : '12'),
+      10
+    ),
+  },
   db: {
     dialect: process.env.DB_DIALECT || (process.env.NODE_ENV === 'test' ? 'sqlite' : 'mysql'),
     host: process.env.DB_HOST || 'localhost',
@@ -105,6 +114,21 @@ const env = {
   },
   webhook: {
     url: process.env.WEBHOOK_URL || '',
+  },
+  email: {
+    provider: process.env.EMAIL_PROVIDER || (process.env.BREVO_API_KEY ? 'brevo' : 'local'),
+    brevoApiKey: process.env.BREVO_API_KEY || '',
+    brevoApiUrl: process.env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email',
+    senderEmail: process.env.BREVO_SENDER_EMAIL || 'no-reply@synodos.cr',
+    senderName: process.env.BREVO_SENDER_NAME || 'Synodos Pet OS',
+    replyTo: process.env.BREVO_REPLY_TO || '',
+    resetTemplateId: parseInt(process.env.BREVO_RESET_TEMPLATE_ID || '0', 10) || null,
+    welcomeTemplateId: parseInt(process.env.BREVO_WELCOME_TEMPLATE_ID || '0', 10) || null,
+    timeoutMs: parseInt(process.env.EMAIL_TIMEOUT_MS || '10000', 10),
+  },
+  cache: {
+    // Opcional a futuro si el servicio escala a múltiples instancias en Render
+    redisUrl: process.env.REDIS_URL || '',
   },
   integrations: {
     osrmUrl: process.env.OSRM_BASE_URL || 'https://router.project-osrm.org',

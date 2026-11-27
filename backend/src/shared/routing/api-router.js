@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const express = require('express');
 const router = express.Router();
 
@@ -255,6 +256,7 @@ router.post('/admin/places/multisource/photos/:photoId/retract', requireAdmin, a
       reason: req.body?.reason,
       admin_id: req.user?.id || req.user?.email || 'admin',
     });
+    placesRepository.invalidateCache();
     return success(res, result);
   } catch (err) {
     if (err.status === 400) return badRequest(res, err.message, { code: err.code });
@@ -306,6 +308,7 @@ router.post('/admin/places/photos/:photoId/approve', requireAdmin, async (req, r
       is_cover: req.body?.is_cover ?? null,
       admin_id: req.user?.id || req.user?.email || 'admin',
     });
+    placesRepository.invalidateCache();
     return success(res, result);
   } catch (err) {
     if (err.status === 400 || err.status === 404) return failure(res, err.message, err.code, null, err.status);
@@ -322,6 +325,7 @@ router.post('/admin/places/photos/:photoId/reject', requireAdmin, async (req, re
       reason: req.body?.reason,
       admin_id: req.user?.id || req.user?.email || 'admin',
     });
+    placesRepository.invalidateCache();
     return success(res, result);
   } catch (err) {
     if (err.status === 400 || err.status === 404) return failure(res, err.message, err.code, null, err.status);
@@ -372,7 +376,7 @@ router.post('/places/resolve-photos', async (req, res, next) => {
 
 router.get('/places/export/geojson', async (req, res, next) => {
   try {
-    const places = await placesRepository.findAll({ limit: 200 });
+    const places = await placesRepository.findAll({ limit: 1000 });
     const { placesToGeoJson } = require('../utils/export-formats');
     const geojson = placesToGeoJson(places);
     res.setHeader('Content-Type', 'application/geo+json; charset=utf-8');
@@ -410,6 +414,12 @@ router.get('/places', async (req, res, next) => {
       limit: limit ? parseInt(limit, 10) : 50,
       offset: offset ? parseInt(offset, 10) : 0,
     });
+    const etag = `W/"places-${places.length}-${crypto.createHash('sha1').update(JSON.stringify(places.map((p) => `${p.id}:${p.photo_url || ''}`))).digest('hex').slice(0, 12)}"`;
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=20, stale-while-revalidate=60');
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
     return success(res, places, { total: places.length });
   } catch (err) {
     next(err);
@@ -1012,5 +1022,6 @@ router.delete('/client/account', requireAuth, rateLimiter.authLimiter, (req, res
 );
 router.use('/client', require('../../modules/client-dashboard').clientRoutes);
 router.use('/agents', require('../../routes/agents-routes'));
+router.use('/rag', require('../../modules/rag').ragRoutes);
 
 module.exports = router;

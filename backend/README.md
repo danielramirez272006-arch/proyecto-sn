@@ -1,25 +1,18 @@
-# GoToX Pet OS — Documentación Técnica del Backend (`sn-backend`)
+# Synodos Pet OS — Documentación Técnica del Backend (`sn-backend`)
 
-Este directorio contiene el servidor API RESTful, el coordinador multi-fuente de lugares Pet-Friendly, el pipeline criptográfico y de almacenamiento de fotografías en **Supabase Storage**, el motor de verificación administrativa y los conectores de IA (**Google Gemini** para clientes y **DeepSeek** para administración).
+Servidor API RESTful en **Node.js (>=20) + Express** para **Synodos Pet OS (Costa Rica)**. Gestiona el catálogo verificado de **681 restaurantes y 1,500 fotografías reales** en **Supabase**, el **Motor RAG Híbrido** del Copiloto **Argos**, la detección y revisión automática de políticas pet-friendly (**Supabase Cron + Edge Function**), el correo transaccional vía **Brevo REST API v3**, el pre-triaje visual con **Google Gemini 3.1** y los **8 Agentes de IA** auditados.
 
 ---
 
-## Índice de Manuales de Avances del Backend
+## Manuales de Arquitectura (`docs/backend/`)
 
-1. **[01 — Arquitectura Multi-Fuente y Motor de Compatibilidad Pet-Friendly](../docs/backend/01-arquitectura-multifuente-y-compatibilidad-pet.md)**
-   - Coordinador multi-fuente (`multisource-places-coordinator.js`), integración con OpenStreetMap/Overpass, Geoapify, Foursquare, Wikimedia Commons y Google Places API (New).
-   - Guardián de tasa y concurrencia por proceso (`provider-rate-guard.js`).
-   - Motor de evaluación de compatibilidad por especie, tamaño, área (`seating_access`) y nivel de verificación (`pet-compatibility-service.js`).
+1. **[01 — Arquitectura Multi-Fuente y Compatibilidad Pet-Friendly](../docs/backend/01-arquitectura-multifuente-y-compatibilidad-pet.md)**
 2. **[02 — Pipeline de Fotografías Verificadas y Supabase Storage](../docs/backend/02-pipeline-fotografias-supabase-storage.md)**
-   - Flujo de doble bucket en Supabase Storage (`gotox-place-photos-private` → revisión humana → `gotox-place-photos-public`).
-   - Validador binario de imágenes (`photo-security-validator.js`): inspección de *magic bytes* (JPEG/PNG/WebP), dimensiones mínimas (`400x300`), eliminación de metadatos EXIF/GPS (`APP1`), protección contra *Path Traversal* y bloqueo SSRF.
-   - Importador por lotes con compensación transaccional Storage ↔ PostgreSQL (`photo-batch-importer.js`), CLI (`photo-import-cli.js`), generador de borradores CSV asistido por IA (`photo-ai-draft-cli.js`) y subida directa en Base64 desde el panel administrativo.
-3. **[03 — Verificación Administrativa Pet-Friendly y Automatización n8n](../docs/backend/03-verificacion-administrativa-y-automatizacion-n8n.md)**
-   - Flujo de evidencia verificable (`pet-verification-service.js`): confirmación del comercio (`business_confirmation`), inspección administrativa (`admin_review`), vigencia semestral, resolución de contradicciones y retiro de insignias.
-   - Emisión idempotente de eventos para **n8n** (`automation_events`) y tarea periódica del scheduler autónomo.
-4. **[04 — Migraciones SQL (`008`–`010`), Base de Datos Dual y Suite de 117 Pruebas](../docs/backend/04-migraciones-esquema-db-y-pruebas.md)**
-   - Esquema en **Supabase PostgreSQL** (`app_private`, 29 tablas) y motor **SQLite** idempotente para pruebas locales.
-   - Detalle de las migraciones `008`, `009` y `010`, y guía de ejecución de las suites de pruebas automatizadas (`117/117` tests).
+3. **[03 — Verificación Administrativa Pet-Friendly y Automatización](../docs/backend/03-verificacion-administrativa-y-automatizacion-n8n.md)**
+4. **[04 — Migraciones SQL, Base de Datos Dual y Pruebas](../docs/backend/04-migraciones-esquema-db-y-pruebas.md)**
+5. **[05 — Diagrama ER y Diccionario de Datos](../docs/backend/05-diagrama-er-y-diccionario-datos.md)**
+6. **[06 — Catálogo de los 8 Agentes de IA](../docs/backend/06-catalogo-8-agentes-ia.md)**
+7. **[07 — Matriz de Permisos RBAC](../docs/backend/07-matriz-permisos-rbac.md)**
 
 ---
 
@@ -27,59 +20,42 @@ Este directorio contiene el servidor API RESTful, el coordinador multi-fuente de
 
 | Comando | Descripción |
 | :--- | :--- |
-| `npm --prefix backend run dev` | Inicia el servidor Express en modo desarrollo con recarga automática (`http://localhost:4000`). |
-| `npm --prefix backend test` | Ejecuta las **117 pruebas automatizadas** del backend (`node --test test/**/*.test.js`). |
-| `npm --prefix backend run db:supabase:check` | Verifica conexión en vivo a Supabase PostgreSQL (`app_private`) y Supabase Storage. |
-| `npm --prefix backend run db:supabase:migrate` | Ejecuta las migraciones SQL (`001` a `010`) sobre Supabase PostgreSQL. |
-| `npm --prefix backend run photos:import` | CLI de importación de fotografías por lotes (`--dry-run` por defecto; `--commit` para subir al bucket privado). |
-| `npm --prefix backend run photos:reconcile` | Reconcilia objetos en Supabase Storage contra los registros de `place_photos` en PostgreSQL. |
-| `npm --prefix backend run photos:report` | Muestra el estado y reporte detallado de lotes de importación (`photo_import_batches`). |
-| `npm --prefix backend run photos:draft-csv` | Genera un manifiesto CSV borrador (`requires_human_review=true`) a partir de una carpeta local de imágenes. |
+| `npm --prefix backend run dev` | Inicia el servidor Express con recarga automática (`http://localhost:4000`). |
+| `npm --prefix backend start` | Inicia el servidor en modo producción (usado por `render.yaml`). |
+| `npm --prefix backend test` | Ejecuta las **156 pruebas automatizadas** (`node --test test/**/*.test.js`). |
+| `npm --prefix backend run db:supabase:check` | Verifica conexión en vivo a Supabase PostgreSQL (`app_private`) y Storage. |
+| `npm --prefix backend run db:supabase:migrate` | Aplica el esquema base y políticas RLS desde `backend/supabase/schema/`. |
+| `npm --prefix backend run db:supabase:seed` | Siembra datos iniciales desde `backend/supabase/schema/supabase-datos-demo.sql`. |
+| `npm --prefix backend run photos:import` | CLI de importación de fotografías con limpieza EXIF y validación binaria. |
+| `npm --prefix backend run photos:reconcile` | Reconcilia objetos en Supabase Storage contra `place_photos`. |
+| `npm --prefix backend run security:supply-chain` | Ejecuta auditoría de integridad de dependencias y supply chain. |
 
 ---
 
-## Estructura de Módulos Nuevos y Actualizados
+## Organización de `backend/`
 
 ```text
 backend/
+├── .env.example                                         # Plantilla segura de variables de entorno para local y Render
+├── db/migrations/                                       # Migraciones relacionales incrementales (SQLite / PostgreSQL)
 ├── src/
-│   ├── app.js                                           # Express app (CORS, Helmet/CSP, JSON 12MB, Rate Limit)
+│   ├── app.js                                           # Express app (CORS multi-origen, CSP API/SPA, compresión, rate limit)
+│   ├── server.js                                        # Arranque HTTP (0.0.0.0) y validación estricta de JWT_SECRET en prod
+│   ├── autonomous-agents/                               # Agentes autónomos y reglas estrictas de AutoTaggerAI
 │   ├── modules/
-│   │   ├── admin-control/
-│   │   │   ├── admin-controller.js                      # Controladores de políticas pet-friendly y n8n
-│   │   │   ├── admin-routes.js                          # Rutas protegidas por requireAdmin
-│   │   │   └── pet-verification-service.js              # Gestión de evidencia pet-friendly y vigencia
-│   │   └── places/
-│   │       ├── google-place-photo-resolver.js           # Resolución de fotos por sucursal (Google Places)
-│   │       ├── multisource-admin-service.js             # Moderación de fotos, subida Base64 y enlaces externos
-│   │       ├── multisource-places-coordinator.js        # Coordinador multi-fuente (Catálogo + OSM + Geoapify + Foursquare + Wikimedia)
-│   │       ├── osm-places-service.js                    # Conector Overpass OSM con validación de radio y estados nulos
-│   │       ├── pet-compatibility-service.js             # Motor de compatibilidad por mascota y procedencia
-│   │       ├── pet-friendly-places-service.js           # Servicio unificado de búsqueda real pet-friendly
-│   │       ├── photo-ai-draft-cli.js                    # CLI generador de CSV borrador asistido por IA
-│   │       ├── photo-batch-importer.js                  # Importador por lotes con compensación Storage ↔ BD
-│   │       ├── photo-import-cli.js                      # CLI de importación, reconciliación y reportes
-│   │       ├── photo-security-validator.js              # Validador magic bytes, limpieza EXIF y defensa SSRF
-│   │       └── supabase-photo-storage.js                # Cliente de doble bucket en Supabase Storage
-│   ├── shared/
-│   │   ├── clients/
-│   │   │   ├── foursquare-places-client.js              # Cliente Foursquare (solo campos gratuitos permitidos)
-│   │   │   ├── geoapify-places-client.js                # Cliente Geoapify Places API
-│   │   │   ├── google-places-client.js                  # Cliente Google Places API (New) con FieldMask estricto
-│   │   │   └── wikimedia-commons-client.js              # Cliente gratuito Wikimedia Commons con licencia y autor
-│   │   ├── config/
-│   │   │   ├── database.js                              # Adaptador dual PostgreSQL / SQLite con migraciones idempotentes
-│   │   │   └── migrations/
-│   │   │       ├── 008-pet-verification-evidence.sql    # Evidencia pet-friendly y eventos de automatización
-│   │   │       ├── 009-multisource-places-architecture.sql # Enlaces externos por sucursal y tabla place_photos
-│   │   │       └── 010-place-photos-storage-pipeline.sql   # Columnas de Storage, hashes SHA-256 y lotes de importación
-│   │   └── utils/
-│   │       └── provider-rate-guard.js                   # Limitador de tasa, concurrencia, timeout y backoff
-└── test/
-    ├── enterprise-features.test.js                      # Suite enterprise (43 pruebas)
-    ├── multisource-places.test.js                       # Suite arquitectura multi-fuente (7 pruebas)
-    ├── pet-care-videos.test.js                          # Suite videos de bienestar y chat Bruno (15 pruebas)
-    ├── pet-friendly-real-search.test.js                 # Suite búsqueda real pet-friendly y n8n (7 pruebas)
-    ├── photo-storage-pipeline.test.js                   # Suite Storage, EXIF, SSRF y moderación (5 pruebas)
-    └── system-complete.test.js                          # Suite integral de módulos del sistema (40 pruebas)
+│   │   ├── auth/                                        # Registro, login (v2p$ pepper+bcrypt 12), Brevo reset/welcome, Ley 8968
+│   │   ├── admin-control/                               # Políticas pet-friendly, detector de indicios y bandeja review-queue
+│   │   ├── places/                                      # Catálogo DB-first con caché TTL/ETag, compatibilidad y pipeline de fotos
+│   │   ├── rag/                                         # Motor RAG híbrido (rag_documents + locales reales + importador Drive)
+│   │   ├── voice-ai-concierge/                          # Copiloto Argos enriquecido con RAG y telemetría GAM
+│   │   └── vet-hub/                                     # Clínicas 24/7 y videos educativos con Gemini
+│   └── shared/
+│       ├── clients/                                     # Clientes con timeouts: email-client (Brevo v3), Google Places, OSM, etc.
+│       ├── config/                                      # env-config, database (PG/SQLite), gemini-config, deepseek-config
+│       └── security/                                    # Cabeceras HTTP, sanitizador Anti-SSRF/Prompt-Injection y reporte OWASP
+├── supabase/
+│   ├── functions/pet-policy-review-batch/index.ts       # Edge Function diaria invocada por Supabase Cron
+│   ├── migrations/20261127_pet_policy_review_cron.sql   # Configuración de pg_cron, pg_net y RPCs exclusivas service_role
+│   └── schema/                                          # Esquema MVP (app_private + RLS) y datos iniciales
+└── test/                                                # 156 pruebas automatizadas (0 fallos)
 ```

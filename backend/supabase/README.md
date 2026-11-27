@@ -1,14 +1,19 @@
-# Recursos y Scripts de Supabase para Sinergia Urbana
+# Recursos de Supabase Cloud — Synodos Pet OS
 
-Este directorio contiene los archivos necesarios para inicializar y configurar el proyecto en **Supabase Cloud**:
+Directorio unificado con el esquema PostgreSQL (`app_private`), las migraciones de programación en la nube y las Edge Functions del proyecto:
 
-- **`supabase-esquema-mvp.sql`**: Migración DDL inicial para el esquema `app_private` con soporte de Row Level Security (RLS) e índices de rendimiento.
-- **`supabase-datos-demo.sql`**: Catálogo semilla de desarrollo (Feria del Agricultor de Ciudad Colón, Café El Roble, Café Montaña Verde y Plan Grupal de prueba).
-- **`supabase.env.example`**: Plantilla de variables de entorno para conectar Express a Supabase PostgreSQL y Supabase Auth.
+```text
+backend/supabase/
+├── functions/
+│   └── pet-policy-review-batch/index.ts       # Edge Function diaria de revisión de políticas pet-friendly
+├── migrations/
+│   └── 20261127_pet_policy_review_cron.sql    # Extensiones pg_cron + pg_net, RPCs service_role y job 08:00 CR
+├── schema/
+│   ├── supabase-esquema-mvp.sql               # Esquema base app_private, RLS, CHECKs e inmutabilidad
+│   └── supabase-datos-demo.sql                # Semilla opcional para entornos de desarrollo
+└── supabase.env.example                       # Ejemplo de variables de conexión
+```
 
-### Instrucciones de Aplicación:
-1. Abrir el proyecto en [Supabase Dashboard](https://supabase.com/dashboard/project/hnnnreowlbtqqjhpmdvd).
-2. Ir a **SQL Editor** y ejecutar el contenido de `supabase-esquema-mvp.sql`.
-3. (Opcional en desarrollo) Ejecutar `supabase-datos-demo.sql`.
-4. Copiar las credenciales del pooler a `backend/.env`.
-
+### Secretos requeridos del lado del servidor (nunca en Git)
+- **Supabase Vault (`vault.secrets`):** `synodos_supabase_url` y `pet_review_cron_secret`.
+- **Supabase Edge Functions Secrets:** `PET_REVIEW_BATCH_SIZE=10`, `PET_REVIEW_CRON_SECRET` y opcionalmente `GEMINI_API_KEY`.

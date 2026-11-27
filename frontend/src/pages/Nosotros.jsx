@@ -12,7 +12,8 @@ import { Link } from 'react-router-dom';
 import { useIdioma } from '../context/IdiomaContext';
 
 export function Nosotros() {
-  const { t } = useIdioma();
+  const { idioma, t } = useIdioma();
+  const esIngles = idioma !== 'es';
   const renderAvatar = (tipoAvatar) => {
     switch (tipoAvatar) {
       case 'robin':
@@ -112,15 +113,15 @@ export function Nosotros() {
                     {miembro.nombre}
                   </h3>
                   <p className="text-xs font-semibold text-[#501228] dark:text-[#F27B91] uppercase tracking-wide">
-                    {miembro.rol}
+                    {esIngles && miembro.rolEn ? miembro.rolEn : miembro.rol}
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {miembro.subtitulo}
+                    {esIngles && miembro.subtituloEn ? miembro.subtituloEn : miembro.subtitulo}
                   </p>
                 </div>
 
                 <p className="text-xs text-slate-600 dark:text-[#94A3B8] leading-relaxed">
-                  {miembro.bio}
+                  {esIngles && miembro.bioEn ? miembro.bioEn : miembro.bio}
                 </p>
 
                 <div className="pt-3 border-t border-slate-100 dark:border-white/10 w-full text-left">
@@ -128,7 +129,7 @@ export function Nosotros() {
                     {t('nosotrosExt.enfoqueOperativo')}
                   </span>
                   <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-tight">
-                    {miembro.enfoque}
+                    {esIngles && miembro.enfoqueEn ? miembro.enfoqueEn : miembro.enfoque}
                   </p>
                 </div>
               </Card>

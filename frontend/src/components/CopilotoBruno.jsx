@@ -73,6 +73,8 @@ export function CopilotoBruno() {
   const [apetito, setApetito] = useState('Normal');
   const [hidratacion, setHidratacion] = useState('Hidratado');
   const finHistorialRef = useRef(null);
+  const contenedorChatRef = useRef(null);
+  const haInteractuadoRef = useRef(false);
   const recognitionRef = useRef(null);
 
   const preguntasSugeridas = [
@@ -166,15 +168,23 @@ export function CopilotoBruno() {
     return nivel;
   };
 
-  // Auto-scroll en el historial de mensajes
+  // Auto-scroll en el historial de mensajes (solo dentro del contenedor interno del chat, nunca en la ventana global)
   useEffect(() => {
-    if (vistaActiva === 'asistente' && finHistorialRef.current) {
-      finHistorialRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!haInteractuadoRef.current) {
+      // En la carga inicial de la página no forzamos scroll para que el usuario empiece en el inicio (top: 0)
+      return;
+    }
+    if (vistaActiva === 'asistente' && contenedorChatRef.current) {
+      contenedorChatRef.current.scrollTo({
+        top: contenedorChatRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   }, [mensajes, escribiendo, vistaActiva]);
 
   // Manejador de envío de consulta al asistente Argos
   const handleEnviarConsulta = async (textoAEnviar) => {
+    haInteractuadoRef.current = true;
     const texto = (textoAEnviar || consultaTexto).trim();
     if (!texto) return;
 
@@ -286,7 +296,10 @@ export function CopilotoBruno() {
     handleEnviarConsulta(prompt);
   };
 
-  const nombreMascotaVisible = mascota?.nombre || t('comun.tuMascotaDefault');
+  const tieneMascotaReal = Boolean(
+    mascota?.nombre && mascota.nombre !== 'Sin mascota registrada'
+  );
+  const nombreMascotaVisible = tieneMascotaReal ? mascota.nombre : t('comun.tuMascotaDefault');
 
   return (
     <section id="copiloto" className="py-16 md:py-24 relative overflow-hidden">
@@ -426,7 +439,7 @@ export function CopilotoBruno() {
                       }`}
                     >
                       <Heart className="w-3.5 h-3.5" />
-                      <span>{t('copilotoExt.chequeoBtn', { nombre: mascota?.nombre || t('copilotoExt.chequeoMascotaDefault') })}</span>
+                      <span>{t('copilotoExt.chequeoBtn', { nombre: tieneMascotaReal ? mascota.nombre : t('copilotoExt.chequeoMascotaDefault') })}</span>
                     </button>
 
                     {soportaVozSalida() && (
@@ -524,7 +537,7 @@ export function CopilotoBruno() {
                 )}
 
                 {/* Historial de Mensajes */}
-                <div className="flex-1 p-4 sm:p-6 overflow-y-auto gotox-scrollbar space-y-4">
+                <div ref={contenedorChatRef} className="flex-1 p-4 sm:p-6 overflow-y-auto gotox-scrollbar space-y-4">
                   {mensajes.map((msg) => {
                     const esBruno = msg.remitente === 'bruno';
                     return (

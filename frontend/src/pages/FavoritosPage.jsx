@@ -1,49 +1,100 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PageWrapper } from '../components/PageWrapper';
 import { LUGARES_GOTOX } from '../data/lugaresGoToX';
-import { obtenerFavoritosIds, alternarFavorito } from '../servicios/almacenamientoCliente';
+import { TERRAZAS } from '../data/terrazas';
+import {
+  obtenerFavoritosIds,
+  obtenerFavoritosGuardadosMap,
+  alternarFavorito
+} from '../servicios/almacenamientoCliente';
+import { useDatabasePlaces, useResolvedPlacePhotos } from '../shared/services/place-photos-service';
+import { LugarFoto } from '../components/LugarFoto';
 import { ModalDetalleLugar } from '../components/ModalDetalleLugar';
 import { useTema } from '../context/TemaContext';
 import { useIdioma } from '../context/IdiomaContext';
 import {
+  handleSynodosCardMouseMove,
+  handleSynodosCardMouseLeave
+} from '../components/ui/Card';
+import {
   Heart,
   Compass,
-  MapPin,
   Volume2,
   Trash2,
   ArrowRight,
-  Dog,
-  Clock,
-  Sparkles
+  Dog
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function FavoritosPage() {
-  const { esClaro, esMorado, esOscuro } = useTema();
+  const { esClaro, esMorado } = useTema();
   const { t } = useIdioma();
   const [favoritosIds, setFavoritosIds] = useState(obtenerFavoritosIds);
+  const [favoritosMap, setFavoritosMap] = useState(obtenerFavoritosGuardadosMap);
   const [lugarSeleccionado, setLugarSeleccionado] = useState(null);
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
 
+  const { lugaresDb, cargandoDb } = useDatabasePlaces({ limit: 500 });
+  const { lugaresConFotos: lugaresLocalesConFotos, cargandoFotos: cargandoLocales } =
+    useResolvedPlacePhotos(LUGARES_GOTOX);
+  const { lugaresConFotos: terrazasConFotos } = useResolvedPlacePhotos(TERRAZAS);
+  const cargandoFotos = cargandoDb || cargandoLocales;
+
   useEffect(() => {
-    const handleActualizacion = () => setFavoritosIds(obtenerFavoritosIds());
+    const handleActualizacion = () => {
+      setFavoritosIds(obtenerFavoritosIds());
+      setFavoritosMap(obtenerFavoritosGuardadosMap());
+    };
     window.addEventListener('gotox:favoritos', handleActualizacion);
     return () => window.removeEventListener('gotox:favoritos', handleActualizacion);
   }, []);
 
+  // Unificar todos los catálogos (Supabase DB + Locales + Terrazas + Snapshots guardados al dar clic en el corazón)
   const lugaresFavoritos = useMemo(() => {
-    return LUGARES_GOTOX.filter(l => favoritosIds.includes(l.id));
-  }, [favoritosIds]);
+    const catalogoPorId = new Map();
+
+    for (const item of lugaresLocalesConFotos) {
+      if (item?.id) catalogoPorId.set(String(item.id), item);
+    }
+    for (const item of terrazasConFotos) {
+      if (item?.id && !catalogoPorId.has(String(item.id))) {
+        catalogoPorId.set(String(item.id), item);
+      }
+    }
+    for (const item of lugaresDb) {
+      if (item?.id) catalogoPorId.set(String(item.id), item);
+    }
+    for (const [savedId, savedObj] of Object.entries(favoritosMap || {})) {
+      if (savedObj && !catalogoPorId.has(String(savedId))) {
+        catalogoPorId.set(String(savedId), savedObj);
+      }
+    }
+
+    return favoritosIds
+      .map((id) => catalogoPorId.get(String(id)) || favoritosMap?.[String(id)])
+      .filter(Boolean);
+  }, [favoritosIds, favoritosMap, lugaresDb, lugaresLocalesConFotos, terrazasConFotos]);
 
   const lugaresFiltrados = useMemo(() => {
     if (filtroCategoria === 'todas') return lugaresFavoritos;
-    return lugaresFavoritos.filter(l => l.tipoActividad === filtroCategoria);
+    return lugaresFavoritos.filter((l) => {
+      if (l.tipoActividad === filtroCategoria) return true;
+      const catLower = String(l.categoria || '').toLowerCase();
+      if (filtroCategoria === 'gastronomia') {
+        return catLower.includes('restaurante') || catLower.includes('bar') || catLower.includes('gastro');
+      }
+      if (filtroCategoria === 'cafe') {
+        return catLower.includes('caf');
+      }
+      return false;
+    });
   }, [lugaresFavoritos, filtroCategoria]);
 
-  const handleEliminar = (id, e) => {
+  const handleEliminar = (lugar, e) => {
     e.stopPropagation();
-    alternarFavorito(id);
+    alternarFavorito(lugar.id, lugar);
     setFavoritosIds(obtenerFavoritosIds());
+    setFavoritosMap(obtenerFavoritosGuardadosMap());
   };
 
   return (
@@ -64,7 +115,7 @@ export function FavoritosPage() {
         </div>
 
         <Link
-          to="/explorar"
+          to="/usuario?tab=explorar"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-current/20 hover:bg-current/5 transition-all self-start sm:self-auto"
         >
           <Compass className="w-4 h-4" />
@@ -142,7 +193,7 @@ export function FavoritosPage() {
             {t('favoritos.vacioSub')}
           </p>
           <Link
-            to="/explorar"
+            to="/usuario?tab=explorar"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#501228] text-white hover:bg-[#6E1E3A]"
           >
             <span>{t('favoritos.irCatalogo')}</span>
@@ -154,30 +205,39 @@ export function FavoritosPage() {
           {lugaresFiltrados.map((lugar) => (
             <div
               key={lugar.id}
-              className={`rounded-3xl border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${
+              onMouseMove={handleSynodosCardMouseMove}
+              onMouseEnter={handleSynodosCardMouseMove}
+              onMouseLeave={handleSynodosCardMouseLeave}
+              className={`group synodos-spotlight-card synodos-tilt-card rounded-3xl border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between ${
                 esClaro ? 'bg-white border-slate-200' : esMorado ? 'bg-[#180A14] border-[#F27B91]/20' : 'bg-[#111827] border-white/10'
               }`}
             >
               <div
+                aria-hidden="true"
+                className="synodos-border-beam opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              />
+              <div
                 onClick={() => setLugarSeleccionado(lugar)}
                 className="relative h-48 w-full overflow-hidden cursor-pointer bg-slate-900 group"
               >
-                <img
+                <LugarFoto
                   src={lugar.imagen}
                   alt={lugar.nombre}
+                  photoMeta={lugar.photoMeta}
+                  cargando={cargandoFotos}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
                 <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/95 text-slate-900 shadow-md">
-                    {lugar.precioNivel} &bull; {lugar.zona}
+                    {lugar.precioNivel || '$$'} &bull; {lugar.zona}
                   </span>
                 </div>
 
                 <button
                   type="button"
-                  onClick={(e) => handleEliminar(lugar.id, e)}
+                  onClick={(e) => handleEliminar(lugar, e)}
                   title={t('favoritos.quitarFavoritoAria')}
                   aria-label={t('favoritos.quitarFavoritoAria')}
                   className="absolute top-3 right-3 p-2.5 rounded-full bg-rose-600/80 hover:bg-rose-700 text-white backdrop-blur-md transition-all active:scale-90 z-10"
@@ -189,7 +249,7 @@ export function FavoritosPage() {
                   <span className="text-[11px] opacity-90 truncate">{lugar.categoria}</span>
                   <span className="font-bold text-emerald-400 flex items-center gap-1">
                     <Volume2 className="w-3.5 h-3.5" />
-                    <span>{lugar.decibelios} dB</span>
+                    <span>{lugar.decibelios || 48} dB</span>
                   </span>
                 </div>
               </div>
@@ -238,7 +298,10 @@ export function FavoritosPage() {
         <ModalDetalleLugar
           lugar={lugarSeleccionado}
           onClose={() => setLugarSeleccionado(null)}
-          onFavoritoCambiado={() => setFavoritosIds(obtenerFavoritosIds())}
+          onFavoritoCambiado={() => {
+            setFavoritosIds(obtenerFavoritosIds());
+            setFavoritosMap(obtenerFavoritosGuardadosMap());
+          }}
         />
       )}
     </PageWrapper>

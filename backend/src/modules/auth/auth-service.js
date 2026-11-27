@@ -672,10 +672,25 @@ class AuthService {
     }
 
     const user = rows[0];
-    const rawToken = crypto.randomBytes(24).toString('hex');
+    // Código seguro de 8 caracteres sensibles a mayúsculas/minúsculas (sin 0/O/1/I/l) en formato estricto XXXX-XXXX (~111 billones de combinaciones)
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    let rawChars = '';
+    for (let i = 0; i < 8; i += 1) {
+      rawChars += alphabet[crypto.randomInt(0, alphabet.length)];
+    }
+    const rawToken = `${rawChars.slice(0, 4)}-${rawChars.slice(4)}`;
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
     const tokenId = `prt_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+
+    // Invalidar cualquier código previo activo de este usuario para que solo exista 1 código vigente a la vez
+    await execute(
+      `UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL`,
+      [user.id]
+    ).catch(() => {});
+    if (this._resetFailCounts) {
+      this._resetFailCounts.delete(user.id);
+    }
 
     await execute(
       `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at)
@@ -776,7 +791,8 @@ class AuthService {
       throw new Error('INVALID_RESET_TOKEN');
     }
     const user = userRows[0];
-    const tokenHash = crypto.createHash('sha256').update(String(token || '').trim()).digest('hex');
+    const cleanToken = String(token || '').trim();
+    const tokenHash = crypto.createHash('sha256').update(cleanToken).digest('hex');
     const nowSql = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
     const tokenRows = await query(
@@ -787,7 +803,21 @@ class AuthService {
     );
 
     if (!tokenRows || tokenRows.length === 0) {
+      if (!this._resetFailCounts) this._resetFailCounts = new Map();
+      const fails = (this._resetFailCounts.get(user.id) || 0) + 1;
+      this._resetFailCounts.set(user.id, fails);
+      // Tras 5 intentos fallidos, quemar todos los códigos activos del usuario para frenar fuerza bruta
+      if (fails >= 5) {
+        await execute(
+          `UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL`,
+          [user.id]
+        ).catch(() => {});
+        this._resetFailCounts.delete(user.id);
+      }
       throw new Error('INVALID_RESET_TOKEN');
+    }
+    if (this._resetFailCounts) {
+      this._resetFailCounts.delete(user.id);
     }
 
     const record = tokenRows[0];

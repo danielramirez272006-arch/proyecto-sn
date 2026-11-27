@@ -17,7 +17,7 @@ export function Badge({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${variantStyles[variant]} ${className}`}
+      className={`synodos-shiny-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${variantStyles[variant]} ${className}`}
     >
       {Icon && <Icon className="w-3 h-3 shrink-0" />}
       <span>{children}</span>
